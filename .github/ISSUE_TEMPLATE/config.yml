@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Question or idea to talk through
+    url: https://github.com/Pemalahmad/FleetOps-KPI-Dashboard/discussions
+    about: Ask in Discussions; issues are for bugs and concrete requests.
+  - name: Security vulnerability
+    url: https://github.com/Pemalahmad/FleetOps-KPI-Dashboard/blob/main/SECURITY.md
+    about: Please report privately, never in a public issue.

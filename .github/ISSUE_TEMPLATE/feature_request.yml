@@ -1,0 +1,25 @@
+name: Feature request
+description: Something FleetOps should do for your fleet.
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: The problem
+      description: What you are trying to do today, and what makes it hard.
+    validations:
+      required: true
+  - type: textarea
+    id: idea
+    attributes:
+      label: What would help
+  - type: dropdown
+    id: size
+    attributes:
+      label: Fleet size
+      options: [1-10 vehicles, 11-100, 101-1,000, More than 1,000]
+  - type: input
+    id: other
+    attributes:
+      label: Software you use today, if any
+      placeholder: "Excel, Fleetio, Samsara, ..."

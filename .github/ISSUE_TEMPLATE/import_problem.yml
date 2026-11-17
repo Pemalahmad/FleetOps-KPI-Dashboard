@@ -1,0 +1,34 @@
+name: My fleet file didn't import
+description: A workbook, CSV or export from another platform wasn't recognised or mapped correctly.
+labels: [import]
+body:
+  - type: markdown
+    attributes:
+      value: "**Do not upload the file.** Column headers and the problem are enough for us to add the format."
+  - type: input
+    id: source
+    attributes:
+      label: Where the file comes from
+      placeholder: "Samsara vehicle export / our own Excel / Fleetio / dealer list"
+    validations:
+      required: true
+  - type: textarea
+    id: headers
+    attributes:
+      label: Column headers
+      description: Copy the header row of each sheet, exactly as written (any language).
+      render: text
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: What went wrong
+      description: "For example: sheet not recognised, a column mapped to the wrong field, dates read wrong, rows missing."
+    validations:
+      required: true
+  - type: textarea
+    id: example
+    attributes:
+      label: One or two example rows (values changed)
+      render: text

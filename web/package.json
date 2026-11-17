@@ -1,6 +1,6 @@
 {
   "name": "fleetops-kpi-web",
-  "version": "0.1.0",
+  "version": "0.5.0",
   "private": true,
   "scripts": {
     "copy-assets": "node scripts/copy-assets.mjs && node scripts/copy-content.mjs",
@@ -43,5 +43,6 @@
     "tailwindcss": "4.3.3",
     "typescript": "^5",
     "vitest": "^5.1.0"
-  }
+  },
+  "license": "FSL-1.1-MIT"
 }

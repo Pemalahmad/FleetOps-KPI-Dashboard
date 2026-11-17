@@ -8,7 +8,7 @@
 ![Models](https://img.shields.io/badge/SQL_models-59-6366F1)
 ![Tests](https://img.shields.io/badge/SQL_tests-24-10B981)
 ![Rules](https://img.shields.io/badge/validation_rules-41-F59E0B)
-![License](https://img.shields.io/badge/license-MIT-green)
+[![License](https://img.shields.io/badge/license-FSL--1.1--MIT-blue)](LICENSE.md)
 
 ### ▶ [Open the live dashboard](https://pemalahmad.github.io/FleetOps-KPI-Dashboard/)
 
@@ -16,7 +16,14 @@ No install, no server, no upload: DuckDB-WASM runs the 59 SQL models and 24 test
 
 **For fleet owners.** Import your vehicle list from Excel (VINs, plates, trims, configurations; exports from Fleetio, Samsara, Motive, Geotab or Verizon Connect are recognised), photograph your registration cards and insurance policies, and get a fleet register with one next action per vehicle. VINs are validated and decoded, documents are read in English and Arabic and matched by VIN or plate, and their expiries drive compliance. Your data stays in your browser. See [FleetOps as fleet software](docs/FLEET_SOFTWARE.md).
 
-**Works offline.** Install it as an app from the browser, or download the [offline package](https://github.com/Pemalahmad/FleetOps-KPI-Dashboard/releases/latest) (Mac, Windows, Linux launchers; runs on `127.0.0.1` only). Renewal reminders export to your calendar; the register exports to Excel. Every feature is free during early access. [Security](SECURITY.md) · [Privacy](PRIVACY.md).
+**Works offline.** Install it as an app from the browser, or download the [offline package](https://github.com/Pemalahmad/FleetOps-KPI-Dashboard/releases/latest) (Mac, Windows, Linux launchers; runs on `127.0.0.1` only). Renewal reminders export to your calendar; the register exports to Excel. Every feature is free during early access. [Security](SECURITY.md) · [Privacy](PRIVACY.md) · [Changelog](CHANGELOG.md) · [Contributing](CONTRIBUTING.md).
+
+**Try it in 30 seconds.** Download [`samples/fleet-vehicles.xlsx`](samples/fleet-vehicles.xlsx) and drop it on
+**Import**, then drop [`samples/registration-card-sample.png`](samples/registration-card-sample.png) on **Documents**.
+The sample fleet has an expired registration, an insurance renewal due, a broken VIN and a missing VIN; the scanned
+card renews the expired one.
+
+![Import a vehicle list, read the register, scan a registration card and watch the vehicle come back into service](docs/demo.gif)
 
 ![Overview](docs/web-overview.jpg)
 
@@ -201,10 +208,18 @@ Built in TypeScript with Next.js (static export), Tailwind, ECharts, KaTeX and D
 | [`fleetkpi/sops/`](fleetkpi/sops) | Eight SOPs, each with owner, cadence, trigger and checklist |
 | `fleetkpi/*.py` | `cli` commands · `contract` (tables, columns, synonyms) · `ingest` (read + normalise) · `validate` · `sqlrunner` (dbt-style runner) · `build` (eight stages) · `config` (`fleet.yml`) · `demo` |
 | `fleetkpi/fleet.example.yml` | Every setting and green/amber/red target, commented |
+| [`samples/`](samples) | A messy vehicle-list workbook and a fictional registration card to try the app with |
 | [`docs/`](docs) | The doctrine, the generated SQL catalog and data contract, screenshots |
 | [`tests/`](tests) | Python tests: the demo end to end, a foreign-format fleet, bad data, the runner |
 | `Dockerfile`, `.github/workflows/` | Container image, CI (Python, web, Docker) and the GitHub Pages deploy |
 
+## Licence
+
+[Functional Source License 1.1, MIT future licence](LICENSE.md) (FSL-1.1-MIT). Use it, change it and run it for your
+own fleet, for research or teaching, or for clients you serve; what you may not do is sell it, or a copy of it, as a
+competing product. Each release becomes plain MIT two years after it is published. Versions up to 0.5.0 were
+released under MIT and stay MIT.
+
 ---
 
-Built by [Mohammad Alahmad](https://linkedin.com/in/pemalahmad). The structure mirrors how I ran operations analytics for a multi-market EV network; the demo company and its data are invented. MIT licensed.
+Built by [Mohammad Alahmad](https://linkedin.com/in/pemalahmad). The structure mirrors how I ran operations analytics for a multi-market EV network; the demo company and its data are invented.

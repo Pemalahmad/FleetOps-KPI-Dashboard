@@ -20,4 +20,4 @@ Check the download
   SHA256SUMS.txt next to the zip on the release page lists the expected checksum.
     Mac/Linux: shasum -a 256 FleetOps-offline-*.zip      Windows: Get-FileHash FleetOps-offline-*.zip
 
-Licence: MIT. During early access every feature is unlocked; no key is needed.
+Licence: FSL-1.1-MIT (free to use for your own fleet; reselling it as a competing product is not allowed; each version becomes MIT two years after release). During early access every feature is unlocked; no key is needed.
