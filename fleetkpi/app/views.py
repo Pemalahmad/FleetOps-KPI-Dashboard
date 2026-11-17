@@ -28,6 +28,13 @@ SCORECARD = [
     ("insurance_valid_pct", "insurance_rag", "Insurance", "{:.1f}", False),
     ("cost_vs_budget_pct", "cost_rag", "Cost vs budget", "{:+.1f}", True),
     ("recall_completion_pct", "recall_rag", "Recalls", "{:.1f}", False),
+    ("repeat_repair_pct", "repeat_repair_rag", "Repeat repairs", "{:.1f}", True),
+    ("repeat_visit_pct", "repeat_visit_rag", "Repeat visits", "{:.1f}", True),
+    ("time_to_pickup_p50_h", "pickup_rag", "Pick-up h", "{:.1f}", True),
+    ("back_to_ops_p50_h", "back_to_ops_rag", "Back to ops h", "{:.1f}", True),
+    ("parts_on_time_pct", "parts_rag", "Parts on time", "{:.1f}", False),
+    ("fines_per_100_vehicles", "fines_rag", "Fines /100 veh", "{:.1f}", True),
+    ("goodwill_pct", "goodwill_rag", "Goodwill %", "{:.2f}", True),
 ]
 
 
@@ -93,11 +100,25 @@ def overview():
         ui.metric("Fleet book value", last.book_value / 1e6, cur + " {:,.1f}M", tr.book_value / 1e6,
                   delta_fmt="{:+,.1f}M", help="After depreciation")
 
+    r3 = st.columns(4)
+    with r3[0]:
+        ui.metric("Repeat repairs", last.get("repeat_repair_pct"), "{:.1f}%", tr.get("repeat_repair_pct"), inverse=True,
+                  help="Same fault repaired again within the repeat window")
+    with r3[1]:
+        ui.metric("Time to pick up (median)", last.get("time_to_pickup_p50_h"), "{:.1f} h", tr.get("time_to_pickup_p50_h"),
+                  inverse=True, help="Vehicle ready → customer collects")
+    with r3[2]:
+        ui.metric("Parts on time", last.get("parts_on_time_pct"), "{:.1f}%", tr.get("parts_on_time_pct"),
+                  help="Parts arriving by the supplier's promised ETA")
+    with r3[3]:
+        ui.metric("Fines per 100 vehicles", last.get("fines_per_100_vehicles"), "{:.1f}", tr.get("fines_per_100_vehicles"),
+                  inverse=True, help="Fines registered this month per 100 active vehicles")
+
     left, right = st.columns([3, 2], gap="medium")
     with left, st.container(border=True):
         opts = {"Availability": "availability_pct", "Key-to-key": "key_to_key_p50_h", "CSAT": "csat_pct",
-                "1-2★": "low_rating_pct", "Productivity": "productivity_pct", "First-time fix": "first_time_fix_pct",
-                "Cost vs budget": "cost_vs_budget_pct"}
+                "1-2★": "low_rating_pct", "Productivity": "productivity_pct", "Repeat repairs": "repeat_repair_pct",
+                "Parts on time": "parts_on_time_pct", "Fines /100": "fines_per_100_vehicles", "Cost vs budget": "cost_vs_budget_pct"}
         pick = st.segmented_control("Trend", list(opts), default="CSAT", key="ov_trend", label_visibility="collapsed")
         col = opts.get(pick or "CSAT")
         if ui.region():
@@ -135,10 +156,11 @@ def overview():
                 textfont=dict(size=12, color="#FFFFFF"),
                 colorscale=[[0, "rgba(244,63,94,.92)"], [0.5, "rgba(245,158,11,.92)"], [1, "rgba(16,185,129,.88)"]],
                 zmin=0, zmax=2, showscale=False, xgap=4, ygap=4, hovertemplate="%{y} · %{x}: %{text}<extra></extra>"))
-            fig.update_xaxes(side="top", tickangle=0, tickfont=dict(size=11))
+            fig.update_xaxes(side="top", tickangle=-35, tickfont=dict(size=10))
             fig.update_yaxes(autorange="reversed")
+            fig.update_traces(textfont=dict(size=10))
             st.markdown("**Scorecard** · every region × every KPI, report month")
-            chart(style(fig, 46 * len(sc) + 40, legend=False), key="ov_matrix")
+            chart(style(fig, 46 * len(sc) + 90, legend=False), key="ov_matrix")
 
     with st.container(border=True):
         st.markdown("**What needs attention**")
@@ -147,7 +169,9 @@ def overview():
         chips = [(f"{r.site_name} · INTERVENE ×{r.n}", "SOP-03", ui.BAD) for r in flagged.itertuples()]
         sop_for = {"cost_rag": "SOP-06", "pm_rag": "SOP-05", "recall_rag": "SOP-04", "registration_rag": "SOP-07",
                    "insurance_rag": "SOP-07", "csat_rag": "SOP-08", "low_rating_rag": "SOP-08",
-                   "key_to_key_rag": "SOP-03", "productivity_rag": "SOP-03", "backlog_rag": "SOP-02"}
+                   "key_to_key_rag": "SOP-03", "productivity_rag": "SOP-03", "backlog_rag": "SOP-02",
+                   "repeat_repair_rag": "SOP-03", "repeat_visit_rag": "SOP-03", "pickup_rag": "SOP-02",
+                   "back_to_ops_rag": "SOP-02", "parts_rag": "SOP-03", "fines_rag": "SOP-07", "goodwill_rag": "SOP-08"}
         ambers = []
         for level, colr in [("red", ui.BAD), ("amber", ui.WARN)]:
             for r in sc.itertuples():
@@ -653,7 +677,10 @@ def _triggers() -> dict[str, list[str]]:
     for col, sop, label in [("pm_rag", "SOP-05", "PM compliance"), ("recall_rag", "SOP-04", "Recall completion"),
                             ("cost_rag", "SOP-06", "Cost vs budget"), ("registration_rag", "SOP-07", "Registration"),
                             ("insurance_rag", "SOP-07", "Insurance"), ("low_rating_rag", "SOP-08", "1-2★ share"),
-                            ("csat_rag", "SOP-08", "CSAT"), ("productivity_rag", "SOP-03", "Productivity")]:
+                            ("csat_rag", "SOP-08", "CSAT"), ("productivity_rag", "SOP-03", "Productivity"),
+                            ("repeat_repair_rag", "SOP-03", "Repeat repairs"), ("parts_rag", "SOP-03", "Parts on time"),
+                            ("pickup_rag", "SOP-02", "Time to pick up"), ("back_to_ops_rag", "SOP-02", "Back to operations"),
+                            ("fines_rag", "SOP-07", "Fines per 100 vehicles"), ("goodwill_rag", "SOP-08", "Goodwill")]:
         if col in sc:
             bad = sc[sc[col].isin(["red", "amber"])].region.tolist()
             if bad:
@@ -715,3 +742,246 @@ def sops():
                 m = re.search(rf"## {sec}\n(.+?)(\n\n|$)", body, re.S)
                 if m:
                     st.markdown(f"**{sec}** · {m.group(1)}")
+
+
+# ===================================================================== added sections
+def _clock_bars(df: pd.DataFrame, label_col: str, title: str, key: str):
+    fig = go.Figure()
+    for col, name, colr in [("workshop", "Workshop · key in → ready", ui.ACCENT),
+                            ("pickup", "Pick-up · ready → key back", "#06B6D4"),
+                            ("back", "Back to ops · key back → earning", "#F59E0B")]:
+        fig.add_bar(y=df[label_col], x=df[col], orientation="h", name=name, marker=dict(color=colr),
+                    text=[f"{v:.1f} h" for v in df[col]], textposition="inside", insidetextanchor="middle",
+                    textfont=dict(color="#FFFFFF"), hovertemplate="%{y}: %{x:.1f} h<extra>" + name + "</extra>")
+    fig.update_layout(barmode="stack")
+    fig.update_xaxes(ticksuffix=" h")
+    style(fig, max(34 * len(df) + 140, 200), title=title)
+    fig.update_layout(legend=dict(orientation="h", yanchor="top", y=-0.18, xanchor="left", x=0),
+                      margin=dict(l=4, r=4, t=48, b=60))
+    chart(fig, key=key)
+
+
+def customer_clocks():
+    st.markdown("##### The three clocks · median hours per visit, report month")
+    h = q(f"""SELECT region, workshop_p50_h AS workshop, time_to_pickup_p50_h AS pickup, back_to_ops_p50_h AS back,
+                     key_to_key_p50_h, off_road_p50_h
+              FROM mart_handover_monthly WHERE month_start = report_month() {ui.where_region(prefix='AND')}
+              ORDER BY off_road_p50_h""")
+    if h.empty:
+        return
+    a, b = st.columns([3, 2], gap="medium")
+    with a, st.container(border=True):
+        _clock_bars(h, "region", "Customer clock = workshop + pick-up · Fleet clock = all three", "cl_regions")
+    with b, st.container(border=True):
+        tr = _trends()
+        fig = go.Figure()
+        for col, name, colr in [("time_to_pickup_p50_h", "Time to pick up", "#06B6D4"),
+                                ("back_to_ops_p50_h", "Back to operations", "#F59E0B")]:
+            if col in tr:
+                fig.add_scatter(x=tr.month_start, y=tr[col], name=name, mode="lines+markers",
+                                line=dict(color=colr, width=3, shape="spline"))
+        tg = ui.targets().get("time_to_pickup_p50_h")
+        if tg is not None:
+            fig.add_hline(y=tg.green, line_dash="dot", line_color=ui.GOOD, annotation_text="pick-up target")
+        fig.update_yaxes(ticksuffix=" h")
+        chart(style(fig, 34 * len(h) + 110, title="Handover trend, median hours"), key="cl_trend")
+
+
+def workshop_quality():
+    st.markdown("##### Fix it once: repeat repairs and repeat visits")
+    a, b = st.columns([3, 2], gap="medium")
+    with a, st.container(border=True):
+        rp = q(f"SELECT * FROM mart_repeat_monthly {ui.where_region()} ORDER BY month_start")
+        fig = px.line(rp, x="month_start", y="repeat_repair_pct", color="region", markers=True)
+        tg = ui.targets().get("repeat_repair_pct")
+        if tg is not None:
+            fig.add_hline(y=tg.green, line_dash="dot", line_color=ui.GOOD, annotation_text="target")
+        fig.update_yaxes(ticksuffix="%")
+        chart(style(fig, 330, title="Repeat repairs: same fault repaired again, % of repairs"), key="wq_trend")
+    with b, st.container(border=True):
+        rs = q(f"SELECT * FROM mart_repeat_site {ui.where_region()} ORDER BY repeat_repair_pct")
+        tg = ui.targets().get("repeat_repair_pct")
+        colr = [ui.GOOD if tg is None or v <= tg.green else (ui.WARN if v <= tg.amber else ui.BAD) for v in rs.repeat_repair_pct.fillna(0)]
+        fig = go.Figure(go.Bar(x=rs.repeat_repair_pct, y=rs.site_name, orientation="h", marker=dict(color=colr, cornerradius=5),
+                               text=[f"{v:.1f}% · {n} comebacks" for v, n in zip(rs.repeat_repair_pct.fillna(0), rs.repeat_repairs)],
+                               textposition="outside"))
+        fig.update_xaxes(range=[0, max(rs.repeat_repair_pct.max() or 1, 1) * 2.1], ticksuffix="%")
+        chart(style(fig, 330, legend=False, title="By site, last quarter"), key="wq_sites")
+
+    st.markdown("##### Common repair and issue categories")
+    ic = q("SELECT * FROM mart_issue_categories")
+    if not ic.empty:
+        a, b = st.columns([3, 2], gap="medium")
+        with a, st.container(border=True):
+            fig = px.treemap(ic, path=[px.Constant("All jobs"), "issue_category", "powertrain"], values="jobs",
+                             color="repeat_repair_pct", color_continuous_scale=["#10B981", "#F59E0B", "#F43F5E"],
+                             hover_data={"avg_cost": ":,.0f", "key_to_key_p50_h": ":.1f"},
+                             labels={"repeat_repair_pct": "Repeat %"})
+            fig.update_traces(root_color="rgba(0,0,0,0)", marker=dict(cornerradius=6),
+                              texttemplate="<b>%{label}</b><br>%{value:,} jobs")
+            chart(style(fig, 400, legend=False, title="Jobs by category → powertrain · colour = repeat-repair %"), key="wq_tree")
+        with b, st.container(border=True):
+            cat = ic.groupby("issue_category", as_index=False).apply(
+                lambda g: pd.Series({"jobs": g.jobs.sum(), "avg_cost": (g.avg_cost * g.jobs).sum() / g.jobs.sum()}),
+                include_groups=False).sort_values("jobs")
+            cur = ui.setting("currency", "USD")
+            fig = go.Figure(go.Bar(x=cat.jobs, y=cat.issue_category, orientation="h",
+                                   marker=dict(color=cat.avg_cost, colorscale=["#C7D2FE", "#6366F1", "#312E81"], cornerradius=5),
+                                   text=[f"{int(j):,} · {cur} {c:,.0f} avg" for j, c in zip(cat.jobs, cat.avg_cost)],
+                                   textposition="outside", hovertemplate="%{y}: %{x:,} jobs<extra></extra>"))
+            fig.update_xaxes(range=[0, cat.jobs.max() * 1.55])
+            chart(style(fig, 400, legend=False, title="Volume by category · darker = costlier"), key="wq_cat")
+
+    st.markdown("##### Parts: promises kept")
+    pe = q("SELECT * FROM mart_parts_eta ORDER BY month_start")
+    if pe.empty:
+        st.info("No parts orders supplied (optional table `parts_orders`).")
+        return
+    po = q(f"SELECT round(100.0 * avg(on_time::INT), 1) v FROM stg_parts_orders WHERE arrived_at IS NOT NULL "
+           f"AND arrived_at >= report_month() - INTERVAL 2 MONTH {ui.where_region(prefix='AND')}")
+    op = q(f"SELECT * FROM mart_parts_open {ui.where_region()}")
+    a, b, c = st.columns([1.3, 2, 2], gap="medium")
+    with a, st.container(border=True):
+        chart(ui.gauge(po.v.iloc[0] if not po.empty else None, "On time · quarter", "parts_on_time_pct"), key="pp_g")
+        st.html(f'<div style="text-align:center"><span class="fk-big" style="color:{ui.BAD}">'
+                f'{int(op.is_overdue.sum()) if not op.empty else 0}</span><div class="fk-muted">orders past ETA, still open</div></div>')
+    with b, st.container(border=True):
+        fig = px.line(pe, x="month_start", y="on_time_pct", color="supplier", markers=True)
+        fig.update_yaxes(ticksuffix="%", range=[0, 105])
+        chart(style(fig, 330, title="On-time % by supplier"), key="pp_sup")
+    with c, st.container(border=True):
+        st.markdown(f"**Open parts orders** · {len(op):,}")
+        st.dataframe(op[["part_order_id", "vehicle_id", "site_name", "supplier", "part_description", "promised_eta", "days_overdue"]],
+                     hide_index=True, use_container_width=True, height=290,
+                     column_config={"days_overdue": st.column_config.ProgressColumn("Days overdue", min_value=0,
+                                    max_value=float(max(op.days_overdue.max() if not op.empty else 1, 1)), format="%.1f")})
+
+
+def compliance_fines():
+    st.markdown("##### Fines registered")
+    fm = q(f"SELECT * FROM mart_fines_monthly {ui.where_region()} ORDER BY month_start")
+    if fm.empty:
+        st.info("No fines supplied (optional table `fines`).")
+        return
+    by_type = fm.groupby("fine_type", as_index=False).agg(fines=("fines", "sum"), amount=("amount", "sum"),
+                                                          unpaid=("unpaid_amount", "sum")).sort_values("fines", ascending=False)
+    cur = ui.setting("currency", "USD")
+    colors = ["#F43F5E", "#F59E0B", "#06B6D4", "#8B5CF6", "#6366F1", "#94A3B8", "#10B981"]
+    a, b, c = st.columns([1.2, 2, 1.6], gap="medium")
+    with a, st.container(border=True):
+        chart(ui.donut(by_type.fine_type, by_type.fines, colors[:len(by_type)], f"{int(by_type.fines.sum()):,}", "fines"),
+              key="fn_donut")
+        st.html(f'<div style="text-align:center"><span class="fk-big" style="color:{ui.BAD}">{cur} {by_type.unpaid.sum():,.0f}</span>'
+                f'<div class="fk-muted">unpaid or disputed</div></div>')
+    with b, st.container(border=True):
+        fig = px.bar(fm.groupby(["month_start", "fine_type"], as_index=False).fines.sum(), x="month_start", y="fines",
+                     color="fine_type", color_discrete_sequence=colors)
+        fig.update_traces(marker_cornerradius=3)
+        chart(style(fig, 330, title="Fines per month by type"), key="fn_trend")
+    with c, st.container(border=True):
+        fv = q(f"SELECT vehicle_id, region, fines, amount, unpaid_amount, last_fine FROM mart_fines_vehicle {ui.where_region()} LIMIT 50")
+        st.markdown("**Repeat offenders**")
+        st.dataframe(fv, hide_index=True, use_container_width=True, height=300,
+                     column_config={"fines": st.column_config.ProgressColumn("Fines", min_value=0,
+                                    max_value=int(max(fv.fines.max() if not fv.empty else 1, 1)), format="%d")})
+
+
+def fleet_ledger():
+    cur = ui.setting("currency", "USD")
+    st.markdown("##### The ledger: amount paid on each vehicle for services")
+    sp = q(f"SELECT * FROM mart_vehicle_service_spend {ui.where_region()}")
+    if sp.empty:
+        return
+    a, b = st.columns([3, 2], gap="medium")
+    with a, st.container(border=True):
+        fig = px.box(sp, x="powertrain", y="spend_per_1000_km", color="powertrain", color_discrete_map=ui.POWERTRAIN,
+                     points=False)
+        fig.update_yaxes(title=f"{cur} per 1,000 km")
+        chart(style(fig, 330, legend=False, title=f"Service spend per 1,000 km by powertrain ({cur})"), key="lg_box")
+    with b, st.container(border=True):
+        top = sp.sort_values("total_service_spend", ascending=False).head(50)
+        st.markdown(f"**Highest-spend vehicles**  \nFleet total {cur} {sp.total_service_spend.sum() / 1e6:,.1f} M")
+        st.dataframe(top[["vehicle_id", "powertrain", "region", "visits", "total_service_spend", "goodwill", "spend_per_1000_km"]],
+                     hide_index=True, use_container_width=True, height=290,
+                     column_config={"total_service_spend": st.column_config.ProgressColumn(
+                         "Total spend", min_value=0, max_value=float(top.total_service_spend.max()), format="%.0f")})
+    gw = q(f"SELECT * FROM mart_goodwill_monthly {ui.where_region()} ORDER BY month_start")
+    with st.container(border=True):
+        fig = go.Figure()
+        agg = gw.groupby("month_start", as_index=False).agg(goodwill=("goodwill_amount", "sum"), spend=("service_spend", "sum"))
+        fig.add_bar(x=agg.month_start, y=agg.goodwill, name=f"Goodwill ({cur})", marker=dict(color="rgba(245,158,11,.6)", cornerradius=4))
+        fig.add_scatter(x=agg.month_start, y=100 * agg.goodwill / agg.spend, name="Goodwill % of spend", yaxis="y2",
+                        mode="lines+markers", line=dict(color=ui.ACCENT, width=3, shape="spline"))
+        fig.update_layout(yaxis2=dict(overlaying="y", side="right", showgrid=False, ticksuffix="%", tickformat=".1f",
+                                      rangemode="tozero"))
+        chart(style(fig, 280, title="Goodwill: what bad experiences cost (SOP-08)"), key="lg_gw")
+
+
+# ================================================================================ Doctrine
+def doctrine():
+    ui.hero("Doctrine", "The Three Clocks Doctrine",
+            "A vehicle in the workshop runs three clocks at once. Manage all three, or someone pays for the one you forgot.")
+    tr = _trends()
+    last = tr.iloc[-1] if not tr.empty else None
+    fm = q(f"SELECT sum(downtime_h) h, sum(vehicle_days) d FROM mart_fleet_monthly WHERE month_start = report_month() "
+           f"{ui.where_region(prefix='AND')}")
+    north = fm.h.iloc[0] / (fm.d.iloc[0] / 30.4) if not fm.empty and fm.d.iloc[0] else None
+    c = st.columns(4)
+    with c[0]:
+        ui.metric("North star · off-road h / vehicle / mo", north, "{:.1f} h", inverse=True,
+                  help="Off-road hours (key in → back in operations) per vehicle per month")
+    with c[1]:
+        ui.metric("Customer clock · key-to-key", last.get("key_to_key_p50_h") if last is not None else None, "{:.1f} h",
+                  tr.get("key_to_key_p50_h"), inverse=True)
+    with c[2]:
+        ui.metric("Workshop clock · key in → ready", last.get("workshop_p50_h") if last is not None else None, "{:.1f} h",
+                  tr.get("workshop_p50_h"), inverse=True)
+    with c[3]:
+        ui.metric("Fleet clock · key in → earning", last.get("off_road_p50_h") if last is not None else None, "{:.1f} h",
+                  tr.get("off_road_p50_h"), inverse=True)
+    if last is not None and pd.notna(last.get("workshop_p50_h")):
+        with st.container(border=True):
+            d = pd.DataFrame([{"label": "Median visit", "workshop": last.workshop_p50_h, "pickup": last.time_to_pickup_p50_h,
+                               "back": last.back_to_ops_p50_h}])
+            _clock_bars(d, "label", "Where the fleet clock goes, report month", "doc_clock")
+    laws = [
+        ("1", "Count the hours the customer counts", "Key-to-key over the job card.", "key_to_key_p50_h", "{:.1f} h"),
+        ("2", "A vehicle is not fixed until it is earning", "Close ready → back in operations.", "back_to_ops_p50_h", "{:.1f} h"),
+        ("3", "Fix it once, or pay three times", "Repeat repairs cost repair + goodwill + hours.", "repeat_repair_pct", "{:.1f}%"),
+        ("4", "A parts ETA is a promise", "Rank suppliers on promises kept.", "parts_on_time_pct", "{:.1f}%"),
+        ("5", "Every flag has an owner within 48 hours", "Each flag maps to an SOP.", None, None),
+        ("6", "The licence is a gate, not a score", "Expired = grounded until renewed.", "fines_per_100_vehicles", "{:.1f} fines/100"),
+        ("7", "Recognise in public, fix in private", "League table up, interventions via SOP.", None, None),
+    ]
+    st.markdown("##### The seven laws")
+    cols = st.columns(4, gap="small")
+    for i, (n, title, sub, col, f) in enumerate(laws):
+        val = last.get(col) if (last is not None and col) else None
+        live = f'<div class="fk-big" style="font-size:1.4rem;margin-top:6px">{f.format(val)}</div>' if val is not None and pd.notna(val) else ""
+        with cols[i % 4]:
+            st.html(ui.card(f'<div class="fk-eyebrow">Law {n}</div><div style="font-weight:650;margin:4px 0">{ui.esc(title)}</div>'
+                            f'<div class="fk-muted">{ui.esc(sub)}</div>{live}'))
+    with st.expander("Read the full doctrine"):
+        from pathlib import Path
+        doc = Path(__file__).resolve().parent.parent / "DOCTRINE.md"
+        st.markdown(doc.read_text() if doc.exists() else "See docs/DOCTRINE.md in the repository.")
+
+
+def customer_page():
+    customer()
+    customer_clocks()
+
+
+def workshop_page():
+    workshop()
+    workshop_quality()
+
+
+def fleet_page():
+    fleet_assets()
+    fleet_ledger()
+
+
+def compliance_page():
+    compliance()
+    compliance_fines()
