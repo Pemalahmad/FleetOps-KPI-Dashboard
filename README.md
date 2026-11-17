@@ -26,23 +26,23 @@ card renews the expired one.
 
 ![The garage home page, a vehicle's road checklist, importing a vehicle list, the fleet register and scanning a registration card](docs/demo.gif)
 
-![The visual garage: every vehicle grouped by what is holding it back](docs/web-garage.jpg)
+![The visual garage: every vehicle grouped by what is holding it back](docs/web-garage.gif)
 
 ## The visual garage
 
 The home dashboard groups vehicles into Road ready, Repair bays, Renewal desk, Accident intake, Dispatch review and Safety checks. Open a car for recorded repair milestones, registration and insurance stages, source blockers, a release checklist, a named owner and a target return date.
 
-![A vehicle's road checklist, recorded repair milestones and registration and insurance stages](docs/web-garage-vehicle.jpg)
+![A vehicle's road checklist, recorded repair milestones and registration and insurance stages](docs/web-garage-vehicle.gif)
 
 Report an accident to hold the vehicle and track assessment, repair, quality checks and dispatch review. The alert inbox includes paging, type filters and read status. Recovery missions and handover XP reward completed work; points cannot bypass an expired document, unresolved repair or evidence gap. The existing KPI dashboard is available under **Analytics**.
 
-![Analytics: the KPI dashboard](docs/web-overview.jpg)
+![Analytics: the KPI dashboard](docs/web-overview.gif)
 
 Garage actions for your fleet use the same device-local Workspace and optional passphrase encryption. Demo actions are isolated practice in tab memory. Notifications update from imported evidence and in-app incident reports; there is no automatic accident detection or external alert service. Current handovers recheck document dates, source freshness, vehicle-level usage coverage and all release requirements. See [garage workflow](docs/GARAGE.md).
 
 ## The metric network
 
-![Metric network](docs/web-metric-network.jpg)
+![Metric network](docs/web-metric-network.gif)
 
 Every KPI is a node. Two kinds of link connect them:
 
@@ -65,7 +65,7 @@ Click any metric to see its definition, its identity with the live numbers subst
 
 **Job-level evidence** tests the same links on individual work orders:
 
-![Job-level evidence](docs/web-job-evidence.jpg)
+![Job-level evidence](docs/web-job-evidence.gif)
 
 | Claim | Method | Demo result |
 |---|---|---|
@@ -137,8 +137,8 @@ Every KPI has a green/amber/red target in `fleet.yml`. The gamified **Ops Score*
 
 | | |
 |---|---|
-| ![Three clocks](docs/three-clocks-dark.jpg) | ![Repeat repairs](docs/repeat-repairs-dark.jpg) |
-| ![Fines](docs/fines-dark.jpg) | ![Service ledger](docs/service-ledger-dark.jpg) |
+| ![Overview: north star, KPI tiles and the region scorecard](docs/st-overview.gif) | ![Customer clock: CSAT, rating mix and key-to-key](docs/st-customer.gif) |
+| ![Compliance: registration, insurance, PM, recalls and fines](docs/st-compliance.gif) | ![Fleet & assets: spend, cost per km and the service ledger](docs/st-fleet-assets.gif) |
 
 ## The pipeline: SQL first, dbt-style
 
@@ -165,7 +165,7 @@ fleetkpi/sql/
 - **Everything is logged into the warehouse.** `pipeline_runs`, `pipeline_models`, `pipeline_tests`, `validation_issues` and `ingest_log` drive the Pipeline page: stage cards, a lineage graph drawn from the real dependencies, model and test SQL, and a *Run pipeline* button.
 - **Self-documenting.** `fleetkpi docs` writes [`docs/SQL_CATALOG.md`](docs/SQL_CATALOG.md) from each file's header: every model, what it reads and what reads it.
 
-![Pipeline](docs/pipeline-dark.jpg)
+![Pipeline: stage cards, lineage graph, model and test SQL](docs/st-pipeline.gif)
 
 ## Plug and play, for any powertrain
 
@@ -194,7 +194,7 @@ Built in TypeScript with Next.js (static export), Tailwind, ECharts, KaTeX and D
 
 | | |
 |---|---|
-| ![Workshop](docs/workshop-dark.jpg) | ![Fleet & assets](docs/fleet-assets-dark.jpg) |
+| ![Workshop: Ops Score league, site profile and repeat repairs](docs/st-workshop.gif) | ![SOPs with owners, triggers and live evidence](docs/st-sops.gif) |
 
 **Eight SOPs** (data onboarding, weekly review, site intervention, recalls, PM compliance, month-end cost, registration, insurance & fines, customer recovery & goodwill) carry an owner, cadence, trigger and checklist, and show live evidence when the data trips their trigger. The browser SOP workspace adds scoped checklists, named owners, due dates, evidence notes and downloadable reviews. Completing a checklist does not clear a live operational flag.
 
