@@ -1,4 +1,4 @@
--- description: Every monthly KPI by region and month, the input to the scorecard and trends
+-- description: Every monthly KPI by region and month: the input to the executive scorecard and trends
 WITH service AS (
     SELECT vehicle_region AS region, date_trunc('month', closed_at)::DATE AS month_start,
            100 * (1 - avg(repeat_visit::INT)) AS first_time_fix_pct
@@ -21,6 +21,12 @@ recall AS (
     GROUP BY ALL
 )
 SELECT f.region, f.month_start, f.active_vehicles, f.availability_pct, f.utilization_pct,
+       rp.repeat_visit_pct, rp.repeat_repair_pct,
+       h.time_to_pickup_p50_h, h.back_to_ops_p50_h, h.off_road_p50_h,
+       pt.parts_on_time_pct,
+       round(100.0 * coalesce(fn.fines, 0) / nullif(f.active_vehicles, 0), 1) AS fines_per_100_vehicles,
+       fn.fines_amount,
+       g.goodwill_pct,
        k.key_to_key_p50_h, k.on_target_pct AS key_to_key_on_target_pct,
        round(s.first_time_fix_pct, 1)   AS first_time_fix_pct,
        round(p.productivity_pct, 1)     AS productivity_pct,
@@ -34,3 +40,11 @@ LEFT JOIN prod p USING (region, month_start)
 LEFT JOIN mart_customer_monthly cu USING (region, month_start)
 LEFT JOIN mart_cost_monthly c USING (region, month_start)
 LEFT JOIN recall r USING (region, month_start)
+LEFT JOIN mart_repeat_monthly rp USING (region, month_start)
+LEFT JOIN mart_handover_monthly h USING (region, month_start)
+LEFT JOIN mart_goodwill_monthly g USING (region, month_start)
+LEFT JOIN (SELECT region, month_start, sum(fines) AS fines, sum(amount) AS fines_amount
+           FROM mart_fines_monthly GROUP BY ALL) fn USING (region, month_start)
+LEFT JOIN (SELECT region, date_trunc('month', arrived_at)::DATE AS month_start,
+                  round(100.0 * avg(on_time::INT), 1) AS parts_on_time_pct
+           FROM stg_parts_orders WHERE arrived_at IS NOT NULL GROUP BY ALL) pt USING (region, month_start)

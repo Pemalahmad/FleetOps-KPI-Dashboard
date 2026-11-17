@@ -22,7 +22,7 @@ SELECT r.rnk AS rank, r.site_name, r.region, r.ops_score,
        r.key_to_key_p50_h, r.first_time_fix_pct, r.csat_pct, r.productivity_pct, r.pm_compliance_pct, r.jobs,
        list_filter([
            CASE WHEN s.clean_streak_weeks >= 13 THEN 'Clean Quarter' END,
-           CASE WHEN r.first_time_fix_pct >= 95 THEN 'Fix It Once' END,
+           CASE WHEN r.first_time_fix_pct >= 99.5 THEN 'Fix It Once' END,
            CASE WHEN r.key_to_key_p50_h <= 0.85 * (SELECT median(key_to_key_p50_h) FROM cur) THEN 'Speed Benchmark' END,
            CASE WHEN r.csat_pct >= 90 THEN 'Customer Favourite' END,
            CASE WHEN r.productivity_pct >= 85 THEN 'High Output' END,

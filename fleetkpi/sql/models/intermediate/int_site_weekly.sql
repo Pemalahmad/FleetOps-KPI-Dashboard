@@ -37,9 +37,13 @@ SELECT
     round(100.0 * (p50_turnaround_h / network_p50_h - 1), 1)           AS pct_vs_network,
     CASE
         WHEN jobs_closed < cfg_num('min_weekly_jobs') THEN 'LOW VOLUME'
-        WHEN p50_turnaround_h > cfg_num('intervene_ratio') * network_p50_h
-          OR p50_turnaround_h > cfg_num('intervene_ratio') * trailing_4wk_p50_h THEN 'INTERVENE'
-        WHEN p50_turnaround_h > cfg_num('watch_ratio') * network_p50_h THEN 'WATCH'
+        -- a flag needs both a ratio and a real gap in hours, so small medians do not raise false alarms
+        WHEN (p50_turnaround_h > cfg_num('intervene_ratio') * network_p50_h
+              OR p50_turnaround_h > cfg_num('intervene_ratio') * trailing_4wk_p50_h)
+         AND p50_turnaround_h - least(network_p50_h, coalesce(trailing_4wk_p50_h, network_p50_h)) >= cfg_num('intervene_min_gap_h')
+            THEN 'INTERVENE'
+        WHEN p50_turnaround_h > cfg_num('watch_ratio') * network_p50_h
+         AND p50_turnaround_h - network_p50_h >= cfg_num('intervene_min_gap_h') / 2 THEN 'WATCH'
         ELSE 'OK'
     END                                                                AS status
 FROM scored

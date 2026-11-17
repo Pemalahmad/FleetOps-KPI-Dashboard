@@ -32,7 +32,7 @@ scaled AS (
     -- each component scaled 0..1 across a realistic range before weighting
     SELECT a.*, c.csat_pct, coalesce(p.pm_pct, 100) AS pm_pct,
            least(greatest((n.net_k2k / nullif(a.k2k_h, 0) - 0.6) / 0.6, 0), 1)  AS s_k2k,
-           least(greatest((a.ftf_pct - 85) / 12.0, 0), 1)                      AS s_ftf,
+           least(greatest((a.ftf_pct - 95) / 5.0, 0), 1)                       AS s_ftf,
            least(greatest((coalesce(c.csat_pct, 80) - 60) / 35.0, 0), 1)       AS s_csat,
            least(greatest((coalesce(a.productivity_pct, 70) - 50) / 40.0, 0), 1) AS s_prod,
            least(greatest((coalesce(p.pm_pct, 100) - 85) / 15.0, 0), 1)       AS s_pm

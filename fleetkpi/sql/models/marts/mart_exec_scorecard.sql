@@ -30,6 +30,13 @@ SELECT c.region, c.month_start, c.active_vehicles,
        round(d.insurance_valid_pct, 1) AS insurance_valid_pct, rag('insurance_valid_pct', d.insurance_valid_pct) AS insurance_rag,
        c.cost_vs_budget_pct,                   rag('cost_vs_budget_pct', c.cost_vs_budget_pct)           AS cost_rag,
        c.recall_completion_pct,                rag('recall_completion_pct', c.recall_completion_pct)     AS recall_rag,
+       c.repeat_repair_pct,                    rag('repeat_repair_pct', c.repeat_repair_pct)             AS repeat_repair_rag,
+       c.repeat_visit_pct,                     rag('repeat_visit_pct', c.repeat_visit_pct)               AS repeat_visit_rag,
+       c.time_to_pickup_p50_h,                 rag('time_to_pickup_p50_h', c.time_to_pickup_p50_h)       AS pickup_rag,
+       c.back_to_ops_p50_h,                    rag('back_to_ops_p50_h', c.back_to_ops_p50_h)             AS back_to_ops_rag,
+       c.parts_on_time_pct,                    rag('parts_on_time_pct', c.parts_on_time_pct)             AS parts_rag,
+       c.fines_per_100_vehicles,               rag('fines_per_100_vehicles', c.fines_per_100_vehicles)   AS fines_rag,
+       c.goodwill_pct,                         rag('goodwill_pct', c.goodwill_pct)                       AS goodwill_rag,
        round(e.tco_per_km, 4) AS tco_per_km, round(e.co2_g_per_km, 1) AS co2_g_per_km
 FROM cur c
 LEFT JOIN pm USING (region)
