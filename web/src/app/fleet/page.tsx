@@ -3,11 +3,12 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
-import { ArrowRight, CloudArrowDown, MagnifyingGlass, X } from "@phosphor-icons/react";
+import { ArrowRight, CalendarPlus, CloudArrowDown, FileXls, MagnifyingGlass, X } from "@phosphor-icons/react";
 import { Chart, PALETTE } from "@/components/chart";
 import { regionWhere, useEngine, useSql } from "@/components/engine-provider";
 import { Card, PageHeader, SectionTitle, Skeleton, Tile } from "@/components/ui";
 import { decodeVins } from "@/lib/vin";
+import { renewalsIcs, safeRows } from "@/lib/exporters";
 
 export interface RegistryRow {
   vehicle_id: string; vin: string | null; vin_status: string; plate_number: string | null; make: string | null; model: string | null;
@@ -139,6 +140,27 @@ export default function FleetPage() {
       </div>
 
       <SectionTitle sub="One action per vehicle, most urgent first. Law 6: an expired vehicle is grounded until renewed.">Next actions</SectionTitle>
+      <div className="mb-3 flex flex-wrap gap-2">
+        <button onClick={() => {
+          const items = rows.filter((r) => r.is_active).flatMap((r) => [
+            r.registration_expiry ? { vehicle: r.plate_number ?? r.vehicle_id, kind: "Registration" as const, date: r.registration_expiry, detail: r.vin ? `VIN ${r.vin}` : null } : null,
+            r.insurance_expiry ? { vehicle: r.plate_number ?? r.vehicle_id, kind: "Insurance" as const, date: r.insurance_expiry, detail: r.insurer } : null,
+          ]).filter((x): x is NonNullable<typeof x> => x !== null);
+          download(new Blob([renewalsIcs(items)], { type: "text/calendar" }), "fleet-renewals.ics");
+        }} disabled={!rows.length}
+          className="inline-flex items-center gap-2 rounded-lg border border-border px-3 py-1.5 text-[12.5px] text-muted transition hover:border-accent hover:text-accent active:scale-95 disabled:opacity-40">
+          <CalendarPlus size={15} /> Add renewals to my calendar (.ics, alerts 30 and 7 days before)
+        </button>
+        <button onClick={async () => {
+          const XLSX = await import("xlsx");
+          const wb = XLSX.utils.book_new();
+          XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(safeRows(filtered as unknown as Record<string, unknown>[])), "Fleet register");
+          XLSX.writeFile(wb, "fleet-register.xlsx");
+        }} disabled={!rows.length}
+          className="inline-flex items-center gap-2 rounded-lg border border-border px-3 py-1.5 text-[12.5px] text-muted transition hover:border-accent hover:text-accent active:scale-95 disabled:opacity-40">
+          <FileXls size={15} /> Export {action || q ? "this view" : "the register"} to Excel
+        </button>
+      </div>
       <div className="flex flex-wrap gap-2">
         <button onClick={() => { setAction(null); setPage(0); }}
           className={`rounded-full border px-3 py-1.5 text-[12.5px] ${action === null ? "border-accent bg-accent-soft text-accent" : "border-border text-muted"}`}>
@@ -200,6 +222,14 @@ export default function FleetPage() {
   );
 }
 
+function download(blob: Blob, name: string) {
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = name;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+
 function Sunburst({ rows }: { rows: RegistryRow[] }) {
   const data = useMemo(() => {
     const tree = new Map<string, Map<string, Map<string, number>>>();
@@ -245,13 +275,13 @@ function VinDecode({ rows }: { rows: RegistryRow[] }) {
     <Card className="mt-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="max-w-3xl text-[13px] text-muted">
-          {state.msg ?? <><b className="text-text">{todo.length.toLocaleString()} valid VINs</b> are missing model, trim or configuration. They can be decoded with
+          {state.msg ?? <><b className="text-text">{todo.length.toLocaleString()} valid {todo.length === 1 ? "VIN is" : "VINs are"}</b> missing model, trim or configuration. {todo.length === 1 ? "It" : "They"} can be decoded with
             NHTSA&apos;s public vPIC service (best for vehicles built for North America; others often decode make and year only). Only the VINs are sent, nothing else.</>}
         </div>
         {todo.length > 0 && (
           <button onClick={run} disabled={state.busy}
             className="inline-flex items-center gap-2 rounded-lg border border-accent px-3 py-2 text-[13px] font-medium text-accent transition hover:bg-accent-soft active:scale-95 disabled:opacity-50">
-            <CloudArrowDown size={16} /> {state.busy ? `Decoding… ${state.done}/${todo.length}` : `Decode ${todo.length.toLocaleString()} VINs online`}
+            <CloudArrowDown size={16} /> {state.busy ? `Decoding… ${state.done}/${todo.length}` : `Decode ${todo.length.toLocaleString()} VIN${todo.length === 1 ? "" : "s"} online`}
           </button>
         )}
       </div>

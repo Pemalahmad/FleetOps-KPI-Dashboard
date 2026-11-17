@@ -1,0 +1,38 @@
+name: release
+
+# Tag a version (git tag v0.5.0 && git push --tags) to publish the offline package as a GitHub Release.
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  offline-package:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - name: Export the SQL engine and demo fleet
+        run: pip install -e . && fleetkpi web-export --out web/public
+      - name: Test and package
+        working-directory: web
+        run: npm ci && npm test && bash scripts/package-offline.sh "${GITHUB_REF_NAME#v}"
+      - name: Publish the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="${GITHUB_REF_NAME}"
+          [ "${GITHUB_REF_TYPE}" = "tag" ] || TAG="offline-$(date +%Y%m%d-%H%M)"
+          gh release view "$TAG" >/dev/null 2>&1 || gh release create "$TAG" --title "FleetOps $TAG" \
+            --notes "Offline package: unzip, then run the launcher for your system (see README.txt inside). Verify with SHA256SUMS.txt."
+          gh release upload "$TAG" web/dist/FleetOps-offline-*.zip web/dist/SHA256SUMS.txt --clobber

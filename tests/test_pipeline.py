@@ -303,3 +303,31 @@ def test_vehicle_list_with_plate_and_vin_maps_both(tmp_path):
     assert res.mapped["vehicle_id"] == "Plate" and res.mapped["plate_number"] == "Plate" and res.mapped["vin"] == "VIN"
     assert res.mapped["trim"] == "Trim"
     assert con.execute("SELECT vehicle_id, vin, powertrain FROM vehicles ORDER BY 1").fetchall()[0] == ("D 48213", "1HGCM82633A004352", "BEV")
+
+
+def test_licence_keys_sign_and_reject_tampering(tmp_path):
+    """Keys issued by the publisher verify with the public key; an edited payload does not."""
+    import base64
+    import json as _json
+
+    from cryptography.exceptions import InvalidSignature
+    from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
+
+    from fleetkpi import license as lic
+
+    keyfile = tmp_path / "k.pem"
+    pub = lic.keygen(keyfile)
+    assert (keyfile.stat().st_mode & 0o777) == 0o600            # private key readable by its owner only
+    with pytest.raises(SystemExit):
+        lic.keygen(keyfile)                                      # never overwrites an existing key
+    token = lic.issue("ACME", "starter", "2027-12-31", 50, path=keyfile)
+    p, s = token.split(".")
+    dec = lambda x: base64.urlsafe_b64decode(x + "=" * (-len(x) % 4))
+    verifier = Ed25519PublicKey.from_public_bytes(dec(pub))
+    verifier.verify(dec(s), p.encode())                          # genuine: no exception
+    assert _json.loads(dec(p)) | {"iat": None} == {"sub": "ACME", "plan": "starter", "exp": "2027-12-31", "max_vehicles": 50, "iat": None}
+    forged = base64.urlsafe_b64encode(_json.dumps({"sub": "ACME", "plan": "pro", "exp": "2099-01-01"}).encode()).rstrip(b"=").decode()
+    with pytest.raises(InvalidSignature):
+        verifier.verify(dec(s), forged.encode())
+    with pytest.raises(ValueError):
+        lic.issue("ACME", "platinum", "2027-12-31", path=keyfile)

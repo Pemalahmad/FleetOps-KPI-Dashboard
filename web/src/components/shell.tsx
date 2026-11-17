@@ -5,16 +5,18 @@ import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
 import {
   BookOpenText, Car, ChartPieSlice, CircleNotch, FileArrowUp, Garage, Graph, IdentificationCard, Moon, ShieldCheck, Smiley, Sun,
-  TreeStructure, Wrench,
+  TreeStructure, WifiSlash, Wrench,
 } from "@phosphor-icons/react";
 import { useTheme } from "./chart";
 import { useEngine } from "./engine-provider";
+import { OfflineRegistration } from "./offline";
 
 const NAV = [
   { group: "Fleet", items: [
     { href: "/fleet/", label: "Fleet register", icon: Garage },
     { href: "/documents/", label: "Documents", icon: IdentificationCard },
     { href: "/import/", label: "Import", icon: FileArrowUp },
+    { href: "/plan/", label: "Plan & offline", icon: WifiSlash },
   ] },
   { group: "Operate", items: [
     { href: "/", label: "Overview", icon: ChartPieSlice },
@@ -82,6 +84,7 @@ export function Shell({ children }: { children: ReactNode }) {
   const path = usePathname();
   return (
     <div className="flex min-h-screen">
+      <OfflineRegistration />
       <aside className="sticky top-0 hidden h-screen w-60 shrink-0 flex-col border-r border-border bg-panel px-3 py-5 lg:flex">
         <Link href="/" className="mb-6 flex items-center gap-2.5 px-2">
           <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-accent text-[13px] font-bold text-white">F</span>

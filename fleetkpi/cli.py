@@ -84,6 +84,22 @@ def cmd_web_export(args) -> int:
     return 0
 
 
+def cmd_license(args) -> int:
+    from . import license as lic
+    if args.action == "keygen":
+        pub = lic.keygen()
+        print(f"Signing key written to {lic.PRIVATE} (keep it private; back it up).")
+        print(f"Public key for web/src/lib/license.ts: {pub}")
+    elif args.action == "public":
+        print(lic.public_key())
+    else:
+        if not (args.customer and args.plan and args.expires):
+            print("issue needs --customer, --plan and --expires")
+            return 2
+        print(lic.issue(args.customer, args.plan, args.expires, args.max_vehicles))
+    return 0
+
+
 def cmd_validate(args) -> int:
     result = build_mod.run(config_mod.load(args.config), validate_only=True)
     print(build_mod.summary(result))
@@ -138,6 +154,14 @@ def main(argv: list[str] | None = None) -> int:
     s.add_argument("--out", default="web/public")
     s.add_argument("--config", default=None, help="fleet.yml whose settings and targets the web app uses (default: demo)")
     s.set_defaults(fn=cmd_web_export)
+
+    s = sub.add_parser("license", help="publisher only: create the signing key, or issue licence keys for the app")
+    s.add_argument("action", choices=["keygen", "public", "issue"])
+    s.add_argument("--customer")
+    s.add_argument("--plan", choices=["free", "starter", "pro"])
+    s.add_argument("--expires", help="YYYY-MM-DD")
+    s.add_argument("--max-vehicles", type=int, default=None)
+    s.set_defaults(fn=cmd_license)
 
     s = sub.add_parser("docs", help="generate docs/SQL_CATALOG.md and docs/DATA_CONTRACT.md from the code")
     s.add_argument("--out", default="docs")

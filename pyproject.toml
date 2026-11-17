@@ -20,7 +20,8 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-dev = ["pytest>=8"]
+dev = ["pytest>=8", "cryptography>=42"]
+license = ["cryptography>=42"]
 
 [project.scripts]
 fleetkpi = "fleetkpi.cli:main"

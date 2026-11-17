@@ -144,7 +144,7 @@ FROM d_ident i;
 CREATE OR REPLACE TABLE vehicles AS
 SELECT v.*,
        -- a little dirt, as real registers have: 0.3% VINs typed with a letter O, and one VIN on two vehicles
-       CASE WHEN rnd(v.vehicle_id || 'vbad') < 0.003 THEN overlay(i.vin PLACING 'O' FROM 12 FOR 1)
+       CASE WHEN rnd(v.vehicle_id || 'vbad') < 0.003 THEN substr(i.vin, 1, 11) || 'O' || substr(i.vin, 13)
             WHEN v.vehicle_id = (SELECT max(vehicle_id) FROM vehicles) THEN (SELECT i2.vin FROM d_ident2 i2 ORDER BY i2.vehicle_id LIMIT 1)
             ELSE i.vin END AS vin,
        i.plate_number, i.model_year, i.trim, i.configuration, i.color
