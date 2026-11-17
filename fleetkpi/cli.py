@@ -76,6 +76,14 @@ def cmd_docs(args) -> int:
     return 0
 
 
+def cmd_web_export(args) -> int:
+    from . import webexport
+    info = webexport.export(Path(args.out), args.config)
+    print(f"Wrote {args.out}/engine/manifest.json ({info['models']} models, {info['rules']} rules, "
+          f"{info['tests']} tests) and the demo fleet ({info['demo_bytes'] / 1e6:.1f} MB parquet)")
+    return 0
+
+
 def cmd_validate(args) -> int:
     result = build_mod.run(config_mod.load(args.config), validate_only=True)
     print(build_mod.summary(result))
@@ -125,6 +133,11 @@ def main(argv: list[str] | None = None) -> int:
 
     s = sub.add_parser("contract", help="print the data contract")
     s.set_defaults(fn=cmd_contract)
+
+    s = sub.add_parser("web-export", help="export the SQL engine and demo fleet for the browser dashboard (web/)")
+    s.add_argument("--out", default="web/public")
+    s.add_argument("--config", default=None, help="fleet.yml whose settings and targets the web app uses (default: demo)")
+    s.set_defaults(fn=cmd_web_export)
 
     s = sub.add_parser("docs", help="generate docs/SQL_CATALOG.md and docs/DATA_CONTRACT.md from the code")
     s.add_argument("--out", default="docs")

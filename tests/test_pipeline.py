@@ -234,3 +234,22 @@ def test_init_creates_templates_and_contract(tmp_path):
     assert (tmp_path / "fleet.yml").exists()
     assert (tmp_path / "DATA_CONTRACT.md").read_text().startswith("# fleetkpi data contract")
     assert len(list((tmp_path / "templates").glob("*.csv"))) == 11
+
+
+def test_web_export_manifest(tmp_path):
+    """The browser engine runs exactly the package's SQL: same models in the same order, same rules and tests."""
+    import json
+
+    from fleetkpi import sqlrunner, webexport
+
+    info = webexport.export(tmp_path)
+    m = json.loads((tmp_path / "engine" / "manifest.json").read_text())
+    assert [x["name"] for x in m["models"]] == [x.name for x in sqlrunner.plan()]
+    assert info["models"] == len(m["models"]) and info["tests"] == len(m["tests"]) >= 22
+    assert {t["name"] for t in m["tables"]} == {p.stem for p in (tmp_path / "demo").glob("*.parquet")}
+    # settings carry the snapshot placeholders the browser fills in
+    assert any("{{snapshot_ts}}" in s for s in m["settings_sql"])
+    # every contract column has a mapped and an empty expression
+    assert all(c["expr"] and c["empty_expr"] for t in m["tables"] for c in t["columns"])
+    names = {x["name"] for x in m["models"]}
+    assert {"mart_metric_panel", "mart_job_outcomes"} <= names
