@@ -175,7 +175,7 @@ docker build -t fleetkpi . && docker run -p 8501:8501 -v "$PWD/my-fleet:/fleet" 
 
 ## The dashboard
 
-Thirteen pages. **Plan & offline** (install, offline package, licence), **Fleet register** (identity, licence and next action for every vehicle, with a vehicle drawer), **Documents** (scan, review, vault), **Import** (workbooks, mapping, templates), **Overview** (north star, KPI tiles with sparklines, region × KPI scorecard, site league), **Metric network**, **Customer clock** (the three clocks by region, CSAT, rating mix, key-to-key p50/p90), **Workshop** (weekly INTERVENE heatmap, repeat repairs, issue-category treemap, supplier on-time, overdue parts, backlog ageing), **Ledger & assets** (spend per 1,000 km by powertrain, goodwill, cost vs budget, cost per km, value retained), **Licence** (registration and insurance status, renewal waves, PM, fines, recall curves), **Pipeline & your data** and **Doctrine & SOPs**. A global region filter applies everywhere; light and dark follow the system or a toggle.
+Thirteen pages. **Plan & offline** (install, offline package, licence), **Fleet register** (identity, licence and next action for every vehicle, with a vehicle drawer), **Documents** (scan, review, vault), **Import** (workbooks, mapping, templates), **Overview** (north star, KPI tiles with sparklines, region × KPI scorecard, site league), **Metric network** (metric search, keyboard selection, focused connections and links to procedures), **Customer clock** (the three clocks by region, CSAT, rating mix, key-to-key p50/p90), **Workshop** (weekly INTERVENE heatmap, repeat repairs, issue-category treemap, supplier on-time, overdue parts, backlog ageing), **Ledger & assets** (spend per 1,000 km by powertrain, goodwill, cost vs budget, cost per km, value retained), **Licence** (registration and insurance status, renewal waves, PM, fines, recall curves), **Pipeline & your data** and **Doctrine & SOPs**. A global region filter applies everywhere; light and dark follow the system or a toggle.
 
 Built in TypeScript with Next.js (static export), Tailwind, ECharts, KaTeX and DuckDB-WASM, following the structure of a production browser-tools app: self-hosted WASM assets copied at build time, Vitest for the maths, ESLint and type-checking in CI, deployed to GitHub Pages by [`pages.yml`](.github/workflows/pages.yml). The Python package still ships a local Streamlit view (`fleetkpi serve`) for teams that prefer it.
 
@@ -183,7 +183,7 @@ Built in TypeScript with Next.js (static export), Tailwind, ECharts, KaTeX and D
 |---|---|
 | ![Workshop](docs/workshop-dark.jpg) | ![Fleet & assets](docs/fleet-assets-dark.jpg) |
 
-**Eight SOPs** (data onboarding, weekly review, site intervention, recalls, PM compliance, month-end cost, registration, insurance & fines, customer recovery & goodwill) carry an owner, cadence, trigger and checklist, and go *Active* automatically when the data trips their trigger.
+**Eight SOPs** (data onboarding, weekly review, site intervention, recalls, PM compliance, month-end cost, registration, insurance & fines, customer recovery & goodwill) carry an owner, cadence, trigger and checklist, and show live evidence when the data trips their trigger. The browser SOP workspace adds scoped checklists, named owners, due dates, evidence notes and downloadable reviews. Completing a checklist does not clear a live operational flag.
 
 ## The demo fleet
 
@@ -192,7 +192,7 @@ Built in TypeScript with Next.js (static export), Tailwind, ECharts, KaTeX and D
 ## Quality
 
 - **24 SQL data tests** and **41 SQL validation rules** run inside every build, in Python and in the browser alike, including the clock identity on every work order (`t18`) and the metric-network identities on every region-month (`t21`).
-- **47 TypeScript tests** (Vitest): licence keys signed in Python and verified in the browser (forged and expired keys rejected); calendar and Excel exports (formula injection neutralised); every statistical routine against R / scipy / statsmodels reference values; the metric network's identities and propagation; VIN rules and vPIC mapping; workbook reading (title rows, Excel dates, many sheets) and table / column recognition for common fleet-platform exports; document reading (day-first and Arabic-Indic dates, plates, VINs, weighted document typing).
+- **70 TypeScript tests** (Vitest): licence keys signed in Python and verified in the browser (forged and expired keys rejected); calendar and Excel exports (formula injection neutralised); every statistical routine against R / scipy / statsmodels reference values; the metric network's identities and propagation; VIN rules and vPIC mapping; workbook reading (title rows, Excel dates, many sheets) and table / column recognition for common fleet-platform exports; document reading (day-first and Arabic-Indic dates, plates, VINs, weighted document typing).
 - **20 Python tests** (`pytest`): licence signing; the demo end to end; the fleet register and documents (matched by plate, VIN or id; renewed cards move the expiry); VIN macros against reference VINs; a foreign-format fleet (Excel, its own column names, `dd/mm` dates, monthly usage, no optional tables) that must plug in with mapping only; bad data blocked with the right reasons; dependency order and layer rules; the web export runs exactly the package's SQL.
 - **CI** on Python 3.10 and 3.12, the web app (lint, type-check, tests, build), and a Docker build that runs the demo inside the image.
 
@@ -223,3 +223,4 @@ released under MIT and stay MIT.
 ---
 
 Built by [Mohammad Alahmad](https://linkedin.com/in/pemalahmad). The structure mirrors how I ran operations analytics for a multi-market EV network; the demo company and its data are invented.
+

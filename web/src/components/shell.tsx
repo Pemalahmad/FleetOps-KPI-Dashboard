@@ -60,7 +60,7 @@ function Status() {
       <span className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium ${dataset === "mine" ? "bg-accent text-white" : "bg-panel-2 text-muted"}`}>
         {dataset === "mine" ? "My fleet" : "Demo"}
       </span>
-      <span className="truncate">{message}</span>
+      <span className="truncate" title={message}>{message}</span>
     </div>
   );
 }
@@ -72,9 +72,9 @@ function Regions() {
     `rounded-full border px-2.5 py-1 text-[12px] transition active:scale-95 ${active ? "border-accent bg-accent-soft text-accent font-medium" : "border-border text-muted hover:text-text"}`;
   return (
     <div className="flex flex-wrap gap-1.5">
-      <button className={pill(region === null)} onClick={() => setRegion(null)}>All regions</button>
+      <button aria-pressed={region === null} className={pill(region === null)} onClick={() => setRegion(null)}>All regions</button>
       {regions.map((r) => (
-        <button key={r} className={pill(region === r)} onClick={() => setRegion(r)}>{r}</button>
+        <button key={r} aria-pressed={region === r} className={pill(region === r)} onClick={() => setRegion(r)}>{r}</button>
       ))}
     </div>
   );
@@ -84,6 +84,7 @@ export function Shell({ children }: { children: ReactNode }) {
   const path = usePathname();
   return (
     <div className="flex min-h-screen">
+      <a href="#main-content" className="skip-link">Skip to content</a>
       <OfflineRegistration />
       <aside className="sticky top-0 hidden h-screen w-60 shrink-0 flex-col border-r border-border bg-panel px-3 py-5 lg:flex">
         <Link href="/" className="mb-6 flex items-center gap-2.5 px-2">
@@ -93,14 +94,14 @@ export function Shell({ children }: { children: ReactNode }) {
             <span className="block text-[11px] text-muted">Three Clocks Doctrine</span>
           </span>
         </Link>
-        <nav className="flex-1 space-y-5">
+        <nav aria-label="Main navigation" className="min-h-0 flex-1 space-y-5 overflow-y-auto">
           {NAV.map((g) => (
             <div key={g.group}>
-              <p className="mb-1.5 px-2 text-[11px] font-semibold uppercase tracking-[0.1em] text-faint">{g.group}</p>
+              <p className="mb-1.5 px-2 text-[12px] font-semibold text-faint">{g.group}</p>
               {g.items.map(({ href, label, icon: Icon }) => {
                 const active = href === "/" ? path === "/" : path.startsWith(href);
                 return (
-                  <Link key={href} href={href}
+                  <Link key={href} href={href} aria-current={(href === "/" ? path === "/" : path.startsWith(href)) ? "page" : undefined}
                     className={`mb-0.5 flex items-center gap-2.5 rounded-lg px-2 py-1.5 text-[13.5px] transition ${active ? "bg-accent-soft font-medium text-accent" : "text-muted hover:bg-panel-2 hover:text-text"}`}>
                     <Icon size={17} weight={active ? "fill" : "regular"} />
                     {label}
@@ -111,7 +112,7 @@ export function Shell({ children }: { children: ReactNode }) {
           ))}
         </nav>
         <p className="px-2 text-[11px] leading-relaxed text-faint">
-          The SQL runs in your browser (DuckDB-WASM). Your files never leave this page.
+          Files are processed on this device. Optional VIN decoding sends selected VINs to NHTSA.
         </p>
       </aside>
       <div className="min-w-0 flex-1">
@@ -120,9 +121,9 @@ export function Shell({ children }: { children: ReactNode }) {
             <Status />
             <ThemeToggle />
           </div>
-          <nav className="mt-2 flex gap-1 overflow-x-auto lg:hidden">
+          <nav aria-label="Mobile navigation" className="mt-2 flex gap-1 overflow-x-auto lg:hidden">
             {NAV.flatMap((g) => g.items).map(({ href, label }) => (
-              <Link key={href} href={href}
+              <Link key={href} href={href} aria-current={(href === "/" ? path === "/" : path.startsWith(href)) ? "page" : undefined}
                 className={`shrink-0 rounded-full px-3 py-1 text-[12.5px] ${(href === "/" ? path === "/" : path.startsWith(href)) ? "bg-accent-soft text-accent" : "text-muted"}`}>
                 {label}
               </Link>
@@ -130,8 +131,9 @@ export function Shell({ children }: { children: ReactNode }) {
           </nav>
           <div className="mt-2.5"><Regions /></div>
         </div>
-        <main className="mx-auto max-w-[1400px] px-4 py-8 md:px-8">{children}</main>
+        <main id="main-content" tabIndex={-1} className="mx-auto max-w-[1480px] px-4 py-8 md:px-8">{children}</main>
       </div>
     </div>
   );
 }
+

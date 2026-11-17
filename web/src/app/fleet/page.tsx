@@ -245,7 +245,7 @@ function Sunburst({ rows }: { rows: RegistryRow[] }) {
     }));
   }, [rows]);
   return <Chart height={380} option={(dark) => ({
-    tooltip: { formatter: (x: unknown) => { const d = x as { treePathInfo: { name: string }[]; value: number }; return `${d.treePathInfo.slice(1).map((p) => p.name).join(" › ")}<br/><b>${d.value.toLocaleString()} vehicles</b>`; } },
+    tooltip: { formatter: (x: unknown) => { const d = x as { treePathInfo: { name: string }[]; value: number }; return `${d.treePathInfo.slice(1).map((p) => p.name).join(" › ")}\n${d.value.toLocaleString()} vehicles`; } },
     series: [{ type: "sunburst", data, radius: ["12%", "95%"], sort: undefined, nodeClick: "rootToNode",
       itemStyle: { borderColor: dark ? "#11141f" : "#fff", borderWidth: 2, borderRadius: 4 },
       label: { fontSize: 10.5, minAngle: 8, color: "#fff", textBorderWidth: 0 },
@@ -353,3 +353,4 @@ function VehicleDrawer({ row, onClose }: { row: RegistryRow | null; onClose: () 
     </Dialog.Root>
   );
 }
+

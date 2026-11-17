@@ -304,7 +304,7 @@ export function welch(x1: number[], x0: number[]): Welch | null {
 
 /** Welch's test from summary statistics (means, sample variances, counts), e.g. computed in SQL. */
 export function welchSummary(m1: number, var1: number, n1: number, m0: number, var0: number, n0: number): Welch | null {
-  if (n1 < 2 || n0 < 2) return null;
+  if (n1 < 2 || n0 < 2 || ![m1, m0, var1, var0, n1, n0].every(Number.isFinite) || var1 < 0 || var0 < 0 || var1 + var0 === 0) return null;
   const v1 = var1 / n1, v0 = var0 / n0;
   const x1 = { length: n1 }, x0 = { length: n0 };
   const se = Math.sqrt(v1 + v0);
@@ -399,6 +399,7 @@ export function multiOls(xs: (number | null)[][], yIn: (number | null)[]): Multi
     sst += (y[i] - ym) ** 2;
   });
   const df = n - p;
+  if (!Number.isFinite(sst) || sst <= 1e-12) return null;
   const s2 = sse / df;
   const se = inv.map((row, j) => Math.sqrt(s2 * row[j]));
   const t = coef.map((b, j) => b / se[j]);
@@ -410,3 +411,4 @@ export function multiOls(xs: (number | null)[][], yIn: (number | null)[]): Multi
     r2, adjR2: 1 - (1 - r2) * (n - 1) / df, f: ((sst - sse) / k) / s2,
   };
 }
+

@@ -4,6 +4,11 @@ What changed in each version of FleetOps KPI. Dates are release dates; the newes
 
 ## Unreleased
 
+- Security: restrict document previews, escape procedure Markdown, render tooltips on canvas, isolate offline caches, harden calendar and spreadsheet exports, and audit dependencies in CI.
+- Reliability: serialise browser pipeline builds, wait for committed local writes, tolerate integer overflow during ingestion, and handle missing or degenerate metric evidence.
+- Operations: live SOP queue with scoped checklists, owners, deadlines, evidence notes and downloadable handoffs. Metric search, keyboard selection, focused connections and bounded simulations.
+- Design: revised light/dark palette, readable operational surfaces, navigation semantics and mobile graph access.
+
 - **Licence:** from this version on, FleetOps is released under the
   [Functional Source License 1.1, MIT future licence](LICENSE.md). Free for your own fleet, research, teaching and
   client work; not for resale as a competing product. Each release becomes MIT two years after it is published.
@@ -55,3 +60,4 @@ What changed in each version of FleetOps KPI. Dates are release dates; the newes
 ## 0.1.0: first version (2026-11-17)
 
 - Fleet and service operations KPIs on a SQL warehouse with checks and a local dashboard.
+

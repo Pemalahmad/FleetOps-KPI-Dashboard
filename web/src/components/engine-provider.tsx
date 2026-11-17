@@ -2,6 +2,7 @@
 
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import { Engine, type IngestInput, type PipelineLog, type Row } from "@/lib/engine";
+import { createTaskQueue } from "@/lib/task-queue";
 import { documentsCsv, hasFleet, loadWorkspace, persistStorage, saveWorkspace, vehiclesFromDocuments, type Workspace } from "@/lib/workspace";
 
 export const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
@@ -29,6 +30,8 @@ interface EngineState {
 
 const Ctx = createContext<EngineState | null>(null);
 let shared: Promise<Engine> | null = null;
+const queueRun = createTaskQueue();
+const getEngine = () => shared ??= Engine.create(BASE).catch((error) => { shared = null; throw error; });
 
 export function EngineProvider({ children }: { children: ReactNode }) {
   const [engine, setEngine] = useState<Engine | null>(null);
@@ -39,6 +42,8 @@ export function EngineProvider({ children }: { children: ReactNode }) {
   const [region, setRegion] = useState<string | null>(null);
   const [regions, setRegions] = useState<string[]>([]);
   const started = useRef(false);
+  const [dataset, setDataset] = useState<Dataset>("demo");
+  const [workspace, setWorkspace] = useState<Workspace | null>(null);
 
   const finish = useCallback(async (e: Engine, l: PipelineLog) => {
     setLog(l);
@@ -56,25 +61,27 @@ export function EngineProvider({ children }: { children: ReactNode }) {
     setRunId((n) => n + 1);
   }, []);
 
-  const runDemo = useCallback(async () => {
-    const e = await (shared ??= Engine.create(BASE));
-    setEngine(e);
+  const runDemo = useCallback(() => queueRun(async () => {
+    setDataset("demo");
     setStatus("running");
-    setMessage("Loading the demo fleet and running the pipeline…");
-    const loads = await e.loadDemo();
-    await finish(e, await e.run("Sahra Mobility (demo)", loads));
-  }, [finish]);
-
-  const [dataset, setDataset] = useState<Dataset>("demo");
-  const [workspace, setWorkspace] = useState<Workspace | null>(null);
+    try {
+      const e = await getEngine();
+      setEngine(e);
+      setMessage("Loading the demo fleet and running the pipeline…");
+      const loads = await e.loadDemo();
+      await finish(e, await e.run("Sahra Mobility (demo)", loads));
+    } catch (error) {
+      setStatus("failed"); setMessage((error as Error).message.split("\n")[0]);
+    }
+  }), [finish]);
 
   const runWorkspace = useCallback(
-    async (ws: Workspace) => {
-      const e = await (shared ??= Engine.create(BASE));
-      setEngine(e);
+    (ws: Workspace) => queueRun(async () => {
       setStatus("running");
-      setMessage(`Building ${ws.name} from ${ws.inputs.length} sheet(s) and ${ws.documents.filter((d) => d.confirmed).length} document(s)…`);
       try {
+        const e = await getEngine();
+        setEngine(e);
+        setMessage(`Building ${ws.name} from ${ws.inputs.length} sheet(s) and ${ws.documents.filter((d) => d.confirmed).length} document(s)…`);
         const inputs: IngestInput[] = ws.inputs.map((i) => ({ table: i.table, label: i.label, kind: i.kind, csv: i.csv, bytes: i.bytes, mapping: i.mapping }));
         const fromCards = vehiclesFromDocuments(ws.documents);
         if (fromCards) inputs.push({ table: "vehicles", label: "Vehicles added from documents", kind: "tabular", csv: fromCards,
@@ -86,14 +93,14 @@ export function EngineProvider({ children }: { children: ReactNode }) {
         setStatus("failed");
         setMessage((err as Error).message.split("\n")[0]);
       }
-    },
+    }),
     [finish],
   );
 
   const commit = useCallback(
     async (ws: Workspace, opts: { rebuild?: boolean } = {}) => {
-      setWorkspace(ws);
       await saveWorkspace(ws);
+      setWorkspace(ws);
       persistStorage();
       if ((opts.rebuild ?? true) && hasFleet(ws)) await runWorkspace(ws);
     },
@@ -106,7 +113,6 @@ export function EngineProvider({ children }: { children: ReactNode }) {
   }, [workspace, runWorkspace]);
 
   const demo = useCallback(async () => {
-    setDataset("demo");
     await runDemo();
   }, [runDemo]);
 
@@ -153,10 +159,11 @@ export function useSql<T = Row>(sql: string | null) {
       live = false;
     };
   }, [engine, status, sql, key]);
-  return state.key === key ? state : { data: null, error: null, key };
+  return status === "ready" && state.key === key ? state : { data: null, error: null, key };
 }
 
 /** SQL fragment for the global region filter. */
 export function regionWhere(region: string | null, prefix: "WHERE" | "AND" = "WHERE", col = "region") {
   return region ? ` ${prefix} ${col} = '${region.replace(/'/g, "''")}'` : "";
 }
+

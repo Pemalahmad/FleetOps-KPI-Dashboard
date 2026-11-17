@@ -114,10 +114,11 @@ def export(out: Path, cfg_path: str | None = None) -> dict:
         sizes = {}
         for name in LOAD_ORDER:
             p = out / "demo" / f"{name}.parquet"
-            con.execute(f"COPY {name} TO '{p}' (FORMAT parquet, COMPRESSION zstd)")
+            con.execute(f"COPY {name} TO {_lit(str(p))} (FORMAT parquet, COMPRESSION zstd)")
             sizes[name] = p.stat().st_size
         con.close()
         m = manifest(cfg)
     (out / "engine" / "manifest.json").write_text(json.dumps(m, indent=1))
     return {"models": len(m["models"]), "rules": len(m["validation"]), "tests": len(m["tests"]),
             "demo_bytes": sum(sizes.values())}
+

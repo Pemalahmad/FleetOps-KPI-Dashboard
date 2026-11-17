@@ -39,7 +39,7 @@ export default function LedgerPage() {
             return {
               tooltip: { trigger: "item", formatter: (x: unknown) => {
                 const d = (x as { dataIndex: number }).dataIndex; const r = rows[d];
-                return `${r.powertrain} · ${r.vehicles.toLocaleString()} vehicles<br/>median $${r.q2.toFixed(0)} / 1,000 km<br/>total $${(r.total / 1e6).toFixed(2)} M`; } },
+                return `${r.powertrain} · ${r.vehicles.toLocaleString()} vehicles\nmedian $${r.q2.toFixed(0)} / 1,000 km\ntotal $${(r.total / 1e6).toFixed(2)} M`; } },
               xAxis: { type: "category", data: rows.map((r) => r.powertrain) },
               yAxis: { type: "value", axisLabel: { formatter: "${value}" } },
               series: [{ type: "boxplot", itemStyle: { borderWidth: 2 },
@@ -117,3 +117,4 @@ export default function LedgerPage() {
     </>
   );
 }
+

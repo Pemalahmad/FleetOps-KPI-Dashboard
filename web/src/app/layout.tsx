@@ -1,13 +1,10 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
-import { Geist, Geist_Mono } from "next/font/google";
 import "katex/dist/katex.min.css";
 import "./globals.css";
 import { EngineProvider } from "@/components/engine-provider";
 import { Shell } from "@/components/shell";
 
-const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
-const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] });
 
 export const metadata: Metadata = {
   title: "FleetOps KPI · Three Clocks",
@@ -18,8 +15,8 @@ export const metadata: Metadata = {
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
 
 // What the page may load or contact. Scripts, workers, WASM, fonts and data all come from this site; the one outside
-// connection allowed is NHTSA's VIN decoder, used only when the owner clicks "Decode". Even injected code could not
-// send fleet data anywhere else.
+// connection allowed is NHTSA's VIN decoder, used only when the owner clicks "Decode". CSP is defense in depth;
+// same-origin and inline script permissions are not an XSS sandbox.
 const CSP = [
   "default-src 'self'",
   "script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval'",
@@ -39,11 +36,11 @@ const themeScript = `try{var t=localStorage.getItem('theme');if(t==='dark'||(!t&
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="en" className={`${geistSans.variable} ${geistMono.variable} antialiased`} suppressHydrationWarning>
+    <html lang="en" className="antialiased" suppressHydrationWarning>
       <head>
         <meta httpEquiv="Content-Security-Policy" content={CSP} />
         <meta name="referrer" content="no-referrer" />
-        <meta name="theme-color" content="#6366f1" />
+        <meta name="theme-color" content="#006b80" />
         <link rel="manifest" href={`${BASE}/manifest.webmanifest`} />
         <link rel="icon" href={`${BASE}/icons/icon-192.png`} />
         <link rel="apple-touch-icon" href={`${BASE}/icons/icon-192.png`} />
@@ -57,3 +54,4 @@ export default function RootLayout({ children }: { children: ReactNode }) {
     </html>
   );
 }
+

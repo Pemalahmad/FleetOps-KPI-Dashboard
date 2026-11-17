@@ -40,7 +40,7 @@ export default function WorkshopPage() {
             grid: { left: 8, right: 8, top: 8, bottom: 44, containLabel: true },
             tooltip: { formatter: (x: unknown) => {
               const d = (x as { value: [number, number, number, string] }).value;
-              return `${sites[d[1]]} · ${wks[d[0]].slice(0, 10)}<br/><b>${d[2]} h</b> · ${d[3]}`; } },
+              return `${sites[d[1]]} · ${wks[d[0]].slice(0, 10)}\n${d[2]} h · ${d[3]}`; } },
             xAxis: { type: "category", data: wks.map((x) => x.slice(0, 10)), axisLabel: { interval: 7 } },
             yAxis: { type: "category", data: sites },
             visualMap: { min: 10, max: 50, dimension: 2, orient: "horizontal", left: "center", bottom: 0, itemHeight: 160, itemWidth: 10,
@@ -76,7 +76,7 @@ export default function WorkshopPage() {
               tooltip: { formatter: (x: unknown) => {
                 const d = x as { name: string; value: number[] | number; data: { rr?: number; cost?: number } };
                 const jobs = Array.isArray(d.value) ? d.value[0] : d.value;
-                return `${d.name}<br/>${Number(jobs).toLocaleString()} jobs${d.data.rr !== undefined ? `<br/>repeat ${d.data.rr.toFixed(1)}% · avg $${d.data.cost?.toFixed(0)}` : ""}`; } },
+                return `${d.name}\n${Number(jobs).toLocaleString()} jobs${d.data.rr !== undefined ? `\nrepeat ${d.data.rr.toFixed(1)}% · avg $${d.data.cost?.toFixed(0)}` : ""}`; } },
               visualMap: { show: false, min: 0, max: 10, dimension: 1, inRange: { color: ["#10B981", "#F59E0B", "#F43F5E"] } },
               series: [{ type: "treemap", roam: false, nodeClick: false, breadcrumb: { show: false }, top: 0, left: 0, right: 0, bottom: 0,
                 upperLabel: { show: true, height: 22, color: "#fff", fontWeight: 600 }, label: { fontSize: 11, formatter: "{b}" },
@@ -145,3 +145,4 @@ export default function WorkshopPage() {
     </>
   );
 }
+

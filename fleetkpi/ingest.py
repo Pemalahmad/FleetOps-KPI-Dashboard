@@ -85,7 +85,7 @@ def _converter(col_type: str, expr: str) -> str:
         return f"coalesce(try_cast({txt} AS DATE), try_strptime({txt}, {fmts})::DATE)"
     if col_type in ("DOUBLE", "INTEGER"):
         num = f"try_cast(regexp_replace({txt}, '[,\\s]', '', 'g') AS DOUBLE)"
-        return num if col_type == "DOUBLE" else f"CAST(round({num}) AS INTEGER)"
+        return num if col_type == "DOUBLE" else f"TRY_CAST(round({num}) AS INTEGER)"
     if col_type == "BOOLEAN":
         return (f"CASE WHEN lower({txt}) IN ('true','t','yes','y','1','x') THEN TRUE "
                 f"WHEN lower({txt}) IN ('false','f','no','n','0') THEN FALSE END")
@@ -239,3 +239,4 @@ def ingest(con: duckdb.DuckDBPyConnection, cfg: Config) -> list[TableLoad]:
     con.execute("UPDATE vehicles SET fuel_type = 'petrol' WHERE fuel_type IS NULL AND powertrain IN ('ICE','HEV','PHEV')")
     con.execute("UPDATE work_orders SET paid_by = 'Fleet' WHERE paid_by IS NULL")
     return loads
+

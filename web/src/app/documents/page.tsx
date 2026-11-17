@@ -5,7 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import { CheckCircle, FilePdf, IdentificationCard, MagnifyingGlass, Trash } from "@phosphor-icons/react";
 import { BASE, useEngine, useSql } from "@/components/engine-provider";
 import { Card, PageHeader, SectionTitle, Skeleton } from "@/components/ui";
-import { extractFields, readDocument, type DocType, type KnownVehicle } from "@/lib/docscan";
+import { extractFields, isSafeDocumentPreview, readDocument, type DocType, type KnownVehicle } from "@/lib/docscan";
 import { vinModelYear } from "@/lib/vin";
 import { deleteFile, emptyWorkspace, loadFile, saveFile, uid, type SavedDocument } from "@/lib/workspace";
 
@@ -14,7 +14,9 @@ const STATUS_COLOR: Record<string, string> = { Valid: "var(--good)", Expiring: "
 
 function status(expiry: string | null): string {
   if (!expiry) return "Unknown";
-  const days = (new Date(expiry).getTime() - Date.now()) / 864e5;
+  const now = new Date();
+  const today = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate());
+  const days = (new Date(expiry).getTime() - today) / 864e5;
   return days < 0 ? "Expired" : days <= 30 ? "Expiring" : "Valid";
 }
 
@@ -103,7 +105,7 @@ export default function DocumentsPage() {
           <IdentificationCard size={34} className="text-accent" />
           <span className="text-[16px] font-semibold">Drop photos or PDFs of documents</span>
           <span className="text-[13px] text-muted">JPG, PNG, WEBP or PDF · several at once. The first scan downloads the reader (about 9 MB), once.</span>
-          <input type="file" multiple accept="image/*,application/pdf" className="hidden" onChange={(e) => onFiles(e.target.files)} />
+          <input type="file" multiple accept="image/png,image/jpeg,image/webp,image/gif,image/bmp,image/tiff,application/pdf,text/plain" className="hidden" onChange={(e) => onFiles(e.target.files)} />
         </label>
         <Card title="Coverage" sub="Active vehicles with a document on file, and its status">
           {coverage.data ? (
@@ -181,7 +183,15 @@ function OpenFile({ id, name }: { id: string; name: string }) {
   return (
     <button aria-label={`Open ${name}`} className="rounded-md p-1.5 text-faint hover:bg-panel-2 hover:text-accent" onClick={async () => {
       const blob = await loadFile(id);
-      if (blob) window.open(URL.createObjectURL(blob), "_blank", "noopener");
+      if (!blob) return;
+      const safe = isSafeDocumentPreview(blob.type);
+      const url = URL.createObjectURL(safe ? blob : new Blob([blob], { type: "application/octet-stream" }));
+      if (safe) window.open(url, "_blank", "noopener,noreferrer");
+      else {
+        // Older workspaces may contain HTML or SVG. Download without giving it this origin.
+        const a = document.createElement("a"); a.href = url; a.download = name; a.click();
+      }
+      setTimeout(() => URL.revokeObjectURL(url), 30_000);
     }}><FilePdf size={15} /></button>
   );
 }
@@ -190,8 +200,9 @@ function Thumb({ id, mime }: { id: string; mime: string }) {
   const [url, setUrl] = useState<string | null>(null);
   useEffect(() => {
     let u: string | null = null;
-    loadFile(id).then((b) => { if (b && mime.startsWith("image/")) { u = URL.createObjectURL(b); setUrl(u); } });
-    return () => { if (u) URL.revokeObjectURL(u); };
+    let live = true;
+    loadFile(id).then((b) => { if (live && b && mime.startsWith("image/") && isSafeDocumentPreview(b.type)) { u = URL.createObjectURL(b); setUrl(u); } });
+    return () => { live = false; if (u) URL.revokeObjectURL(u); };
   }, [id, mime]);
   // a local blob URL of the owner's own scan: next/image cannot optimise it, and nothing is fetched
   // eslint-disable-next-line @next/next/no-img-element
@@ -255,3 +266,4 @@ function Review({ d, known, onPatch, onRemove }: {
     </Card>
   );
 }
+

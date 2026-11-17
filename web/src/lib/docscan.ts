@@ -171,6 +171,8 @@ export function extractFields(rawText: string, known: KnownVehicle[], insurers: 
 
 // ------------------------------------------------------------------------------------------- reading files
 type Progress = (stage: string, pct: number) => void;
+export const isSafeDocumentPreview = (mime: string) =>
+  /^(?:application\/pdf|text\/plain|image\/(?:png|jpeg|webp|gif|bmp|tiff))$/i.test(mime);
 
 let workerPromise: Promise<import("tesseract.js").Worker> | null = null;
 
@@ -197,7 +199,9 @@ export async function ocr(base: string, image: Blob | HTMLCanvasElement, progres
 async function pdfText(base: string, blob: Blob, progress?: Progress): Promise<string> {
   const pdfjs = await import("pdfjs-dist");
   pdfjs.GlobalWorkerOptions.workerSrc = `${base}/pdf/pdf.worker.min.mjs`;
-  const doc = await pdfjs.getDocument({ data: new Uint8Array(await blob.arrayBuffer()) }).promise;
+  const task = pdfjs.getDocument({ data: new Uint8Array(await blob.arrayBuffer()) });
+  try {
+  const doc = await task.promise;
   let text = "";
   for (let p = 1; p <= Math.min(doc.numPages, 3); p++) {
     const page = await doc.getPage(p);
@@ -208,18 +212,24 @@ async function pdfText(base: string, blob: Blob, progress?: Progress): Promise<s
   // A scan inside a PDF: render the first page and read it.
   progress?.("rendering scanned PDF", 0);
   const page = await doc.getPage(1);
-  const viewport = page.getViewport({ scale: 2.2 });
+  const original = page.getViewport({ scale: 1 });
+  const scale = Math.min(2.2, Math.sqrt(12_000_000 / (original.width * original.height)));
+  const viewport = page.getViewport({ scale });
   const canvas = document.createElement("canvas");
   canvas.width = viewport.width;
   canvas.height = viewport.height;
   await page.render({ canvas, canvasContext: canvas.getContext("2d")!, viewport }).promise;
-  return ocr(base, canvas, progress);
+  return await ocr(base, canvas, progress);
+  } finally { await task.destroy(); }
 }
 
 /** Text of any supported document file. */
 export async function readDocument(base: string, file: Blob & { name?: string; type: string }, progress?: Progress): Promise<string> {
+  if (file.size > 25 * 1024 * 1024) throw new Error("Document exceeds 25 MB. Split or compress it before scanning.");
+  if (file.type && !isSafeDocumentPreview(file.type)) throw new Error("Use a PDF, raster image or plain-text document. HTML and SVG documents are not supported.");
   if (file.type === "application/pdf" || file.name?.toLowerCase().endsWith(".pdf")) return pdfText(base, file, progress);
   if (file.type.startsWith("image/")) return ocr(base, file, progress);
-  if (file.type.startsWith("text/")) return file.text();
+  if (file.type === "text/plain") return file.text();
   throw new Error(`Unsupported document type: ${file.type || file.name}`);
 }
+

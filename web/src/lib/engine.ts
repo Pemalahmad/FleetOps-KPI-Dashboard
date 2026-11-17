@@ -153,10 +153,17 @@ export class Engine {
   static async create(base: string): Promise<Engine> {
     const worker = new Worker(`${base}/duckdb/duckdb-browser-eh.worker.js`);
     const db = new duckdb.AsyncDuckDB(new duckdb.VoidLogger(), worker);
-    await db.instantiate(`${base}/duckdb/duckdb-eh.wasm`);
-    const conn = await db.connect();
-    const manifest = (await (await fetch(`${base}/engine/manifest.json`)).json()) as Manifest;
-    return new Engine(db, conn, manifest, base);
+    try {
+      await db.instantiate(`${base}/duckdb/duckdb-eh.wasm`);
+      const response = await fetch(`${base}/engine/manifest.json`);
+      if (!response.ok) throw new Error(`SQL engine manifest unavailable (${response.status})`);
+      const manifest = (await response.json()) as Manifest;
+      const conn = await db.connect();
+      return new Engine(db, conn, manifest, base);
+    } catch (error) {
+      await db.terminate().catch(() => worker.terminate());
+      throw error;
+    }
   }
 
   async query<T = Row>(sql: string): Promise<T[]> {
@@ -372,3 +379,4 @@ export class Engine {
     return log;
   }
 }
+

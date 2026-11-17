@@ -26,7 +26,7 @@ export function Card({ children, className = "", title, sub, right }: {
 export function PageHeader({ eyebrow, title, children }: { eyebrow: string; title: string; children?: ReactNode }) {
   return (
     <header className="mb-6">
-      <p className="text-[12px] font-semibold uppercase tracking-[0.12em] text-accent">{eyebrow}</p>
+      <p className="text-[13px] font-semibold text-accent">{eyebrow}</p>
       <h1 className="mt-1 text-[28px] font-bold leading-tight md:text-[32px]">{title}</h1>
       {children && <p className="mt-2 max-w-3xl text-[15px] leading-relaxed text-muted">{children}</p>}
     </header>
@@ -52,7 +52,7 @@ export type Rag = "green" | "amber" | "red" | null;
 export const ragColor = (r: Rag) => (r === "green" ? "var(--good)" : r === "amber" ? "var(--warn)" : r === "red" ? "var(--bad)" : "var(--faint)");
 
 export function rag(value: number | null | undefined, t?: { green: number; amber: number; direction: string }): Rag {
-  if (value === null || value === undefined || !t) return null;
+  if (value === null || value === undefined || !Number.isFinite(value) || !t) return null;
   if (t.direction === "higher") return value >= t.green ? "green" : value >= t.amber ? "amber" : "red";
   return value <= t.green ? "green" : value <= t.amber ? "amber" : "red";
 }
@@ -120,3 +120,4 @@ export const fmt = (v: number | null | undefined, d = 1) =>
 export function pFmt(p: number) {
   return p < 0.001 ? "< 0.001" : p.toFixed(3);
 }
+

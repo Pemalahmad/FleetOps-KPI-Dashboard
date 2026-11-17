@@ -18,8 +18,8 @@ export const PALETTE = ["#6366F1", "#06B6D4", "#F59E0B", "#10B981", "#F43F5E", "
 
 export function tokens(dark: boolean) {
   return dark
-    ? { text: "#e8eaf3", muted: "#9097b0", faint: "#5d6480", grid: "#232839", panel: "#11141f", good: "#34d399", warn: "#fbbf24", bad: "#fb7185", accent: "#818cf8" }
-    : { text: "#0f1222", muted: "#5b6178", faint: "#9aa0b4", grid: "#e9ecf3", panel: "#ffffff", good: "#059669", warn: "#d97706", bad: "#e11d48", accent: "#6366f1" };
+    ? { text: "#e6f0f5", muted: "#abc0cd", faint: "#8ca6b6", grid: "#2e4554", panel: "#14232e", good: "#34d399", warn: "#fbbf24", bad: "#fb7185", accent: "#66c5da" }
+    : { text: "#152c39", muted: "#506575", faint: "#637888", grid: "#e9ecf3", panel: "#ffffff", good: "#059669", warn: "#d97706", bad: "#e11d48", accent: "#006b80" };
 }
 
 /** House style applied under every option: transparent background, quiet axes, readable tooltips. */
@@ -39,6 +39,7 @@ function base(dark: boolean): EChartsOption {
     grid: { left: 8, right: 16, top: 28, bottom: 8, containLabel: true },
     legend: { textStyle: { color: t.muted, fontSize: 11 }, icon: "roundRect", itemWidth: 10, itemHeight: 10, top: 0 },
     tooltip: {
+      renderMode: "richText", // Draw imported labels on canvas; never interpret them as HTML.
       backgroundColor: t.panel, borderColor: t.grid, textStyle: { color: t.text, fontSize: 12 },
       extraCssText: "border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.12);",
     },
@@ -103,3 +104,4 @@ export function Chart({
 
   return <div ref={ref} style={{ height }} className={`w-full ${className}`} />;
 }
+

@@ -12,3 +12,10 @@ Doctrine law 5: *every flag has an owner within 48 hours.* Each SOP names its ow
 | [SOP-06](SOP-06-month-end-cost-energy.md) | Month-end cost & energy | Every month-end; cost against budget |
 | [SOP-07](SOP-07-registration-insurance.md) | Registration, insurance & fines | Expired or expiring documents; fines per 100 vehicles |
 | [SOP-08](SOP-08-customer-recovery.md) | Customer recovery & goodwill | 1-2 star ratings; goodwill above target |
+
+
+## Browser execution workspace
+
+Open Doctrine & SOPs to filter procedures, inspect live triggers, and record a named owner, review date, checklist and evidence notes. Progress is stored locally per fleet, region, snapshot and checklist revision. Download a review for handoff. There is no shared approval service or team synchronisation.
+
+Live triggers remain active until source evidence changes. Completing a checklist means ready for review, not that a vehicle is safe, a campaign is closed or a compliance obligation is satisfied. Missing source records show an evidence gap. Always verify the exit criteria and escalation section.

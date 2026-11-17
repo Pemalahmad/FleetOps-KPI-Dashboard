@@ -205,14 +205,15 @@ export function aggregate(rows: PanelRow[]): Record<string, number | null> {
   const Jrep = sumJ((r) => r.repeat_share);
   const C = sumJ((r) => r.spend_per_visit);
   const G = rows.reduce((s, r) => s + ((r.goodwill_share_pct ?? 0) / 100) * (r.spend_per_visit ?? 0) * r.jobs, 0);
-  const k = 30.4375 / D;
+  const k = D > 0 ? 30.4375 / D : null;
   return {
-    offroad: k * H, availability: 100 * (1 - H / (24 * D)), visits: k * J, first_visits: k * (J - Jrep),
+    offroad: k === null ? null : k * H, availability: D > 0 ? 100 * (1 - H / (24 * D)) : null,
+    visits: k === null ? null : k * J, first_visits: k === null ? null : k * (J - Jrep),
     repeat_share: J ? (100 * Jrep) / J : null, per_visit: J ? H / J : null,
     workshop: J ? sumJ((r) => r.workshop_h_per_visit) / J : null, pickup: J ? sumJ((r) => r.pickup_h_per_visit) / J : null,
     back: J ? sumJ((r) => r.back_to_ops_h_per_visit) / J : null, open: J ? sumJ((r) => r.open_h_per_visit) / J : null,
     customer_clock: J ? sumJ((r) => (r.workshop_h_per_visit ?? 0) + (r.pickup_h_per_visit ?? 0)) / J : null,
-    spend: k * C, spend_per_visit: J ? C / J : null, goodwill: C ? (100 * G) / C : null,
+    spend: k === null ? null : k * C, spend_per_visit: J ? C / J : null, goodwill: C ? (100 * G) / C : null,
     productivity: wavg(rows, (r) => r.productivity_pct, (r) => r.vehicle_days),
     parts: wavg(rows, (r) => r.parts_on_time_pct, (r) => r.jobs),
     repeat_repair: wavg(rows, (r) => r.repeat_repair_pct, (r) => r.jobs),
@@ -311,18 +312,35 @@ export const ALPHA = 0.05;
 export function simulate(base: Record<string, number | null>, models: FittedModel[], levers: Record<string, number>) {
   const out: Record<string, number> = {};
   const delta: Record<string, number> = {};
+  const constrained: string[] = [];
   const ident = new Map(IDENTITIES.map((i) => [i.output, i]));
   const stat = new Map(models.map((m) => [m.output, m]));
   for (const id of ORDER) {
     const b = base[id];
     if (b === null || b === undefined || !Number.isFinite(b)) continue;
-    let v = b + (levers[id] ?? 0);
+    const lever = levers[id] ?? 0;
+    let v = b + (Number.isFinite(lever) ? lever : 0);
     const m = stat.get(id);
     if (m?.fit) v += m.drivers.reduce((s, d, i) => s + (m.fit!.p[i + 1] < ALPHA ? m.fit!.coef[i + 1] : 0) * (delta[d] ?? 0), 0);
     const idn = ident.get(id);
-    if (idn && idn.inputs.every((x) => out[x] !== undefined)) v = idn.eval(out);
+    if (idn) {
+      // Missing parents cannot support an exact counterfactual.
+      if (!idn.inputs.every((x) => out[x] !== undefined)) continue;
+      v = idn.eval(out);
+    }
+    // Bound inputs and fitted outcomes before downstream identities are evaluated.
+    // Never clip an identity: that would make the displayed algebra false.
+    if (!idn) {
+      const upper = id === "repeat_share" ? 99.9 : NODE[id].unit === "%" ? 100 : Infinity;
+      const bounded = Math.max(0, Math.min(upper, v));
+      if (bounded !== v) constrained.push(id);
+      v = bounded;
+    }
+    if (!Number.isFinite(v)) continue;
     out[id] = v;
     delta[id] = v - b;
   }
-  return { values: out, delta };
+  const feasible = out.availability === undefined || (out.availability >= 0 && out.availability <= 100);
+  return { values: out, delta, constrained, feasible };
 }
+

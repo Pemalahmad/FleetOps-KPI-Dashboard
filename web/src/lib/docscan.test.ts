@@ -1,5 +1,15 @@
 import { describe, expect, it } from "vitest";
-import { asciiDigits, extractFields, findDates } from "./docscan";
+import { asciiDigits, extractFields, findDates, isSafeDocumentPreview, readDocument } from "./docscan";
+
+it("rejects executable document types before scanning or previewing", async () => {
+  for (const type of ["text/html", "image/svg+xml", "application/xhtml+xml"]) {
+    expect(isSafeDocumentPreview(type)).toBe(false);
+    await expect(readDocument("", new Blob(["<script>alert(1)</script>"], { type }))).rejects.toThrow("not supported");
+  }
+  expect(isSafeDocumentPreview("application/pdf")).toBe(true);
+  expect(isSafeDocumentPreview("image/jpeg")).toBe(true);
+  await expect(readDocument("", new Blob(["Registration"], { type: "text/plain" }))).resolves.toBe("Registration");
+});
 
 const fleet = [
   { vehicle_id: "V0100001", plate_number: "D 48213", vin: "1HGCM82633A004352" },
@@ -74,3 +84,4 @@ describe("plate as printed", () => {
     expect(extractFields("Ruhsat  Plaka: 34 FT 112", []).plate_in_text).toBe("34 FT 112");
   });
 });
+

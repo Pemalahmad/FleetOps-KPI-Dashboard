@@ -119,3 +119,9 @@ describe("logistic regression on skewed data", () => {
     expect(Number.isFinite(f.se1)).toBe(true);
   });
 });
+
+
+
+it("does not report regression statistics for a constant response", () => {
+  expect(multiOls([[1, 2, 3, 4, 5, 6, 7, 8]], Array(8).fill(10))).toBeNull();
+});

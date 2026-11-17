@@ -22,6 +22,9 @@ describe("calendar reminders (.ics)", () => {
 });
 
 describe("spreadsheet formula injection", () => {
+  it("neutralises leading whitespace and newline formula payloads", () => {
+    for (const value of [" =1+1", "\n=1+1", " \t@SUM(A1)", "\r=1"]) expect(safeCell(value)).toBe("'" + value);
+  });
   it("neutralises cells that a spreadsheet would execute", () => {
     expect(safeCell("=HYPERLINK(\"http://evil\",\"x\")")).toBe("'=HYPERLINK(\"http://evil\",\"x\")");
     expect(safeCell("+1+1")).toBe("'+1+1");
@@ -35,3 +38,11 @@ describe("spreadsheet formula injection", () => {
     expect(safeRows([{ vin: "=cmd", n: 3 }])).toEqual([{ vin: "'=cmd", n: 3 }]);
   });
 });
+
+it("folds Arabic and emoji by UTF-8 bytes and prevents CR property injection", () => {
+  const ics = renewalsIcs([{ vehicle: "مركبة🚚".repeat(30), kind: "Insurance", date: "2027-01-01", detail: "ok\rBEGIN:VEVENT" }]);
+  for (const line of ics.split("\r\n")) expect(new TextEncoder().encode(line).length).toBeLessThanOrEqual(75);
+  expect(ics.match(/(?:^|\r\n)BEGIN:VEVENT/g)).toHaveLength(1);
+  expect(ics.replace(/\r\n /g, "")).toContain("ok\\nBEGIN:VEVENT");
+});
+

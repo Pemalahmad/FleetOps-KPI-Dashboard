@@ -8,9 +8,19 @@ export interface Renewal {
 }
 
 /** RFC 5545 text escaping. */
-const esc = (s: string) => s.replace(/\\/g, "\\\\").replace(/;/g, "\\;").replace(/,/g, "\\,").replace(/\r?\n/g, "\\n");
+const esc = (s: string) => s.replace(/\\/g, "\\\\").replace(/;/g, "\\;").replace(/,/g, "\\,").replace(/\r\n|[\r\n]/g, "\\n");
 /** Lines longer than 75 octets are folded (RFC 5545 §3.1). */
-const fold = (line: string) => line.match(/.{1,60}/gu)!.join("\r\n ");   // 60 chars stays under 75 octets with UTF-8
+const fold = (line: string) => {
+  const encoder = new TextEncoder();
+  let result = "", bytes = 0;
+  for (const char of line) {
+    const size = encoder.encode(char).length;
+    if (bytes + size > 75) { result += "\r\n "; bytes = 1; }
+    result += char;
+    bytes += size;
+  }
+  return result;
+};
 
 /** One all-day event per renewal, with alarms 30 and 7 days before. Stable UIDs, so re-importing updates rather than duplicates. */
 export function renewalsIcs(items: Renewal[], stamp = new Date()): string {
@@ -43,8 +53,9 @@ export function safeCell(v: unknown): string | number | boolean | null {
   if (v === null || v === undefined) return null;
   if (typeof v === "number" || typeof v === "boolean") return v;
   const s = String(v);
-  return /^[=+\-@\t\r]/.test(s) ? `'${s}` : s;
+  return /^[\t\r\n]|^\s*[=+\-@]/.test(s) ? `'${s}` : s;
 }
 
 export const safeRows = (rows: Record<string, unknown>[]) =>
   rows.map((r) => Object.fromEntries(Object.entries(r).map(([k, v]) => [k, safeCell(v)])));
+

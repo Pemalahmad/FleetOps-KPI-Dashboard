@@ -16,6 +16,7 @@ export function usePanel() {
     const rows = region ? all.filter((r) => r.region === region) : all;
     const s: MonthPoint[] = rows.length ? series(rows) : [];
     const t = Object.fromEntries((targets.data ?? []).map((x) => [x.kpi, x])) as Record<string, Target>;
-    return { all, rows, series: s, last: s.at(-1), prev: s.at(-2), targets: t, ready: !!panel.data && !!targets.data };
-  }, [panel.data, targets.data, region]);
+    return { all, rows, series: s, last: s.at(-1), prev: s.at(-2), targets: t, ready: !!panel.data && !!targets.data, error: panel.error ?? targets.error };
+  }, [panel.data, panel.error, targets.data, targets.error, region]);
 }
+

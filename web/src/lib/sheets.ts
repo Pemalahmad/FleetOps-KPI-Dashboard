@@ -63,6 +63,7 @@ export function headerRow(grid: unknown[][], known: Set<string>): number {
 
 /** Read one uploaded file into sheets. */
 export async function readFile(file: File, tables: TableLike[]): Promise<Sheet[]> {
+  if (file.size > 50 * 1024 * 1024) throw new Error("File exceeds 50 MB. Split the export into smaller files before importing.");
   const ext = file.name.toLowerCase().split(".").pop() ?? "";
   const buf = new Uint8Array(await file.arrayBuffer());
   if (ext === "parquet" || ext === "json") {
@@ -145,3 +146,4 @@ export function guessTable(sheet: Pick<Sheet, "headers" | "file" | "sheet">, tab
   }
   return best.score >= 4 ? best : { table: null, score: best.score, mapping: {} };
 }
+

@@ -63,9 +63,14 @@ function open(): Promise<IDBDatabase> {
 async function tx<T>(store: string, mode: IDBTransactionMode, fn: (s: IDBObjectStore) => IDBRequest<T>): Promise<T> {
   const db = await open();
   return new Promise((resolve, reject) => {
-    const req = fn(db.transaction(store, mode).objectStore(store));
-    req.onsuccess = () => resolve(req.result);
-    req.onerror = () => reject(req.error);
+    const transaction = db.transaction(store, mode);
+    let req: IDBRequest<T>;
+    try { req = fn(transaction.objectStore(store)); }
+    catch (error) { db.close(); reject(error); return; }
+    // A successful request can still be rolled back (for example by a quota failure).
+    transaction.oncomplete = () => { db.close(); resolve(req.result); };
+    transaction.onabort = () => { db.close(); reject(transaction.error ?? new Error("Storage transaction aborted")); };
+    transaction.onerror = () => { db.close(); reject(transaction.error ?? req.error); };
   });
 }
 
@@ -98,6 +103,8 @@ export async function deleteFile(id: string): Promise<void> {
 export async function clearWorkspace(): Promise<void> {
   await tx("kv", "readwrite", (s) => s.clear());
   await tx("files", "readwrite", (s) => s.clear());
+  // Procedure notes can contain fleet references too; include them in the delete-data action.
+  for (const key of Object.keys(localStorage)) if (key.startsWith("fleetops:sop:")) localStorage.removeItem(key);
 }
 
 /** Ask the browser not to evict the fleet's data under storage pressure. */
@@ -113,7 +120,7 @@ export async function persistStorage(): Promise<boolean> {
 export function documentsCsv(docs: SavedDocument[]): string | null {
   const ok = docs.filter((d) => d.confirmed);
   if (!ok.length) return null;
-  const q = (v: string | null) => (v === null ? "" : /[",\n]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v);
+  const q = (v: string | null) => (v === null ? "" : /[",\n\r]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v);
   const head = "document_id,vehicle_ref,doc_type,document_number,issue_date,expiry_date,issuer,file_name";
   return [head, ...ok.map((d) => [d.id, d.vehicle_ref, d.doc_type, d.document_number, d.issue_date, d.expiry_date, d.issuer, d.file_name].map(q).join(","))].join("\n");
 }
@@ -127,10 +134,11 @@ export function vehiclesFromDocuments(docs: SavedDocument[]): string | null {
     if (id && !rows.has(id)) rows.set(id, [id, d.plate ?? "", d.vin ?? ""]);
   }
   if (!rows.size) return null;
-  const q = (v: string) => (/[",\n]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v);
+  const q = (v: string) => (/[",\n\r]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v);
   return ["vehicle_id,plate_number,vin", ...[...rows.values()].map((r) => r.map(q).join(","))].join("\n");
 }
 
 export const hasFleet = (ws: Workspace | null) => !!ws && (ws.inputs.length > 0 || ws.documents.some((d) => d.confirmed && d.create_vehicle));
 
 export const uid = (prefix: string) => `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`;
+

@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Link from "next/link";
 import { Chart, tokens } from "@/components/chart";
 import { regionWhere, useEngine, useSql } from "@/components/engine-provider";
 import { Card, fmt, PageHeader, pFmt, rag, ragColor, SectionTitle, Skeleton, Tex } from "@/components/ui";
@@ -35,7 +36,10 @@ const val = (id: string, v: number | null | undefined) => {
 
 export default function NetworkPage() {
   const p = usePanel();
+  const { region, dataset, runId } = useEngine();
   const [sel, setSel] = useState("offroad");
+  const [search, setSearch] = useState("");
+  const [focus, setFocus] = useState(false);
   const models = useMemo(() => fitModels(p.all), [p.all]);
   const last = p.last?.v ?? {};
 
@@ -47,18 +51,35 @@ export default function NetworkPage() {
         {p.all.length || "…"} region-months, drawn thicker when the evidence is stronger. Click any metric to see its maths.
       </PageHeader>
 
+      <div className="ops-banner mb-5 grid gap-4 p-5 md:grid-cols-[1fr_auto]">
+        <div><p className="text-[14px] font-semibold">{region ?? "All regions"} · {p.last?.month.slice(0, 7) ?? "Waiting for data"}</p>
+          <p className="mt-1 text-[12px] text-muted">{NODES.length} metrics · {IDENTITIES.length} exact identities · {models.filter((m) => m.fit).length}/{models.length} fitted models · {p.all.length} region-month observations</p></div>
+        <Link className="ops-button self-center" href="/doctrine/#SOP-02">Open operating review</Link>
+      </div>
+      {p.error && <p role="alert" className="mb-4 text-sm text-bad">Metric evidence could not be loaded: {p.error}. Check the pipeline and rebuild the report.</p>}
+      <div className="mb-4 grid gap-3 sm:grid-cols-[1fr_1fr_auto]">
+        <label className="text-[12px] font-medium">Find a metric<input className="ops-input mt-1" placeholder="Search clocks, costs or quality" value={search} onChange={(e) => setSearch(e.target.value)} /></label>
+        <label className="text-[12px] font-medium">Inspect metric<select className="ops-input mt-1" value={sel} onChange={(e) => setSel(e.target.value)}>
+          {NODES.filter((n) => n.id === sel || (n.label + " " + GROUPS[n.group].label).toLowerCase().includes(search.toLowerCase())).map((n) => <option key={n.id} value={n.id}>{n.label}</option>)}
+        </select></label>
+        <button className={"ops-chip self-end " + (focus ? "ops-chip-active" : "")} aria-pressed={focus} onClick={() => setFocus(!focus)}>Focus connections</button>
+      </div>
       <div className="grid gap-4 xl:grid-cols-[1.55fr_1fr]">
-        <Card className="p-3">
-          {p.ready ? <Graph values={last} models={models} sel={sel} onSelect={setSel} targets={p.targets} /> : <Skeleton height={700} />}
+        <Card className="min-w-0 p-3">
+          <div className="overflow-x-auto" role="region" aria-label="Interactive metric graph; use Inspect metric for keyboard access" tabIndex={0}>
+            <div className="min-w-[680px]">
+          {p.ready ? <Graph values={last} models={models} sel={sel} onSelect={setSel} targets={p.targets} focus={focus} /> : <Skeleton height={700} />}
+            </div>
+          </div>
           <Legend />
         </Card>
-        <Detail id={sel} models={models} p={p} />
+        <Detail id={sel} models={models} p={p} onSelect={setSel} />
       </div>
 
       <SectionTitle sub="Move a lever; statistical links pass on their partial effect (β·Δx), identities are recomputed exactly.">
         What if?
       </SectionTitle>
-      {p.ready ? <Simulator base={last} models={models} /> : <Skeleton />}
+      {p.ready ? <Simulator key={JSON.stringify([region, dataset, runId])} base={last} models={models} /> : <Skeleton />}
 
       <SectionTitle sub="Pearson r between every pair of metrics across region-months. Read it with the network: correlation shows co-movement, the network shows the mechanism.">
         Correlation matrix
@@ -90,12 +111,14 @@ function Legend() {
 }
 
 // ------------------------------------------------------------------ the graph
-function Graph({ values, models, sel, onSelect, targets }: {
+function Graph({ values, models, sel, onSelect, targets, focus }: {
   values: Record<string, number | null>; models: FittedModel[]; sel: string; onSelect: (id: string) => void;
+  focus: boolean;
   targets: Record<string, { green: number; amber: number; direction: string }>;
 }) {
   const option = useMemo(() => (dark: boolean) => {
     const t = tokens(dark);
+    const connected = new Set([sel, ...EDGES.filter((e) => e.source === sel || e.target === sel).flatMap((e) => [e.source, e.target])]);
     const stat = new Map(models.flatMap((m) => m.drivers.map((d, i) => [`${d}>${m.output}`, { m, i }] as const)));
     return {
       tooltip: { show: false },
@@ -113,7 +136,7 @@ function Graph({ values, models, sel, onSelect, targets }: {
           const big = n.group === "north";
           return {
             id: n.id, name: n.id, x: POS[n.id][0], y: POS[n.id][1], symbolSize: big ? 46 : n.id === sel ? 30 : 22,
-            itemStyle: { color: GROUPS[n.group].color, borderColor: n.id === sel ? t.text : r ? ragColor(r).replace(/var\((.*)\)/, (_, v) => ({ "--good": t.good, "--warn": t.warn, "--bad": t.bad } as Record<string, string>)[v] ?? t.faint) : t.panel,
+            itemStyle: { opacity: focus && !connected.has(n.id) ? 0.2 : 1, color: GROUPS[n.group].color, borderColor: n.id === sel ? t.text : r ? ragColor(r).replace(/var\((.*)\)/, (_, v) => ({ "--good": t.good, "--warn": t.warn, "--bad": t.bad } as Record<string, string>)[v] ?? t.faint) : t.panel,
               borderWidth: n.id === sel ? 3 : r ? 3 : 1, shadowBlur: n.id === sel ? 18 : 0, shadowColor: GROUPS[n.group].color },
           };
         }),
@@ -132,12 +155,12 @@ function Graph({ values, models, sel, onSelect, targets }: {
         emphasis: { focus: "adjacency" as const, lineStyle: { width: 4 } },
       }],
     };
-  }, [values, models, sel, targets]);
+  }, [values, models, sel, targets, focus]);
   return <Chart height={700} option={option} onClick={(e) => e.dataType === "node" && onSelect((e.data as { id: string }).id)} />;
 }
 
 // ------------------------------------------------------------------ maths for one metric
-function Detail({ id, models, p }: { id: string; models: FittedModel[]; p: ReturnType<typeof usePanel> }) {
+function Detail({ id, models, p, onSelect }: { id: string; models: FittedModel[]; p: ReturnType<typeof usePanel>; onSelect: (id: string) => void }) {
   const n = NODE[id];
   const last = p.last?.v ?? {}, prev = p.prev?.v ?? {};
   const idn = IDENTITIES.find((i) => i.output === id);
@@ -150,6 +173,7 @@ function Detail({ id, models, p }: { id: string; models: FittedModel[]; p: Retur
       <p className="text-[12px] font-semibold uppercase tracking-[0.1em]" style={{ color: GROUPS[n.group].color }}>{GROUPS[n.group].label}</p>
       <h2 className="mt-1 text-[22px] font-semibold">{n.label}</h2>
       <p className="mt-1 text-[13.5px] text-muted">{n.meaning}</p>
+      {id === "key_to_key" && <p className="mt-2 text-[12px] text-warn">Across regions this is a job-weighted mean of regional medians, not a pooled fleet median.</p>}
       <div className="mt-4 flex items-baseline gap-3">
         <span className="tnum text-[34px] font-bold leading-none">{val(id, v)}</span>
         {target && (
@@ -185,11 +209,14 @@ function Detail({ id, models, p }: { id: string; models: FittedModel[]; p: Retur
         <Block title="Feeds">
           <div className="flex flex-wrap gap-1.5">
             {children.map((c) => (
-              <span key={c} className="rounded-full border border-border px-2.5 py-0.5 text-[12px] text-muted">{NODE[c].label}</span>
+              <button key={c} onClick={() => onSelect(c)} className="ops-chip">{NODE[c].label}</button>
             ))}
           </div>
         </Block>
       )}
+      <Block title="Take action">
+        <Link className="ops-button" href={"/doctrine/#" + (n.group === "licence" ? id === "recalls" ? "SOP-04" : "SOP-07" : n.group === "customer" ? "SOP-08" : n.group === "ledger" ? "SOP-06" : n.group === "workshop" || n.group === "clock" ? "SOP-03" : "SOP-02")}>Open related procedure</Link>
+      </Block>
     </Card>
   );
 }
@@ -308,17 +335,19 @@ function Simulator({ base, models }: { base: Record<string, number | null>; mode
               <span>{l.label}</span>
               <span className="tnum font-medium text-accent">{(lv[l.id] ?? 0) > 0 ? "+" : ""}{(lv[l.id] ?? 0).toFixed(1)} {l.unit}</span>
             </span>
-            <input type="range" min={l.min} max={l.max} step={l.step} value={lv[l.id] ?? 0} className="mt-1 w-full accent-[var(--accent)]"
+            <input type="range" disabled={base[l.id] == null} min={l.min} max={l.max} step={l.step} value={lv[l.id] ?? 0} className="mt-1 w-full accent-[var(--accent)] disabled:opacity-30"
               onChange={(e) => setLv({ ...lv, [l.id]: Number(e.target.value) })} />
           </label>
         ))}
+        {sim.constrained.length > 0 && <p role="status" className="mb-3 text-[12px] text-warn">Physical limits applied: {sim.constrained.map((id) => NODE[id].label).join(", ")}. Downstream identities use the bounded inputs.</p>}
+        {!sim.feasible && <p role="alert" className="mb-3 text-[12px] text-bad">Infeasible scenario: service hours exceed the available fleet-hours. Review the input assumptions before making a decision.</p>}
         <p className="text-[12px] leading-relaxed text-faint">
           Propagation: <Tex>{"\\Delta y=\\sum_i \\hat\\beta_i\\,\\Delta x_i"}</Tex> along measured links (first order), then every identity is
           re-evaluated exactly. Only drivers significant at p &lt; 0.05 are passed on. First visits are held fixed, so a
           lower comeback share means fewer visits.
         </p>
       </Card>
-      <Card title="Effect on the network" sub="Baseline = report month for the selected region.">
+      <Card title="Effect on the network" sub="Exploratory scenario, not a causal forecast. Baseline follows the selected region and report month.">
         <table className="tnum w-full text-[13px]">
           <thead className="text-[12px] text-faint">
             <tr><th className="text-left font-medium">Metric</th><th className="text-right font-medium">Now</th>
@@ -362,7 +391,7 @@ function Corr({ rows }: { rows: ReturnType<typeof usePanel>["all"] }) {
   return (
     <Chart height={560} option={(dark) => ({
       grid: { left: 8, right: 8, top: 8, bottom: 8, containLabel: true },
-      tooltip: { formatter: (x: unknown) => { const d = (x as { data: [number, number, number] }).data; return `${NODE[ids[d[1]]].label} × ${NODE[ids[d[0]]].label}<br/><b>r = ${d[2]}</b>`; } },
+      tooltip: { formatter: (x: unknown) => { const d = (x as { data: [number, number, number] }).data; return `${NODE[ids[d[1]]].label} × ${NODE[ids[d[0]]].label}\nr = ${d[2]}`; } },
       xAxis: { type: "category", data: ids.map((i) => NODE[i].label), axisLabel: { rotate: 45, fontSize: 10, interval: 0 }, splitArea: { show: false } },
       yAxis: { type: "category", data: ids.map((i) => NODE[i].label), axisLabel: { fontSize: 10, interval: 0 }, inverse: true },
       visualMap: { min: -1, max: 1, show: false, inRange: { color: dark ? ["#fb7185", "#1c1f2e", "#818cf8"] : ["#e11d48", "#f5f6fa", "#4f46e5"] } },
@@ -419,7 +448,7 @@ function Evidence() {
                 [{Math.exp(10 * Math.log(lg.ci[0])).toFixed(2)}, {Math.exp(10 * Math.log(lg.ci[1])).toFixed(2)}], z = {lg.z.toFixed(1)}, p {pFmt(lg.p)}, n = {lg.n.toLocaleString()}</p>
             </div>
           </>
-        ) : <Skeleton height={260} />}
+        ) : kk.error ? <p role="alert" className="text-sm text-bad">{kk.error}</p> : kk.data ? <p className="py-10 text-sm text-muted">Not enough varied, rated work orders to fit this relationship.</p> : <Skeleton height={260} />}
       </Card>
 
       <Card title="Fix it once, or pay" sub="Goodwill on repairs: comebacks vs first visits">
@@ -441,7 +470,7 @@ function Evidence() {
                 (Welch t = {wt.t.toFixed(1)}, df = {wt.df.toFixed(0)}, p {pFmt(wt.p)}); n = {(risk.n1 + risk.n0).toLocaleString()}</p>
             </div>
           </>
-        ) : <Skeleton height={260} />}
+        ) : rr.error ? <p role="alert" className="text-sm text-bad">{rr.error}</p> : rr.data ? <p className="py-10 text-sm text-muted">Both comeback and first-visit groups need enough observations for comparison.</p> : <Skeleton height={260} />}
       </Card>
 
       <Card title="Late parts move the workshop clock" sub="Workshop hours vs parts-wait hours, every job (1 in 25 plotted)">
@@ -463,8 +492,9 @@ function Evidence() {
               <p className="mt-1.5">β 95% CI [{fit.ci[0].toFixed(3)}, {fit.ci[1].toFixed(3)}], r = {fit.r.toFixed(3)}, R² = {fit.r2.toFixed(3)}, p {pFmt(fit.p)}, n = {fit.n.toLocaleString()}</p>
             </div>
           </>
-        ) : <Skeleton height={260} />}
+        ) : pw.error ? <p role="alert" className="text-sm text-bad">{pw.error}</p> : pw.data ? <p className="py-10 text-sm text-muted">Not enough varied parts-wait and workshop observations to fit this relationship.</p> : <Skeleton height={260} />}
       </Card>
     </div>
   );
 }
+

@@ -30,6 +30,29 @@ describe("metric network", () => {
     const v = aggregate(rows.slice(0, 2)) as Record<string, number>;
     for (const idn of IDENTITIES) expect(idn.eval(v)).toBeCloseTo(v[idn.output], 9);
   });
+  it("returns missing values instead of infinities for a fleet without exposure", () => {
+    const values = aggregate([]);
+    expect(values.offroad).toBeNull();
+    expect(values.availability).toBeNull();
+    expect(Object.values(values).every((v) => v === null || Number.isFinite(v))).toBe(true);
+  });
+  it("bounds physical inputs before propagating exact identities", () => {
+    const base = aggregate(rows) as Record<string, number>;
+    const sim = simulate(base, [], { pickup: -1000, parts: 200, repeat_share: 200 });
+    expect(sim.values.pickup).toBe(0);
+    expect(sim.values.parts).toBe(100);
+    expect(sim.values.repeat_share).toBeLessThan(100);
+    expect(sim.constrained).toContain("pickup");
+    for (const identity of IDENTITIES) expect(identity.eval(sim.values)).toBeCloseTo(sim.values[identity.output], 7);
+  });
+  it("ignores nonfinite lever payloads and does not invent missing identity parents", () => {
+    const base = aggregate(rows);
+    const sim = simulate({ ...base, pickup: null }, [], { parts: Infinity });
+    expect(sim.values.parts).toBe(base.parts);
+    expect(sim.values.per_visit).toBeUndefined();
+    expect(sim.values.offroad).toBeUndefined();
+    expect(Object.values(sim.values).every(Number.isFinite)).toBe(true);
+  });
 
   it("zero lever changes return the baseline exactly", () => {
     const base = aggregate(rows);
@@ -64,3 +87,4 @@ it("never propagates a non-significant driver", () => {
   expect(Math.abs(sim.delta.workshop)).toBeLessThan(1e-9);
   expect(Math.abs(sim.delta.key_to_key)).toBeLessThan(1e-9);
 });
+
