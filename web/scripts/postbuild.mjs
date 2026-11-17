@@ -55,7 +55,7 @@ for (const f of pages) {
   const html = readFileSync(p, "utf8");
   if (html.includes("Content-Security-Policy")) throw new Error(`postbuild: ${f} already has a policy; it must come from here only`);
   const hashes = new Set();
-  for (const m of html.matchAll(/<script(\s[^>]*)?>([\s\S]*?)<\/script\s*>/gi)) {
+  for (const m of html.matchAll(/<script(\s[^>]*)?>([\s\S]*?)<\/script[^>]*>/gi)) {
     if (/\ssrc=/.test(m[1] ?? "") || !m[2]) continue;
     hashes.add(`'sha256-${createHash("sha256").update(m[2], "utf8").digest("base64")}'`);
   }

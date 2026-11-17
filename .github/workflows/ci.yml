@@ -25,8 +25,9 @@ jobs:
         run: python -m pip install --require-hashes --no-deps -r requirements/ci.txt && python -m pip install --no-deps --no-build-isolation -e .
       - name: requirements/*.txt match uv.lock
         run: |
-          uv export --frozen -q --extra dev --group build --group audit --group lock --no-emit-project --format requirements-txt | diff -u requirements/ci.txt -
-          uv export --frozen -q --no-dev --group build --no-emit-project --format requirements-txt | diff -u requirements/docker.txt -
+          # compare without uv's header comment, which names the output file
+          uv export --frozen -q --extra dev --group build --group audit --group lock --no-emit-project --format requirements-txt | grep -v '^#' | diff -u <(grep -v '^#' requirements/ci.txt) -
+          uv export --frozen -q --no-dev --group build --no-emit-project --format requirements-txt | grep -v '^#' | diff -u <(grep -v '^#' requirements/docker.txt) -
       - run: pytest -q
       - name: Demo fleet end to end
         run: fleetkpi demo /tmp/demo

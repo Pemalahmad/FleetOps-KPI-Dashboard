@@ -7,7 +7,10 @@ COPY requirements/docker.txt ./requirements.txt
 RUN pip install --no-cache-dir --require-hashes --no-deps -r requirements.txt
 COPY pyproject.toml README.md LICENSE.md ./
 COPY fleetkpi ./fleetkpi
-RUN pip install --no-cache-dir --no-deps --no-build-isolation .
+# The project runs from source (its dependencies are installed above, hash-checked), so no unpinned install is needed.
+ENV PYTHONPATH=/opt/fleetkpi
+RUN printf '#!/bin/sh\nexec python -c "import sys; from fleetkpi.cli import main; sys.exit(main())" "$@"\n' > /usr/local/bin/fleetkpi \
+ && chmod +x /usr/local/bin/fleetkpi
 
 COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh
