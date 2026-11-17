@@ -93,11 +93,11 @@ SELECT
     -- Annual registration from the in-service anniversary; ~1.5% lapsed, renewals spread over the year.
     CASE WHEN rnd(vehicle_id || 'regx') < 0.015
          THEN DATE '2026-10-01' - to_days(CAST(1 + floor(rnd(vehicle_id || 'regd') * 40) AS INTEGER))
-         ELSE DATE '2026-10-01' + to_days(CAST(1 + floor(rnd(vehicle_id || 'regd') * 364) AS INTEGER)) END AS registration_expiry,
+         ELSE DATE '2026-10-01' + to_days(CAST(1 + floor(rnd(vehicle_id || 'regd') * 364) AS INTEGER)) END::DATE AS registration_expiry,
     -- Annual insurance policies, renewals spread over the year; ~2% lapsed.
     CASE WHEN rnd(vehicle_id || 'insx') < 0.02
          THEN DATE '2026-10-01' - to_days(CAST(1 + floor(rnd(vehicle_id || 'insd') * 30) AS INTEGER))
-         ELSE DATE '2026-10-01' + to_days(CAST(1 + floor(rnd(vehicle_id || 'insd') * 364) AS INTEGER)) END AS insurance_expiry,
+         ELSE DATE '2026-10-01' + to_days(CAST(1 + floor(rnd(vehicle_id || 'insd') * 364) AS INTEGER)) END::DATE AS insurance_expiry,
     ['Gulf Insurance', 'Oasis Assurance', 'Crescent Mutual', 'Anatolia Sigorta'][
         CASE WHEN region = 'Türkiye' THEN 4 ELSE 1 + CAST(floor(rnd(vehicle_id || 'ins') * 3) AS INTEGER) END] AS insurer
 FROM typed;
@@ -237,8 +237,11 @@ FROM phased;
 
 CREATE OR REPLACE TEMP TABLE d_jobs_costed AS
 SELECT *,
+    -- 3% of parts go on back-order: 3-12 extra days the supplier never promised
+    CASE WHEN parts_needed AND rnd(jk || 'bo') < 0.03 THEN round(72 + 216 * rnd(jk || 'bod'), 1) ELSE 0 END AS backorder_h,
     CASE WHEN parts_needed
          THEN round((8 + 70 * rnd(jk || 'pw')) * CASE WHEN rn_crisis THEN 2.4 WHEN ist_before THEN 1.4 ELSE 1.0 END, 1)
+              + CASE WHEN rnd(jk || 'bo') < 0.03 THEN round(72 + 216 * rnd(jk || 'bod'), 1) ELSE 0 END
          ELSE 0 END AS parts_wait_h,
     rnd(jk || 'rv') < 0.06 + CASE WHEN ist_before THEN 0.10 WHEN rn_crisis THEN 0.07 ELSE 0 END AS repeat_visit,
     round(labour_h * 62 + CASE
@@ -286,29 +289,73 @@ SELECT d.*,
 FROM dated d JOIN sites hs ON hs.site_id = d.home_site_id
 WHERE d.opened_at < TIMESTAMP '2026-10-01';
 
+-- ------------------------------------------------------- issue categories
+-- Corrective work gets an issue category typical of its powertrain (earlier list items are more common).
+CREATE OR REPLACE TEMP TABLE d_jobs_cat AS
+SELECT *, CASE
+    WHEN job_type = 'Preventive maintenance' THEN 'Scheduled service'
+    WHEN job_type = 'Collision' THEN 'Body & glass'
+    WHEN job_type = 'Tyres' THEN 'Tyres & wheels'
+    ELSE (CASE powertrain
+        WHEN 'BEV'  THEN ['Suspension & steering', 'Software & sensors', 'Electrical (12V)', 'Brakes', 'Climate & cooling', 'Charging system', 'HV battery']
+        WHEN 'ICE'  THEN ['Engine & transmission', 'Brakes', 'Suspension & steering', 'Electrical (12V)', 'Climate & cooling', 'Software & sensors', 'Engine & transmission']
+        WHEN 'PHEV' THEN ['Engine & transmission', 'Charging system', 'Suspension & steering', 'Electrical (12V)', 'Climate & cooling', 'Software & sensors', 'HV battery']
+        ELSE             ['Engine & transmission', 'Brakes', 'Suspension & steering', 'Electrical (12V)', 'Climate & cooling', 'Software & sensors', 'HV battery'] END)
+        [1 + CAST(floor(pow(rnd(jk || 'cat'), 1.4) * 7) AS INTEGER)]
+END AS issue_category
+FROM d_jobs_costed;
+
+-- A job that was not fixed first time comes back 2-12 days later for the same issue: the comeback repair.
+-- The repeat flag sits on the comeback (the visit that should not have happened), as in workshop systems.
+CREATE OR REPLACE TEMP TABLE d_comebacks AS
+SELECT jk || '|cb' AS jk, vehicle_id, site_id, 'Repair' AS job_type,
+       opened_at + to_minutes(CAST(round((queue_h + labour_h + parts_wait_h) * 60) AS INTEGER))
+                 + to_days(CAST(2 + floor(rnd(jk || 'cbd') * 10) AS INTEGER)) + INTERVAL 2 HOUR AS opened_at,
+       round(2 + 10 * rnd(jk || 'cbq'), 1) + round(1.5 + 4 * rnd(jk || 'cbl'), 1)  AS turnaround_h,
+       round(1.5 + 4 * rnd(jk || 'cbl'), 1)                                        AS labour_h,
+       round((1.5 + 4 * rnd(jk || 'cbl')) * 62 + 60, 2)                            AS total_cost,
+       issue_category
+FROM d_jobs_cat
+WHERE repeat_visit AND job_type IN ('Repair', 'Warranty');
+
 -- --------------------------------------------------- canonical work_orders
-CREATE OR REPLACE TABLE work_orders AS
+CREATE OR REPLACE TEMP TABLE d_wo AS
 WITH unioned AS (
     SELECT jk, vehicle_id, site_id, job_type, opened_at,
            queue_h + labour_h + parts_wait_h AS turnaround_h,
-           labour_h, parts_wait_h, total_cost, paid_by, repeat_visit, CAST(NULL AS VARCHAR) AS campaign_id
-    FROM d_jobs_costed
+           labour_h, parts_wait_h, total_cost, paid_by, FALSE AS repeat_visit, CAST(NULL AS VARCHAR) AS campaign_id, issue_category
+    FROM d_jobs_cat
     UNION ALL
-    SELECT jk, vehicle_id, site_id, 'Recall', opened_at, turnaround_h, labour_h, 0, total_cost, 'OEM', FALSE, campaign_id
+    SELECT jk, vehicle_id, site_id, 'Recall', opened_at, turnaround_h, labour_h, 0, total_cost, 'OEM', FALSE, campaign_id, 'Recall campaign'
     FROM d_recall_jobs
+    UNION ALL
+    SELECT jk, vehicle_id, site_id, job_type, opened_at, turnaround_h, labour_h, 0, total_cost, 'Fleet', TRUE, NULL, issue_category
+    FROM d_comebacks WHERE opened_at < TIMESTAMP '2026-10-01'
+),
+timed AS (
+    SELECT *,
+        opened_at + to_minutes(CAST(round(turnaround_h * 60) AS INTEGER))                                   AS done_at,
+        -- collected 0.5-6h after the vehicle is ready
+        opened_at + to_minutes(CAST(round(turnaround_h * 60) + 30 + floor(rnd(jk || 'ko') * 330) AS INTEGER)) AS collected_at,
+        -- back earning 0.3-6h after collection; 8% wait 12-30h for a driver or dispatch slot
+        CASE WHEN rnd(jk || 'bx') < 0.08 THEN 720 + floor(rnd(jk || 'bi') * 1080)
+             ELSE 20 + floor(rnd(jk || 'bi') * 340) END                                                      AS redeploy_min
+    FROM unioned
 )
 SELECT
-    'WO' || lpad((row_number() OVER (ORDER BY opened_at, jk))::VARCHAR, 7, '0') AS work_order_id,
+    'WO' || lpad((row_number() OVER (ORDER BY opened_at, jk))::VARCHAR, 7, '0') AS work_order_id, jk,
     vehicle_id, site_id, job_type, opened_at,
-    CASE WHEN opened_at + to_minutes(CAST(round(turnaround_h * 60) AS INTEGER)) < TIMESTAMP '2026-10-01'
-         THEN opened_at + to_minutes(CAST(round(turnaround_h * 60) AS INTEGER)) END AS closed_at,
+    CASE WHEN done_at < TIMESTAMP '2026-10-01' THEN done_at END                                      AS closed_at,
     labour_h AS labour_hours, parts_wait_h AS parts_wait_hours, total_cost, paid_by, repeat_visit, campaign_id,
-    -- key handed over 0-2h before the job opens; collected 0.5-6h after it closes
-    opened_at - to_minutes(CAST(floor(rnd(jk || 'ki') * 120) AS INTEGER)) AS key_in_at,
-    CASE WHEN opened_at + to_minutes(CAST(round(turnaround_h * 60) AS INTEGER)) < TIMESTAMP '2026-10-01'
-         THEN least(opened_at + to_minutes(CAST(round(turnaround_h * 60) AS INTEGER))
-                    + to_minutes(CAST(30 + floor(rnd(jk || 'ko') * 330) AS INTEGER)), TIMESTAMP '2026-09-30 23:59:00') END AS key_out_at
-FROM unioned;
+    opened_at - to_minutes(CAST(floor(rnd(jk || 'ki') * 120) AS INTEGER))                            AS key_in_at,
+    CASE WHEN collected_at < TIMESTAMP '2026-10-01' THEN collected_at END                            AS key_out_at,
+    CASE WHEN done_at < TIMESTAMP '2026-10-01' THEN done_at END                                      AS ready_at,
+    CASE WHEN collected_at + to_minutes(CAST(redeploy_min AS INTEGER)) < TIMESTAMP '2026-10-01'
+         THEN collected_at + to_minutes(CAST(redeploy_min AS INTEGER)) END                           AS back_in_service_at,
+    issue_category
+FROM timed;
+
+CREATE OR REPLACE TABLE work_orders AS SELECT * EXCLUDE (jk) FROM d_wo;
 
 -- --------------------------------------------------------------- feedback
 -- ~35% of customers answer the post-visit survey. Stars fall with long key-to-key time and repeat visits,
@@ -335,6 +382,77 @@ SELECT
     CAST(NULL AS VARCHAR) AS comment
 FROM j
 WHERE (key_out_at + to_days(CAST(floor(rnd(work_order_id || 'fd') * 3) AS INTEGER)))::DATE < DATE '2026-10-01';
+
+-- ---------------------------------------------------------------- goodwill
+-- Goodwill follows bad experiences: most 1-2 star visits and many comebacks get part of the bill waived.
+CREATE OR REPLACE TABLE work_orders AS
+SELECT w.*, round(CASE
+    WHEN f.rating <= 2 AND rnd(w.work_order_id || 'gw') < 0.65 THEN w.total_cost * (0.30 + 0.30 * rnd(w.work_order_id || 'gwa'))
+    WHEN w.repeat_visit AND rnd(w.work_order_id || 'gw') < 0.40 THEN w.total_cost * (0.20 + 0.30 * rnd(w.work_order_id || 'gwa'))
+    WHEN rnd(w.work_order_id || 'gw') < 0.01 THEN w.total_cost * 0.15
+    ELSE 0 END, 2) AS goodwill_amount
+FROM work_orders w
+LEFT JOIN feedback f USING (work_order_id);
+
+-- ------------------------------------------------------------ parts orders
+-- Every job that waited for parts has an order. Suppliers promise an ETA; some keep it.
+-- During the Riyadh North crisis promises were optimistic, so ETA reliability collapses too.
+CREATE OR REPLACE TABLE parts_orders AS
+WITH p AS (
+    SELECT d.work_order_id, j.jk, j.issue_category, j.opened_at, j.parts_wait_h, j.backorder_h, j.rn_crisis,
+           ['OEM central warehouse', 'Regional distributor', 'Local aftermarket'][1 + CAST(floor(rnd(j.jk || 'sup') * 3) AS INTEGER)] AS supplier
+    FROM d_jobs_cat j JOIN d_wo d USING (jk)
+    WHERE j.parts_wait_h > 0
+)
+SELECT
+    'PO' || lpad((row_number() OVER (ORDER BY opened_at, jk))::VARCHAR, 7, '0') AS part_order_id,
+    work_order_id, issue_category || ' part' AS part_description, supplier,
+    opened_at + INTERVAL 1 HOUR AS ordered_at,
+    opened_at + INTERVAL 1 HOUR + to_minutes(CAST(round((parts_wait_h - backorder_h) * 60 * CASE
+        WHEN rn_crisis THEN 0.45 + 0.30 * rnd(jk || 'eta')                          -- optimistic promises: ~0% on time
+        WHEN supplier = 'Regional distributor' THEN 0.90 + 0.33 * rnd(jk || 'eta')  -- ~70% on time
+        WHEN supplier = 'Local aftermarket' THEN 0.97 + 0.30 * rnd(jk || 'eta')     -- ~90% on time
+        ELSE 0.95 + 0.35 * rnd(jk || 'eta') END) AS INTEGER)) AS promised_eta,      -- OEM ~86% on time
+    CASE WHEN opened_at + INTERVAL 1 HOUR + to_minutes(CAST(round(parts_wait_h * 60) AS INTEGER)) < TIMESTAMP '2026-10-01'
+         THEN opened_at + INTERVAL 1 HOUR + to_minutes(CAST(round(parts_wait_h * 60) AS INTEGER)) END AS arrived_at
+FROM p;
+
+-- ------------------------------------------------------------------- fines
+-- Ride-hail and delivery fleets collect fines; vehicles driving on an expired registration collect one more.
+CREATE OR REPLACE TABLE fines AS
+WITH slots AS (
+    SELECT vehicle_id, region, month_start, in_service_date, days, unnest([1, 2, 3]) AS k FROM d_vm
+),
+picked AS (
+    SELECT *, vehicle_id || '|' || month_start || '|' || k || 'fine' AS fk FROM slots
+    WHERE (k = 1 AND rnd(vehicle_id || '|' || month_start || '|' || k || 'fine') < 0.09 * days / 30.0)
+       OR (k = 2 AND rnd(vehicle_id || '|' || month_start || '|' || k || 'fine') < 0.025 * days / 30.0)
+       OR (k = 3 AND rnd(vehicle_id || '|' || month_start || '|' || k || 'fine') < 0.008 * days / 30.0)
+),
+typed AS (
+    SELECT *, CASE WHEN rnd(fk || 't') < 0.34 THEN 'Speeding' WHEN rnd(fk || 't') < 0.58 THEN 'Parking'
+                   WHEN rnd(fk || 't') < 0.78 THEN 'Toll' WHEN rnd(fk || 't') < 0.86 THEN 'Red light'
+                   ELSE 'Driving behaviour' END AS fine_type
+    FROM picked
+),
+allf AS (
+    SELECT fk, vehicle_id,
+           (greatest(month_start, in_service_date) + to_days(CAST(floor(rnd(fk || 'd') * days) AS INTEGER)))::DATE AS fine_date,
+           fine_type,
+           round(CASE fine_type WHEN 'Speeding' THEN 80 + 220 * rnd(fk || 'a') WHEN 'Parking' THEN 40 + 50 * rnd(fk || 'a')
+                                WHEN 'Toll' THEN 30 + 60 * rnd(fk || 'a') WHEN 'Red light' THEN 270 ELSE 110 END
+                 * CASE region WHEN 'Türkiye' THEN 0.6 ELSE 1.0 END, 0) AS amount,
+           CASE WHEN rnd(fk || 's') < 0.74 THEN 'Paid' WHEN rnd(fk || 's') < 0.95 THEN 'Unpaid' ELSE 'Disputed' END AS status,
+           region || ' traffic authority' AS authority
+    FROM typed
+    UNION ALL
+    SELECT vehicle_id || '|regfine', vehicle_id, registration_expiry + 5, 'Expired registration', 140, 'Unpaid',
+           region || ' traffic authority'
+    FROM vehicles WHERE registration_expiry + 5 < DATE '2026-10-01'
+)
+SELECT 'FN' || lpad((row_number() OVER (ORDER BY fine_date, fk))::VARCHAR, 7, '0') AS fine_id,
+       vehicle_id, fine_date AS date, fine_type, amount, status, authority
+FROM allf;
 
 -- ---------------------------------------------------------------- budgets
 CREATE OR REPLACE TABLE budgets AS
