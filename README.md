@@ -1,23 +1,67 @@
-# fleetkpi: plug-and-play fleet operations KPIs
+# FleetOps KPI: fleet operations as one system of equations
 
-**Drop in your fleet's own files — electric, hybrid or combustion — and get a tested SQL warehouse and a live, gamified operations cockpit in light and dark, with the full pipeline and the SOP behind every flag.**
+**Every fleet KPI connected in one network: exact identities that hold to the decimal, and measured drivers with standard errors, p-values and confidence intervals. The tested SQL pipeline runs in your browser, on the demo fleet or on your own files.**
 
-![CI](https://github.com/Pemalahmad/fleet-ops-kpi-dashboard/actions/workflows/ci.yml/badge.svg)
-![Python](https://img.shields.io/badge/python-3.10%2B-blue)
-![SQL](https://img.shields.io/badge/SQL-DuckDB-FFF000?logo=duckdb&logoColor=black)
-![Models](https://img.shields.io/badge/SQL_models-54-6366F1)
-![Tests](https://img.shields.io/badge/SQL_tests-20-10B981)
+[![CI](https://github.com/Pemalahmad/FleetOps-KPI-Dashboard/actions/workflows/ci.yml/badge.svg)](https://github.com/Pemalahmad/FleetOps-KPI-Dashboard/actions/workflows/ci.yml)
+![TypeScript](https://img.shields.io/badge/TypeScript-Next.js-3178C6?logo=typescript&logoColor=white)
+![SQL](https://img.shields.io/badge/SQL-DuckDB_(WASM)-FFF000?logo=duckdb&logoColor=black)
+![Models](https://img.shields.io/badge/SQL_models-56-6366F1)
+![Tests](https://img.shields.io/badge/SQL_tests-22-10B981)
 ![Rules](https://img.shields.io/badge/validation_rules-34-F59E0B)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
-```bash
-pip install git+https://github.com/Pemalahmad/fleet-ops-kpi-dashboard
-fleetkpi demo my-fleet && cd my-fleet && fleetkpi serve       # 6,500-vehicle demo, built in ~1.5 s
-```
+### ▶ [Open the live dashboard](https://pemalahmad.github.io/FleetOps-KPI-Dashboard/)
 
-| Light | Dark |
+No install, no server, no upload: DuckDB-WASM runs the 56 SQL models and 22 tests on a 6,500-vehicle demo fleet in about 2 seconds, in the page. Drop your own CSVs on the **Pipeline** page to see your fleet.
+
+![Overview](docs/web-overview.jpg)
+
+## The metric network
+
+![Metric network](docs/web-metric-network.jpg)
+
+Every KPI is a node. Two kinds of link connect them:
+
+**Identities: exact algebra, asserted by SQL test `t21` on every build**
+
+| | |
 |---|---|
-| ![Overview, light](docs/overview-light.jpg) | ![Customer, dark](docs/customer-dark.jpg) |
+| North star = visits per vehicle × off-road hours per visit | $N = V \times H$ |
+| Hours per visit = workshop + pick-up + back to operations + still open | $H = W + P + B + O$ |
+| Customer clock = workshop + pick-up | $Q = W + P$ |
+| Availability is the north star seen from the other side | $A = 100\,(1 - N / 730.5)$ |
+| Comebacks inflate visits | $V = V_1 / (1 - \rho)$ |
+| Service spend = visits × spend per visit | $C = V \times c$ |
+
+**Measured drivers: multiple OLS on the region × month panel**, $\hat\beta = (X^\top X)^{-1}X^\top y$ with $\operatorname{Var}(\hat\beta) = s^2 (X^\top X)^{-1}$; each link shows β, SE, t, p, 95% CI, R², adjusted R² and F. Productivity and parts on time → workshop hours; customer clock → key-to-key; key-to-key and repeat repairs → CSAT and 1-2★ share; 1-2★ share and repeat repairs → goodwill.
+
+Click any metric to see its definition, its identity with the live numbers substituted, the month-on-month change split exactly across its inputs (log-mean Divisia: $\Delta Y = \sum_i L(Y_1, Y_0)\,\Delta \ln X_i$), and its regression table.
+
+**What-if.** Move a lever (productivity, parts on time, pick-up hours, back-to-ops hours, comeback share, repeat repairs) and the change propagates: $\Delta y = \sum_i \hat\beta_i \Delta x_i$ along measured links, then every identity is re-evaluated exactly. Only drivers significant at p < 0.05 are passed on.
+
+**Job-level evidence** tests the same links on individual work orders:
+
+![Job-level evidence](docs/web-job-evidence.jpg)
+
+| Claim | Method | Demo result |
+|---|---|---|
+| Waiting creates detractors | Logistic regression, damped Newton (IRLS); matches `statsmodels` to 6 significant figures | Odds of a 1-2★ rating × 1.98 per extra 10 h key-to-key (95% CI 1.88-2.08), n = 16,472 |
+| Fix it once, or pay | Risk ratio (log-method CI) and Welch t-test | Goodwill on 18.5% of comebacks vs 2.0% of first visits: RR 9.3 (8.0-10.8) |
+| Late parts move the workshop clock | OLS | Ŵ = 12.0 + 1.115 × parts-wait hours, r = 0.96, n = 49,655 |
+
+The statistics are written from first principles in [`web/src/lib/stats.ts`](web/src/lib/stats.ts) (Lanczos log-gamma, Lentz continued fraction for the incomplete beta, Student-t, Acklam normal quantile, Gauss-Jordan inversion, IRLS) and unit-tested against R and scipy reference values.
+
+## Run it yourself
+
+```bash
+# the dashboard (TypeScript, Next.js, DuckDB-WASM)
+pip install -e . && fleetkpi web-export --out web/public    # export the SQL engine + demo fleet
+cd web && npm install && npm run dev                          # http://localhost:3000
+
+# the warehouse and CLI (Python)
+pip install git+https://github.com/Pemalahmad/FleetOps-KPI-Dashboard
+fleetkpi demo my-fleet && cd my-fleet && fleetkpi build      # 6,500-vehicle demo, ~2 s
+```
 
 ---
 
@@ -32,9 +76,7 @@ fleetkpi demo my-fleet && cd my-fleet && fleetkpi serve       # 6,500-vehicle de
    │◄──────────────────────────── Fleet clock ───────────────────►│
 ```
 
-Every KPI here hangs off one of three clocks, a **ledger** (what each visit costs, and who pays) and a **licence** (whether the vehicle may legally drive). Seven laws turn them into decisions, and one north star sums them up: **off-road hours per vehicle per month.** Read the [full doctrine](docs/DOCTRINE.md); the dashboard's **Doctrine** page shows it live.
-
-![Doctrine page](docs/doctrine-dark.jpg)
+Every KPI here hangs off one of three clocks, a **ledger** (what each visit costs, and who pays) and a **licence** (whether the vehicle may legally drive). Seven laws turn them into decisions, and one north star sums them up: **off-road hours per vehicle per month.** Read the [full doctrine](docs/DOCTRINE.md); the dashboard's **Doctrine & SOPs** page renders it with the eight SOPs.
 
 ## The KPIs
 
@@ -80,7 +122,7 @@ Every KPI has a green/amber/red target in `fleet.yml`. The gamified **Ops Score*
 flowchart LR
     F["Your files<br/>CSV · Excel · Parquet"] --> I["1 Ingest"] --> S["2 Standardise"] --> V["3 Validate<br/>34 SQL rules"]
     V -- errors --> X["Blocked: last good<br/>warehouse kept"]
-    V --> ST["4 Staging<br/>9 models"] --> IN["5 Intermediate<br/>9 models"] --> M["6 Marts<br/>36 models"] --> T["7 Test<br/>20 SQL tests"] --> P["8 Publish<br/>atomic swap"]
+    V --> ST["4 Staging<br/>9 models"] --> IN["5 Intermediate<br/>9 models"] --> M["6 Marts<br/>38 models"] --> T["7 Test<br/>22 SQL tests"] --> P["8 Publish<br/>atomic swap"]
 ```
 
 ```
@@ -91,7 +133,7 @@ fleetkpi/sql/
 │   ├── staging/     stg_*   one clean, typed model per input table
 │   ├── intermediate/int_*   vehicle-months, visits & repeats, downtime, PM status, weekly site status
 │   └── marts/       mart_*  every KPI the dashboard reads
-└── tests/           t01…t20  data tests on the models (grain, ranges, reconciliation, clock identity)
+└── tests/           t01…t22  data tests on the models (grain, ranges, reconciliation, clock and network identities)
 ```
 
 - **One model per file, as a plain `SELECT`.** The runner (`fleetkpi/sqlrunner.py`) reads the `FROM`/`JOIN`s to find dependencies, sorts the models, refuses a model that depends on a later layer, materialises each one as a view or table, and records rows, timing and lineage.
@@ -122,12 +164,13 @@ docker build -t fleetkpi . && docker run -p 8501:8501 -v "$PWD/my-fleet:/fleet" 
 
 ## The dashboard
 
-Eight pages, all charts: KPI tiles with sparklines and deltas, gauges against target bands, donuts you can click to filter, radar profiles, heatmaps, a renewal calendar and a region × KPI scorecard matrix. A global region filter applies everywhere. **Light, dark or follow the system:** ⋮ menu → System · Light · Dark. Custom elements are tinted from the current text colour, so they switch with the theme instantly.
+Nine pages: **Overview** (north star, KPI tiles with sparklines, region × KPI scorecard, site league), **Metric network**, **Customer clock** (the three clocks by region, CSAT, rating mix, key-to-key p50/p90), **Workshop** (weekly INTERVENE heatmap, repeat repairs, issue-category treemap, supplier on-time, overdue parts, backlog ageing), **Ledger & assets** (spend per 1,000 km by powertrain, goodwill, cost vs budget, cost per km, value retained), **Licence** (registration and insurance status, renewal waves, PM, fines, recall curves), **Pipeline & your data** and **Doctrine & SOPs**. A global region filter applies everywhere; light and dark follow the system or a toggle.
+
+Built in TypeScript with Next.js (static export), Tailwind, ECharts, KaTeX and DuckDB-WASM, following the structure of a production browser-tools app: self-hosted WASM assets copied at build time, Vitest for the maths, ESLint and type-checking in CI, deployed to GitHub Pages by [`pages.yml`](.github/workflows/pages.yml). The Python package still ships a local Streamlit view (`fleetkpi serve`) for teams that prefer it.
 
 | | |
 |---|---|
 | ![Workshop](docs/workshop-dark.jpg) | ![Fleet & assets](docs/fleet-assets-dark.jpg) |
-| ![Compliance](docs/compliance-dark.jpg) | ![Weekly heatmap](docs/heatmap-light.jpg) |
 
 **Eight SOPs** (data onboarding, weekly review, site intervention, recalls, PM compliance, month-end cost, registration, insurance & fines, customer recovery & goodwill) carry an owner, cadence, trigger and checklist, and go *Active* automatically when the data trips their trigger.
 
@@ -137,22 +180,25 @@ Eight pages, all charts: KPI tiles with sparklines and deltas, gauges against ta
 
 ## Quality
 
-- **20 SQL data tests** and **34 SQL validation rules** run inside every build, including the clock identity (fleet = workshop + pick-up + back to operations on every work order).
-- **15 Python tests** (`pytest`): the demo end to end; a foreign-format fleet (Excel, its own column names, `dd/mm` dates, monthly usage, no optional tables) that must plug in with mapping only; bad data blocked with the right reasons; dependency order and layer rules.
-- **CI** on Python 3.10 and 3.12, plus a Docker build that runs the demo inside the image.
+- **22 SQL data tests** and **34 SQL validation rules** run inside every build, in Python and in the browser alike, including the clock identity on every work order (`t18`) and the metric-network identities on every region-month (`t21`).
+- **20 TypeScript tests** (Vitest): every statistical routine against R / scipy / statsmodels reference values; the network is a DAG; aggregation keeps identities exact; zero lever change returns the baseline; non-significant drivers are never propagated.
+- **16 Python tests** (`pytest`): the demo end to end; a foreign-format fleet (Excel, its own column names, `dd/mm` dates, monthly usage, no optional tables) that must plug in with mapping only; bad data blocked with the right reasons; dependency order and layer rules; the web export runs exactly the package's SQL.
+- **CI** on Python 3.10 and 3.12, the web app (lint, type-check, tests, build), and a Docker build that runs the demo inside the image.
 
 ## Repository map
 
 | Path | What lives there |
 |---|---|
 | [`fleetkpi/sql/`](fleetkpi/sql) | The warehouse: macros, validation rules, staging → intermediate → marts, data tests, demo generator |
-| [`fleetkpi/app/`](fleetkpi/app) | The Streamlit dashboard: pages, design system, light/dark theme |
+| [`web/`](web) | The dashboard: Next.js + TypeScript, DuckDB-WASM engine (`src/lib/engine.ts`), statistics (`src/lib/stats.ts`), metric network (`src/lib/metrics.ts`), pages (`src/app/`) |
+| `fleetkpi/webexport.py` | Exports the SQL (models in run order, rules, tests, ingest expressions, settings) and the demo fleet for the browser |
+| [`fleetkpi/app/`](fleetkpi/app) | The local Streamlit view (`fleetkpi serve`) |
 | [`fleetkpi/sops/`](fleetkpi/sops) | Eight SOPs, each with owner, cadence, trigger and checklist |
 | `fleetkpi/*.py` | `cli` commands · `contract` (tables, columns, synonyms) · `ingest` (read + normalise) · `validate` · `sqlrunner` (dbt-style runner) · `build` (eight stages) · `config` (`fleet.yml`) · `demo` |
 | `fleetkpi/fleet.example.yml` | Every setting and green/amber/red target, commented |
 | [`docs/`](docs) | The doctrine, the generated SQL catalog and data contract, screenshots |
 | [`tests/`](tests) | Python tests: the demo end to end, a foreign-format fleet, bad data, the runner |
-| `Dockerfile`, `.github/workflows/` | Container image and CI (Python 3.10 and 3.12, plus a Docker build) |
+| `Dockerfile`, `.github/workflows/` | Container image, CI (Python, web, Docker) and the GitHub Pages deploy |
 
 ---
 
