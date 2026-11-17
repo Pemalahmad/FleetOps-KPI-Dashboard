@@ -1,0 +1,32 @@
+[build-system]
+requires = ["hatchling>=1.24"]
+build-backend = "hatchling.build"
+
+[project]
+name = "fleetkpi"
+version = "0.2.0"
+description = "Plug-and-play fleet KPI warehouse and gamified dashboard for electric, hybrid and combustion fleets."
+readme = "README.md"
+license = { text = "MIT" }
+authors = [{ name = "Mohammad Alahmad" }]
+requires-python = ">=3.10"
+dependencies = [
+    "duckdb>=1.1",
+    "streamlit>=1.40",
+    "plotly>=5.24",
+    "pandas>=2.2",
+    "pyyaml>=6.0",
+    "openpyxl>=3.1",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8"]
+
+[project.scripts]
+fleetkpi = "fleetkpi.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["fleetkpi"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

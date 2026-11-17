@@ -1,0 +1,81 @@
+# fleetkpi configuration: one file, everything tunable.
+# Copy this next to your data, edit, then run:  fleetkpi build && fleetkpi serve
+
+fleet:
+  name: "My Fleet"
+  currency: "USD"
+  planned_operating_hours_per_day: 16     # utilisation denominator
+  snapshot_date: auto                     # "auto" = day after the latest data, or YYYY-MM-DD
+  analysis_start: auto                    # "auto" = first month in usage data, or YYYY-MM-DD
+  kpi_window_months: 3                    # window for energy / cost-per-km / TCO comparisons
+  depreciation_years: 5                   # straight-line, for total cost of ownership
+
+data:
+  input_dir: data/input                   # relative to this file
+  database: data/fleet.duckdb
+  files: {}                               # optional explicit file per table, e.g. vehicles: "Fleet List.xlsx"
+
+# Map YOUR column names to the contract, only where auto-matching is not enough.
+#   mapping:
+#     vehicles:
+#       vehicle_id: "Plate No."
+#       powertrain: "Engine"
+#     work_orders:
+#       opened_at: "Date In"
+mapping: {}
+
+# Translate your codes to contract values, if needed (applied before normalisation).
+#   value_maps:
+#     vehicles.powertrain: {"E": "BEV", "H": "HEV", "P": "ICE"}
+value_maps: {}
+
+energy:
+  default_prices:                         # used only when the energy file has no cost column
+    fuel_per_litre: 0.75
+    electricity_per_kwh: 0.12
+  prices_by_region: {}                    # e.g. KSA: {fuel_per_litre: 0.62, electricity_per_kwh: 0.07}
+  fuel_co2_kg_per_litre:
+    petrol: 2.31
+    diesel: 2.68
+  grid_co2_kg_per_kwh:
+    default: 0.45
+    by_region: {}                         # e.g. KSA: 0.57
+
+maintenance:
+  pm_intervals:                           # preventive maintenance, whichever comes first
+    ICE:  {km: 10000, months: 6}
+    HEV:  {km: 15000, months: 12}
+    PHEV: {km: 15000, months: 12}
+    BEV:  {km: 25000, months: 12}
+  pm_tolerance_pct: 10                    # grace before a vehicle counts as overdue
+
+service:
+  intervene_ratio: 1.5                    # weekly median turnaround > 1.5x network or own trend
+  watch_ratio: 1.2
+  min_weekly_jobs: 8                      # below this a week is LOW VOLUME, not judged
+
+budgets:
+  per_vehicle_month_default: 250          # used when no budgets file is supplied
+  per_region: {}
+
+# Green / amber thresholds. direction: higher = more is better.
+targets:
+  availability_pct:      {green: 98.3, amber: 97.8, direction: higher}
+  utilization_pct:       {green: 70.0, amber: 65.0, direction: higher}
+  turnaround_p50_h:      {green: 24.0, amber: 30.0, direction: lower}
+  first_time_fix_pct:    {green: 93.0, amber: 90.0, direction: higher}
+  cost_vs_budget_pct:    {green: 0.0,  amber: 5.0,  direction: lower}
+  recall_completion_pct: {green: 85.0, amber: 70.0, direction: higher}
+  pm_compliance_pct:     {green: 95.0, amber: 90.0, direction: higher}
+
+gamification:
+  score_weights:                          # site Ops Score out of 1,000
+    turnaround: 0.35
+    first_time_fix: 0.25
+    same_day_release: 0.15
+    pm_compliance: 0.25
+  tiers:                                  # minimum score per tier
+    Platinum: 780
+    Gold: 700
+    Silver: 620
+    Bronze: 0

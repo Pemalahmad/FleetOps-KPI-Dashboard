@@ -1,85 +1,92 @@
-# Fleet & Service Operations KPI Dashboard
+# fleetkpi: plug-and-play fleet operations KPIs
 
-**The questions a regional operations lead has to answer every Monday, built as a SQL warehouse and a live dashboard.**
+**Drop in your fleet's own files — electric, hybrid or combustion — and get a validated KPI warehouse and a gamified operations cockpit, with the full data pipeline and the SOPs behind every flag.**
 
-*Sahra Mobility* is a **fictional** EV fleet operator: 6,500 vehicles across the UAE, KSA, Qatar, Kuwait, Bahrain, Oman and Türkiye, served by 15 company-run service centers. Every row is generated in SQL. **No real company, employer or customer data is used.**
+![CI](https://github.com/Pemalahmad/fleet-ops-kpi-dashboard/actions/workflows/ci.yml/badge.svg)
+![Python](https://img.shields.io/badge/python-3.10%2B-blue)
+![DuckDB](https://img.shields.io/badge/SQL-DuckDB-FFF000?logo=duckdb&logoColor=black)
+![License](https://img.shields.io/badge/license-MIT-green)
 
-![Executive scorecard](docs/executive-scorecard.jpg)
+```bash
+pip install git+https://github.com/Pemalahmad/fleet-ops-kpi-dashboard
+fleetkpi demo my-fleet && cd my-fleet && fleetkpi serve      # 6,500-vehicle demo in ~1 second
+```
+
+![Command Center](docs/command-center.jpg)
 
 ---
 
-## The questions it answers
+## Why it exists
 
-| Question | Where | KPI |
-|---|---|---|
-| Is the fleet on the road? | Executive, Fleet | Availability %, utilization % |
-| Which service center needs me this week? | Service network | Weekly median turnaround vs network, **INTERVENE / WATCH / OK** flag |
-| Is it getting better or worse? | Service network | Last 4 weeks vs the 13 before, per center |
-| Are we fixing it right the first time? | Executive, Service network | First-time-fix %, parts-wait share |
-| Will the regulator be satisfied on recalls? | Recalls | Completion % and cumulative curve per campaign and market |
-| Are we on budget? | Cost | Fleet-paid service cost vs budget, cost per vehicle-month |
-| What is customer-facing right now? | Service network | Open backlog aged over 72h |
+Every fleet team asks the same questions: *Is the fleet on the road? Which workshop needs me this week? What does a kilometre actually cost — electric vs hybrid vs petrol? Are we inside service intervals, on budget, and finished on recalls?* The answers usually live in five systems and a spreadsheet. fleetkpi turns those exports into one trusted set of numbers, and gives the people who act on them a reason to look every day.
 
-Every KPI has a target and a **RAG status** driven from one table (`kpi_targets`). Change a threshold in one place and the whole dashboard follows.
+## Plug and play, for any powertrain
 
-## What the data shows
+| | |
+|---|---|
+| **Your files, your column names** | CSV, Excel, Parquet or JSON. Columns are matched case-insensitively with 180+ synonyms (`Plate No` → `vehicle_id`, `Date In` → `opened_at`); anything else is mapped once in `fleet.yml`. |
+| **Your codes, normalised** | `Electric`, `EV`, `Plug-in Hybrid`, `Petrol`, `Diesel` → BEV / PHEV / HEV / ICE. `Oil service`, `Breakdown`, `Accident repair` → standard job types. Dates in `dd/mm/yyyy` and amounts like `1,250.00` just work. |
+| **Only four tables required** | `sites`, `vehicles`, `work_orders`, `usage`. Add `energy`, `recalls`, `budgets` when you have them; missing optional tables simply hide their sections. |
+| **Plain-language validation** | Bad data never crashes a load. It is reported — *"Work order for a vehicle not in vehicles (3), e.g. WO123 → GHOST-1"* — and errors block publishing so nobody acts on wrong numbers. |
+| **One settings file** | Currency, operating hours, fuel & electricity prices, CO₂ factors by region, service intervals per powertrain, budgets, targets and scoring weights: all in `fleet.yml`. |
 
-The synthetic network carries two operating stories. The dashboard is judged on whether it catches them, and `scripts/check.py` asserts that it does.
+```bash
+fleetkpi init my-fleet     # fleet.yml + 8 CSV templates + DATA_CONTRACT.md
+# put your exports in my-fleet/data/input/
+fleetkpi validate          # what's wrong with my data, in plain language
+fleetkpi build             # run the pipeline
+fleetkpi serve             # open the dashboard
+```
 
-**1. Riyadh North: a crisis caught, and a recovery confirmed.** From March 2026 a parts shortage plus technician attrition pushes median turnaround from ~19h to 40–110h. The center is flagged **INTERVENE for 18 consecutive weeks**, KSA cost overshoots budget, and availability drops. After the July intervention, turnaround falls back below the network median (~17h) and stays there.
+Or with Docker (mount a project folder; an empty folder starts the demo):
 
-![Service network heatmap](docs/service-network-heatmap.jpg)
+```bash
+docker build -t fleetkpi .
+docker run -p 8501:8501 -v "$PWD/my-fleet:/fleet" fleetkpi
+```
 
-**2. Istanbul Asia: a turnaround.** It underperforms until October 2025: long queues, frequent repeat visits. After the turnaround, median turnaround falls from ~33h to ~17h (**about 48% faster**) and the repeat-visit rate drops.
+## What you get
 
-![Riyadh North drill-down](docs/riyadh-north-drilldown.jpg)
+| Page | What it answers |
+|---|---|
+| **Command Center** | KPI cards, **missions** (regions on target per KPI), *What needs attention* — every item tagged with the SOP that handles it — and a RAG region scorecard. |
+| **Leaderboard** | Site **Ops Score** (0–1,000), Platinum/Gold/Silver/Bronze tiers, rank movement, clean-week streaks, badges (*Clean Quarter, Fix It Once, Speed Benchmark, PM Perfect, Backlog Zero, Comeback*) and movers. |
+| **Service Network** | Weekly turnaround heatmap with **INTERVENE / WATCH** flags, site drill-down, site scorecard, preventive-maintenance compliance by powertrain, aged backlog. |
+| **Energy & TCO** | Cost per km by powertrain (energy + maintenance + depreciation), L/100km and kWh/100km, CO₂ g/km, trends, and the most expensive vehicles per km. |
+| **Recalls & Cost** | Campaign completion and curves; fleet-paid maintenance vs budget by region and month. |
+| **Pipeline** | All six stages with status and timings, **data lineage** from your files to every page, contract coverage, validation findings, quality gate, the SQL itself — and a *Run pipeline now* button. |
+| **SOPs** | Six procedures (data onboarding, weekly review, service-center intervention, recalls, PM compliance, month-end cost & TCO) with owner, cadence, trigger, **live “Active” status** from the data, and interactive checklists. |
 
-## How it's built
+| | |
+|---|---|
+| ![Leaderboard](docs/leaderboard.jpg) | ![Energy & TCO](docs/energy-tco.jpg) |
+| ![Pipeline](docs/pipeline.jpg) | ![SOPs](docs/sops.jpg) |
+
+![Service network](docs/service-network.jpg)
+
+## The pipeline
 
 ```mermaid
 flowchart LR
-    S["sql/seed<br/>synthetic data, generated in SQL<br/>(hash-based, fully reproducible)"] --> W[("DuckDB<br/>warehouse")]
-    W --> M["sql/models<br/>KPI views:<br/>fleet · service network · recalls<br/>cost · executive scorecard"]
-    M --> C["scripts/check.py<br/>12 data-quality & logic checks"]
-    M --> A["Streamlit app<br/>reads the views, nothing else"]
+    F["Your files<br/>CSV · Excel · Parquet"] --> I["1 Ingest"] --> M["2 Map &<br/>standardise"] --> V["3 Validate"]
+    V -- errors --> X["Blocked:<br/>report published,<br/>last good data kept"]
+    V -- ok --> MO["4 Model<br/>9 SQL files · 26 views"] --> Q["5 Quality gate"] --> P["6 Publish<br/>atomic swap"] --> D["Dashboard"]
 ```
 
-- **SQL-first.** All logic lives in `sql/models/*.sql`: window functions for baselines and trailing averages, `FILTER` aggregates for period comparisons, and a `rag()` macro for status. The app only renders what the views return.
-- **Reproducible.** Randomness is hash-based, so every build yields byte-identical data. The full warehouse builds in under a second.
-- **Tested.** `scripts/check.py` checks referential and temporal integrity (no job before a vehicle entered service, no center serving before it opened, recall completions ≤ affected vehicles), and that both planted stories are detected.
+All KPI logic is SQL (`fleetkpi/sql/models/`): window functions for baselines and trends, `FILTER` aggregates for period comparisons, region-aware price and CO₂ lookups, and a `rag()` macro driven by your targets. The app only renders the views.
 
-| File | What it does |
-|---|---|
-| `sql/seed/00_generate.sql` | Markets, centers, vehicles, vehicle-months, service jobs, recall campaigns |
-| `sql/models/00_conventions.sql` | Snapshot date, KPI targets, `rag()` macro |
-| `sql/models/10_fleet_monthly.sql` | Availability and utilization by market and month |
-| `sql/models/20_service_network.sql` | Weekly center KPIs with INTERVENE flags, center scorecard, aged backlog |
-| `sql/models/30_recalls.sql` | Campaign completion and cumulative completion curves |
-| `sql/models/40_cost.sql` | Fleet-paid cost vs budget, cost per vehicle-month |
-| `sql/models/90_exec_scorecard.sql` | One row per market: every KPI, its RAG, its trend |
+## The demo fleet
 
-## Run it
+*Sahra Mobility* is **fictional**: 6,500 vehicles (45% BEV, 25% HEV, 10% PHEV, 20% ICE) across the UAE, KSA, Qatar, Kuwait, Bahrain, Oman and Türkiye, 15 workshops, 18 months. It is generated in SQL, exported to ordinary contract files, and loaded back through the same path as a customer's data. Two operating stories are planted, and the tests require the dashboard to catch them: a **Riyadh North** parts-and-attrition crisis (18 INTERVENE weeks, then a +103-point comeback on the leaderboard) and an **Istanbul Asia** turnaround.
 
-```bash
-python -m venv .venv && source .venv/bin/activate
-pip install -r requirements.txt
-make build     # generate data + build KPI views  (data/fleet.duckdb)
-make check     # 12 data-quality and logic checks
-make app       # dashboard on http://localhost:8501
-```
+On the demo, the all-in cost per km comes out as electric **0.169**, hybrid **0.176**, plug-in hybrid **0.189**, combustion **0.220** (USD), with 90 vs 239 g CO₂/km. These come from the synthetic inputs, so treat them as an illustration of the method, not a market benchmark.
 
-## KPI definitions
+## Quality
 
-| KPI | Definition |
-|---|---|
-| Availability % | 1 − workshop vehicle-hours ÷ vehicle-hours in service |
-| Utilization % | Active hours ÷ (days in service × 16 planned operating hours) |
-| Turnaround (p50) | Median hours from job open to vehicle released (queue + labour + parts wait) |
-| First-time fix % | Share of jobs with no repeat visit for the same issue |
-| INTERVENE | A complete week where a center's median turnaround exceeds 1.5× the network median or 1.5× its own trailing 4-week level |
-| Cost vs budget % | Fleet-paid service cost ÷ (vehicle-months × budget per vehicle-month) − 1. Warranty and recall work is OEM-paid and excluded |
-| Recall completion % | Affected vehicles with a closed recall job ÷ affected vehicles, for campaigns launched at least 8 weeks earlier |
+- **11 tests** (`pytest`): the demo end to end; a foreign-format fleet (Excel, own column names, `dd/mm` dates, free-text codes, no optional tables) that must plug in with mapping only; bad data that must be blocked with the right reasons; auto-synonym mapping; `init`.
+- **CI** on Python 3.10 and 3.12, plus a Docker build that runs the demo inside the image.
+- **Deterministic**: hash-based demo data, so every build is identical.
 
 ---
 
-Built by [Mohammad Alahmad](https://linkedin.com/in/pemalahmad) with Claude Code. The structure mirrors how I ran operations analytics for a multi-market EV network; the data and the company are invented.
+Built by [Mohammad Alahmad](https://linkedin.com/in/pemalahmad) with Claude Code. The structure mirrors how I ran operations analytics for a multi-market EV network; the demo company and its data are invented. MIT licensed.

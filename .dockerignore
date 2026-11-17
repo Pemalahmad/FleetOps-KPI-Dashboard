@@ -1,0 +1,8 @@
+.venv
+.git
+data
+docs
+tests
+.omc
+__pycache__
+*.duckdb

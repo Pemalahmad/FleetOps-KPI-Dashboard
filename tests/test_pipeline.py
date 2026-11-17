@@ -1,0 +1,180 @@
+"""End-to-end tests: the demo fleet, a foreign-format customer fleet, and bad data."""
+from __future__ import annotations
+
+from pathlib import Path
+
+import duckdb
+import pandas as pd
+import pytest
+
+from fleetkpi import build, config, demo
+
+
+def _db(result):
+    return duckdb.connect(str(result.database), read_only=True)
+
+
+# ------------------------------------------------------------------ demo fleet
+@pytest.fixture(scope="module")
+def demo_build(tmp_path_factory):
+    root = tmp_path_factory.mktemp("demo")
+    cfg_path = demo.generate(root)
+    return build.run(config.load(cfg_path))
+
+
+def test_demo_pipeline_all_stages_pass(demo_build):
+    assert demo_build.ok
+    assert [s.stage for s in demo_build.stages] == [
+        "Ingest", "Map & standardise", "Validate", "Model", "Quality gate", "Publish"]
+    assert all(s.status == "ok" for s in demo_build.stages), [(s.stage, s.status, s.detail) for s in demo_build.stages]
+
+
+def test_demo_covers_every_powertrain(demo_build):
+    con = _db(demo_build)
+    pts = {r[0] for r in con.execute("SELECT powertrain FROM powertrain_kpis").fetchall()}
+    assert pts == {"BEV", "PHEV", "HEV", "ICE"}
+    # Physics sanity: electric is cheapest per km on energy and lowest CO2; combustion highest.
+    e = dict(con.execute("SELECT powertrain, energy_cost_per_km FROM powertrain_kpis").fetchall())
+    c = dict(con.execute("SELECT powertrain, co2_g_per_km FROM powertrain_kpis").fetchall())
+    assert e["BEV"] < e["HEV"] < e["ICE"]
+    assert c["BEV"] < c["HEV"] < c["ICE"]
+
+
+def test_demo_detects_riyadh_north_crisis_and_recovery(demo_build):
+    con = _db(demo_build)
+    crisis, after = con.execute("""
+        SELECT count(*) FILTER (WHERE status = 'INTERVENE' AND wk BETWEEN DATE '2026-03-01' AND DATE '2026-06-30'),
+               count(*) FILTER (WHERE status = 'INTERVENE' AND wk >= DATE '2026-08-01')
+        FROM center_weekly WHERE site_name = 'Riyadh North'""").fetchone()
+    assert crisis >= 10 and after == 0
+
+
+def test_demo_detects_istanbul_turnaround(demo_build):
+    con = _db(demo_build)
+    before, after = con.execute("""
+        SELECT avg(p50_turnaround_h) FILTER (WHERE wk < DATE '2025-10-01' AND status <> 'LOW VOLUME'),
+               avg(p50_turnaround_h) FILTER (WHERE wk >= DATE '2025-11-01')
+        FROM center_weekly WHERE site_name = 'Istanbul Asia (Tuzla)'""").fetchone()
+    assert after <= 0.7 * before
+
+
+def test_demo_gamification_is_complete(demo_build):
+    con = _db(demo_build)
+    lb = con.execute("SELECT * FROM leaderboard").df()
+    assert len(lb) == 15
+    assert lb.ops_score.between(0, 1000).all()
+    assert lb.tier.notna().all()
+    assert lb["rank"].min() == 1
+
+
+def test_demo_pm_compliance_by_powertrain_interval(demo_build):
+    con = _db(demo_build)
+    rows = con.execute("SELECT DISTINCT powertrain, interval_km FROM pm_status ORDER BY 1").fetchall()
+    assert dict(rows) == {"BEV": 25000, "HEV": 15000, "ICE": 10000, "PHEV": 15000}
+
+
+# ------------------------------------------------- a customer's own export format
+def _write_foreign_fleet(root: Path) -> Path:
+    """A small fleet exported by some other system: own column names, Excel, dd/mm dates, free-text codes."""
+    inp = root / "data" / "input"
+    inp.mkdir(parents=True)
+    pd.DataFrame({
+        "Branch Code": ["B1", "B2"], "Branch": ["North Depot", "South Depot"], "Country": ["Egypt", "Egypt"],
+        "Mechanics": [4, 3],
+    }).to_excel(inp / "sites.xlsx", index=False)
+    plates = [f"CAI-{i:03d}" for i in range(1, 9)]
+    pd.DataFrame({
+        "Plate No": plates,
+        "Engine": ["Electric", "Electric", "Plug-in Hybrid", "Hybrid", "Petrol", "Diesel", "petrol", "EV"],
+        "Base": ["B1", "B1", "B2", "B2", "B1", "B2", "B1", "B2"],
+        "Commission Date": ["01/01/2025"] * 8,
+        "Price": ["40,000", "40,000", "36,000", "30,000", "25,000", "28,000", "25,000", "41,000"],
+    }).to_excel(inp / "vehicles.xlsx", index=False)
+    months = pd.date_range("2025-01-01", "2025-06-01", freq="MS")
+    pd.DataFrame([{"Plate No": p, "Month": m.strftime("%d/%m/%Y"), "Mileage": 3000, "Engine Hours": 200}
+                  for p in plates for m in months]).to_csv(inp / "usage.csv", index=False)
+    jobs = []
+    for i, p in enumerate(plates):
+        for k, m in enumerate(months):
+            jobs.append({"Job Number": f"J{i}{k}", "Plate No": p, "Workshop ID": "B1" if i % 2 == 0 else "B2",
+                         "Service Type": ["Oil service", "Breakdown", "Accident repair", "Tyre change", "Routine service", "Warranty claim"][k],
+                         "Date In": (m + pd.Timedelta(days=3)).strftime("%d/%m/%Y 09:00"),
+                         "Date Out": (m + pd.Timedelta(days=4)).strftime("%d/%m/%Y 15:00"),
+                         "Invoice Total": "1,250.00" if k == 2 else "180"})
+    pd.DataFrame(jobs).to_csv(inp / "work_orders.csv", index=False)
+    (root / "fleet.yml").write_text(
+        "fleet: {name: 'Cairo pilot', currency: EGP}\n"
+        "mapping:\n"
+        "  vehicles: {powertrain: Engine, home_site_id: Base, in_service_date: 'Commission Date'}\n"
+        "  sites: {site_id: 'Branch Code', site_name: Branch}\n"
+        "  usage: {date: Month, operating_hours: 'Engine Hours'}\n"
+        "  work_orders: {site_id: 'Workshop ID', job_type: 'Service Type', opened_at: 'Date In', closed_at: 'Date Out', total_cost: 'Invoice Total'}\n")
+    return root / "fleet.yml"
+
+
+def test_foreign_format_fleet_plugs_in(tmp_path):
+    result = build.run(config.load(_write_foreign_fleet(tmp_path)))
+    assert result.ok, build.summary(result)
+    assert not [i for i in result.issues if i.severity == "error"]
+    con = _db(result)
+    # powertrain words normalised
+    pts = dict(con.execute("SELECT powertrain, count(*) FROM vehicles GROUP BY 1").fetchall())
+    assert pts == {"BEV": 3, "PHEV": 1, "HEV": 1, "ICE": 3}
+    assert con.execute("SELECT fuel_type FROM vehicles WHERE vehicle_id = 'CAI-006'").fetchone()[0] == "diesel"
+    # job types normalised from free text
+    jt = {r[0] for r in con.execute("SELECT DISTINCT job_type FROM work_orders").fetchall()}
+    assert jt == {"Preventive maintenance", "Repair", "Collision", "Tyres", "Warranty"}
+    # dd/mm dates and "1,250.00" parsed
+    assert con.execute("SELECT max(total_cost) FROM work_orders").fetchone()[0] == 1250.0
+    assert con.execute("SELECT min(in_service_date) FROM vehicles").fetchone()[0].isoformat() == "2025-01-01"
+    # optional tables absent -> views exist and are empty, scorecard still produced
+    assert con.execute("SELECT count(*) FROM recall_completion").fetchone()[0] == 0
+    assert con.execute("SELECT count(*) FROM exec_scorecard").fetchone()[0] == 1
+    assert con.execute("SELECT value FROM cfg_settings WHERE key = 'currency'").fetchone()[0] == "EGP"
+
+
+# ------------------------------------------------------------------ bad data
+def test_synonyms_auto_map_without_config(tmp_path):
+    """'Base' is a known synonym for home_site_id: no mapping entry needed."""
+    cfg_path = _write_foreign_fleet(tmp_path)
+    cfg_path.write_text(cfg_path.read_text().replace("home_site_id: Base, ", ""))
+    result = build.run(config.load(cfg_path))
+    assert result.ok
+    vehicles = next(ld for ld in result.loads if ld.table == "vehicles")
+    assert vehicles.mapped["home_site_id"] == "Base"
+
+
+def test_validation_blocks_bad_data(tmp_path):
+    cfg_path = _write_foreign_fleet(tmp_path)
+    inp = tmp_path / "data" / "input"
+    wo = pd.read_csv(inp / "work_orders.csv", dtype=str)
+    wo.loc[0, "Plate No"] = "GHOST-1"                          # unknown vehicle
+    wo.loc[1, "Date Out"] = "01/01/2024 09:00"                 # closed before opened
+    wo = pd.concat([wo, wo.iloc[[2]]])                          # duplicate job number
+    wo.to_csv(inp / "work_orders.csv", index=False)
+    result = build.run(config.load(cfg_path))
+    assert not result.ok
+    checks = {i.check for i in result.issues if i.severity == "error"}
+    assert "Work order for a vehicle not in vehicles" in checks
+    assert "Closed before it was opened" in checks
+    assert "Duplicate work_order_id" in checks
+    assert next(s for s in result.stages if s.stage == "Validate").status == "blocked"
+
+
+def test_missing_required_column_is_explained(tmp_path):
+    cfg_path = _write_foreign_fleet(tmp_path)
+    # A column name nothing could guess, and no mapping for it
+    veh = tmp_path / "data" / "input" / "vehicles.xlsx"
+    pd.read_excel(veh, dtype=str).rename(columns={"Base": "Ref 7"}).to_excel(veh, index=False)
+    cfg_path.write_text(cfg_path.read_text().replace("home_site_id: Base, ", ""))
+    result = build.run(config.load(cfg_path), validate_only=True)
+    msgs = [i.check for i in result.issues if i.severity == "error"]
+    assert any("Required column 'home_site_id' not found" in m for m in msgs)
+
+
+def test_init_creates_templates_and_contract(tmp_path):
+    from fleetkpi.cli import main
+    assert main(["init", str(tmp_path)]) == 0
+    assert (tmp_path / "fleet.yml").exists()
+    assert (tmp_path / "DATA_CONTRACT.md").read_text().startswith("# fleetkpi data contract")
+    assert len(list((tmp_path / "templates").glob("*.csv"))) == 8
