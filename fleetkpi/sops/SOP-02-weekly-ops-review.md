@@ -18,6 +18,7 @@ One rhythm that turns the dashboard into decisions: what moved, why, who acts, b
 - [ ] Check **PM compliance**. If below target, open SOP-05.
 - [ ] Note any recall campaign below target and hand it to SOP-04.
 - [ ] Publish three actions with owners and dates in the team channel.
+- [ ] Three clocks: on Customer → The three clocks, find any region where time to pick up or back to operations is off target; agree a key-back time with the customer at key-in, and a driver or dispatcher for every vehicle marked ready.
 
 ## Exit criteria
 Every red item has a named owner and a date; actions published.
