@@ -40,7 +40,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       <head>
         <meta httpEquiv="Content-Security-Policy" content={CSP} />
         <meta name="referrer" content="no-referrer" />
-        <meta name="theme-color" content="#006b80" />
+        <meta name="theme-color" content="#6366f1" />
         <link rel="manifest" href={`${BASE}/manifest.webmanifest`} />
         <link rel="icon" href={`${BASE}/icons/icon-192.png`} />
         <link rel="apple-touch-icon" href={`${BASE}/icons/icon-192.png`} />
