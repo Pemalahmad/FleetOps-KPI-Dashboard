@@ -154,15 +154,6 @@ Eight pages, all charts: KPI tiles with sparklines and deltas, gauges against ta
 | [`tests/`](tests) | Python tests: the demo end to end, a foreign-format fleet, bad data, the runner |
 | `Dockerfile`, `.github/workflows/` | Container image and CI (Python 3.10 and 3.12, plus a Docker build) |
 
-## Contributors
-
-| | | |
-|---|---|---|
-| <img src="https://github.com/Pemalahmad.png" width="40"> | **[Mohammad Alahmad](https://github.com/Pemalahmad)** | Author and owner: the KPIs, the operating stories and the Three Clocks Doctrine |
-| <img src="https://github.com/claude.png" width="40"> | **[Claude](https://github.com/claude)** by Anthropic | AI pair programmer via [Claude Code](https://claude.com/claude-code): SQL models, pipeline, tests and dashboard code |
-
-See [CONTRIBUTORS.md](CONTRIBUTORS.md).
-
 ---
 
 Built by [Mohammad Alahmad](https://linkedin.com/in/pemalahmad). The structure mirrors how I ran operations analytics for a multi-market EV network; the demo company and its data are invented. MIT licensed.
