@@ -4,6 +4,7 @@
  * and the pipeline rebuilds from them on every visit.
  */
 import type { VinSpec } from "./vin";
+import { isSealed, newVault, openVault, seal, sealJson, unseal, unsealJson, type Sealed, type VaultHeader } from "./vault";
 
 export interface SavedInput {
   id: string;
@@ -76,35 +77,125 @@ async function tx<T>(store: string, mode: IDBTransactionMode, fn: (s: IDBObjectS
 
 export const emptyWorkspace = (): Workspace => ({ name: "My fleet", inputs: [], documents: [], vinSpecs: {}, updated: new Date().toISOString() });
 
-export async function loadWorkspace(): Promise<Workspace | null> {
+// ---- encryption at rest (see vault.ts) ---------------------------------------------------------------------------
+// When the owner sets a passphrase, the workspace and every file are stored sealed with AES-256-GCM. The key is held
+// only in this module's memory; after a reload the vault is locked until the passphrase is entered again.
+let vaultKey: CryptoKey | null = null;
+
+export type VaultStatus = "none" | "locked" | "unlocked";
+
+const readVault = async () => ((await tx("kv", "readonly", (s) => s.get("vault"))) as VaultHeader | undefined) ?? null;
+
+export async function vaultStatus(): Promise<VaultStatus> {
   try {
-    return ((await tx("kv", "readonly", (s) => s.get("workspace"))) as Workspace | undefined) ?? null;
+    if (!(await readVault())) return "none";
   } catch {
-    return null;   // private mode or storage blocked: the app still works, it just won't remember
+    return "none";
+  }
+  return vaultKey ? "unlocked" : "locked";
+}
+
+/** True when the passphrase was right; the fleet can then be loaded. */
+export async function unlockVault(passphrase: string): Promise<boolean> {
+  const header = await readVault();
+  if (!header) return true;
+  const key = await openVault(header, passphrase);
+  if (key) vaultKey = key;
+  return !!key;
+}
+
+/** Forget the key: the data stays sealed until the passphrase is entered again. */
+export function lockVault() {
+  vaultKey = null;
+}
+
+async function allFileIds(): Promise<string[]> {
+  return ((await tx("files", "readonly", (s) => s.getAllKeys())) as IDBValidKey[]).map(String);
+}
+
+/** Protect the saved fleet with a passphrase: seals the workspace and every stored file. */
+export async function protectWorkspace(passphrase: string): Promise<void> {
+  if (await readVault()) throw new Error("This fleet is already protected.");
+  const ws = await loadWorkspace();
+  const files = await Promise.all((await allFileIds()).map(async (id) => [id, await loadFile(id)] as const));
+  const { header, key } = await newVault(passphrase);
+  // header first: if the tab closes midway, unsealed and sealed records are both still readable with the key
+  await tx("kv", "readwrite", (s) => s.put(header, "vault"));
+  vaultKey = key;
+  for (const [id, blob] of files) if (blob) await saveFile(id, blob);
+  if (ws) await saveWorkspace(ws);
+}
+
+/** Remove the passphrase (vault must be unlocked): stores everything unsealed again. */
+export async function unprotectWorkspace(): Promise<void> {
+  if (!vaultKey) throw new Error("Unlock the fleet first.");
+  const ws = await loadWorkspace();
+  const files = await Promise.all((await allFileIds()).map(async (id) => [id, await loadFile(id)] as const));
+  // write everything unsealed first, then drop the header, so nothing is ever left sealed without a way to open it
+  for (const [id, blob] of files) if (blob) await tx("files", "readwrite", (s) => s.put(blob, id));
+  if (ws) await tx("kv", "readwrite", (s) => s.put({ ...ws, updated: new Date().toISOString() }, "workspace"));
+  await tx("kv", "readwrite", (s) => s.delete("vault"));
+  vaultKey = null;
+}
+
+class VaultLocked extends Error {
+  constructor() {
+    super("Your fleet data is locked. Enter the passphrase on the Plan & offline page.");
   }
 }
 
+/** Never write unsealed data over a protected fleet. */
+async function writeKey(): Promise<CryptoKey | null> {
+  if (vaultKey) return vaultKey;
+  if (await readVault()) throw new VaultLocked();
+  return null;
+}
+
+export async function loadWorkspace(): Promise<Workspace | null> {
+  let raw: unknown;
+  try {
+    raw = await tx("kv", "readonly", (s) => s.get("workspace"));
+  } catch {
+    return null;   // private mode or storage blocked: the app still works, it just won't remember
+  }
+  if (!raw) return null;
+  if (!isSealed(raw)) return raw as Workspace;
+  if (!vaultKey) return null;   // locked: the caller checks vaultStatus()
+  return unsealJson<Workspace>(vaultKey, raw);
+}
+
 export async function saveWorkspace(ws: Workspace): Promise<void> {
-  await tx("kv", "readwrite", (s) => s.put({ ...ws, updated: new Date().toISOString() }, "workspace"));
+  const key = await writeKey();
+  const value = { ...ws, updated: new Date().toISOString() };
+  const stored = key ? await sealJson(key, value) : value;
+  await tx("kv", "readwrite", (s) => s.put(stored, "workspace"));
 }
 
 export async function saveFile(id: string, blob: Blob): Promise<void> {
-  await tx("files", "readwrite", (s) => s.put(blob, id));
+  const key = await writeKey();
+  const stored = key ? await seal(key, await blob.arrayBuffer(), blob.type) : blob;
+  await tx("files", "readwrite", (s) => s.put(stored, id));
 }
 
 export async function loadFile(id: string): Promise<Blob | null> {
-  return ((await tx("files", "readonly", (s) => s.get(id))) as Blob | undefined) ?? null;
+  const raw = (await tx("files", "readonly", (s) => s.get(id))) as Blob | Sealed | undefined;
+  if (!raw) return null;
+  if (!isSealed(raw)) return raw;
+  if (!vaultKey) throw new VaultLocked();
+  return new Blob([await unseal(vaultKey, raw)], { type: raw.type ?? "" });
 }
 
 export async function deleteFile(id: string): Promise<void> {
   await tx("files", "readwrite", (s) => s.delete(id));
 }
 
+/** Delete everything, including the passphrase protection (also the way out of a forgotten passphrase). */
 export async function clearWorkspace(): Promise<void> {
   await tx("kv", "readwrite", (s) => s.clear());
   await tx("files", "readwrite", (s) => s.clear());
   // Procedure notes can contain fleet references too; include them in the delete-data action.
   for (const key of Object.keys(localStorage)) if (key.startsWith("fleetops:sop:")) localStorage.removeItem(key);
+  vaultKey = null;
 }
 
 /** Ask the browser not to evict the fleet's data under storage pressure. */

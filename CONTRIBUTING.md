@@ -31,6 +31,8 @@ Run what CI runs; a pull request can only merge into `main` when all of it passe
 pytest -q                                # Python: pipeline, rules, licence keys
 cd web
 npm run lint && npm run typecheck && npm test && npm run build
+npx playwright install chromium          # once
+npm run test:e2e                         # security tests against the build
 ```
 
 - **SQL** lives in `fleetkpi/sql/`. It runs both in Python DuckDB and in DuckDB-WASM in the browser, so write it for
@@ -39,7 +41,8 @@ npm run lint && npm run typecheck && npm test && npm run build
   Regenerate the catalog with `fleetkpi docs`.
 - **New import format?** Add a test with a small synthetic file to `web/src/lib/` or `tests/`.
 - **Privacy:** fleet data never leaves the browser. Do not add analytics, trackers, or calls to outside services;
-  the Content Security Policy in `web/src/app/layout.tsx` will block them anyway.
+  the Content Security Policy (written by `web/scripts/postbuild.mjs`) blocks them, and the e2e tests fail on any
+  request to another site. Never add inline `<script>` tags by hand or `'unsafe-inline'` for scripts.
 - Keep commits small, with a message saying what changed and why.
 
 ## Security issues

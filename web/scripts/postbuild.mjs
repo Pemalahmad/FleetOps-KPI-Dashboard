@@ -30,6 +30,43 @@ const hash = createHash("sha256");
 for (const f of files.sort()) hash.update(f).update(readFileSync(join(out, f)));
 const version = hash.digest("hex").slice(0, 12);
 
+// Content Security Policy, written into every page as the first element of <head>. Scripts: this site plus the SHA-256
+// of each inline bootstrap script on that page, so any script injected later is refused. Workers, WASM, fonts and
+// data come from this site only; the one outside connection allowed is NHTSA's VIN decoder, used only when the owner
+// clicks "Decode". Even injected code could not send fleet data anywhere else.
+const policy = (hashes) => [
+  "default-src 'self'",
+  `script-src 'self' ${hashes.join(" ")} 'wasm-unsafe-eval'`,
+  "style-src 'self' 'unsafe-inline'",
+  "img-src 'self' data: blob:",
+  "font-src 'self' data:",
+  "connect-src 'self' blob: data: https://vpic.nhtsa.dot.gov",
+  "worker-src 'self' blob:",
+  "object-src 'none'",
+  "base-uri 'self'",
+  "form-action 'none'",
+  "frame-src 'self' blob:",
+].join("; ");
+
+const pages = files.filter((x) => x.endsWith(".html"));
+let hashed = 0;
+for (const f of pages) {
+  const p = join(out, f);
+  const html = readFileSync(p, "utf8");
+  if (html.includes("Content-Security-Policy")) throw new Error(`postbuild: ${f} already has a policy; it must come from here only`);
+  const hashes = new Set();
+  for (const m of html.matchAll(/<script(\s[^>]*)?>([\s\S]*?)<\/script>/g)) {
+    if (/\ssrc=/.test(m[1] ?? "") || !m[2]) continue;
+    hashes.add(`'sha256-${createHash("sha256").update(m[2], "utf8").digest("base64")}'`);
+  }
+  const meta = `<meta http-equiv="Content-Security-Policy" content="${policy([...hashes]).replace(/'/g, "&#x27;")}"/>`;
+  const head = html.indexOf("<head>");
+  if (head < 0) throw new Error(`postbuild: no <head> in ${f}`);
+  writeFileSync(p, html.slice(0, head + 6) + meta + html.slice(head + 6));
+  hashed += hashes.size;
+}
+console.log(`CSP: written into ${pages.length} pages, ${hashed} inline scripts pinned by SHA-256, no 'unsafe-inline' for scripts`);
+
 writeFileSync(join(out, "precache.json"), JSON.stringify({ version, core, ocr }));
 writeFileSync(join(out, "manifest.webmanifest"), JSON.stringify({
   name: "FleetOps KPI", short_name: "FleetOps",

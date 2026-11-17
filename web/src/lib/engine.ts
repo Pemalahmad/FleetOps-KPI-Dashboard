@@ -151,14 +151,22 @@ export class Engine {
   ) {}
 
   static async create(base: string): Promise<Engine> {
-    const worker = new Worker(`${base}/duckdb/duckdb-browser-eh.worker.js`);
+    const abs = (p: string) => new URL(`${base}${p}`, location.href).href;
+    // Start the worker from a blob: a blob worker inherits this page's Content Security Policy, so the engine can only
+    // reach this site (a worker loaded straight from a URL would get no policy on GitHub Pages, which sends no headers).
+    const boot = URL.createObjectURL(new Blob([`importScripts(${JSON.stringify(abs("/duckdb/duckdb-browser-eh.worker.js"))});`],
+      { type: "text/javascript" }));
+    const worker = new Worker(boot);
+    URL.revokeObjectURL(boot);
     const db = new duckdb.AsyncDuckDB(new duckdb.VoidLogger(), worker);
     try {
-      await db.instantiate(`${base}/duckdb/duckdb-eh.wasm`);
+      await db.instantiate(abs("/duckdb/duckdb-eh.wasm"));
+      const conn = await db.connect();
+      // extensions (parquet, json) come from this site's verified copy, never from extensions.duckdb.org
+      await conn.query(`SET custom_extension_repository = '${abs("/duckdb/extensions").replace(/'/g, "''")}'`);
       const response = await fetch(`${base}/engine/manifest.json`);
       if (!response.ok) throw new Error(`SQL engine manifest unavailable (${response.status})`);
       const manifest = (await response.json()) as Manifest;
-      const conn = await db.connect();
       return new Engine(db, conn, manifest, base);
     } catch (error) {
       await db.terminate().catch(() => worker.terminate());

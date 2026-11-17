@@ -27,7 +27,7 @@ const TABLE_LABEL: Record<string, string> = {
 };
 
 export default function ImportPage() {
-  const { engine, workspace, commit, status } = useEngine();
+  const { engine, workspace, commit, status, vault } = useEngine();
   const router = useRouter();
   const [staged, setStaged] = useState<Staged[]>([]);
   const [drag, setDrag] = useState(false);
@@ -84,6 +84,24 @@ export default function ImportPage() {
     }
     XLSX.writeFile(wb, "fleetops-template.xlsx");
   }
+
+  const clearControls = (
+            <div className="mt-4 flex items-center gap-3">
+              {!confirmClear ? (
+                <button onClick={() => setConfirmClear(true)} className="text-[12.5px] text-muted hover:text-bad">Delete my fleet data from this browser…</button>
+              ) : (
+                <>
+                  <span className="text-[12.5px] text-bad">This removes every imported sheet, scanned document and decode from this browser. It cannot be undone.</span>
+                  <button className="rounded-lg bg-bad px-3 py-1.5 text-[12.5px] font-medium text-white" onClick={async () => {
+                    const { clearWorkspace } = await import("@/lib/workspace");
+                    await clearWorkspace();
+                    location.reload();
+                  }}>Delete</button>
+                  <button className="text-[12.5px] text-muted" onClick={() => setConfirmClear(false)}>Cancel</button>
+                </>
+              )}
+            </div>
+  );
 
   return (
     <>
@@ -146,7 +164,12 @@ export default function ImportPage() {
 
       <SectionTitle sub="Saved in this browser only. Re-importing a file with the same name and sheet replaces it.">My fleet data</SectionTitle>
       <Card>
-        {workspace?.inputs.length ? (
+        {vault === "locked" ? (
+          <>
+            <p className="text-[13px] text-muted">Your fleet data is protected and locked. Unlock it with the bar above. If the passphrase is lost, the data cannot be recovered; delete it and import again.</p>
+            {clearControls}
+          </>
+        ) : workspace?.inputs.length ? (
           <>
             <table className="tnum w-full text-[13px]">
               <thead className="text-left text-faint"><tr><th className="py-1 font-medium">Source</th><th className="font-medium">Table</th><th className="text-right font-medium">Rows</th><th className="font-medium">Added</th><th /></tr></thead>
@@ -163,21 +186,7 @@ export default function ImportPage() {
                 </tr>))}
               </tbody>
             </table>
-            <div className="mt-4 flex items-center gap-3">
-              {!confirmClear ? (
-                <button onClick={() => setConfirmClear(true)} className="text-[12.5px] text-muted hover:text-bad">Delete my fleet data from this browser…</button>
-              ) : (
-                <>
-                  <span className="text-[12.5px] text-bad">This removes every imported sheet, scanned document and decode from this browser. It cannot be undone.</span>
-                  <button className="rounded-lg bg-bad px-3 py-1.5 text-[12.5px] font-medium text-white" onClick={async () => {
-                    const { clearWorkspace } = await import("@/lib/workspace");
-                    await clearWorkspace();
-                    location.reload();
-                  }}>Delete</button>
-                  <button className="text-[12.5px] text-muted" onClick={() => setConfirmClear(false)}>Cancel</button>
-                </>
-              )}
-            </div>
+            {clearControls}
           </>
         ) : (
           <p className="text-[13px] text-muted">Nothing imported yet. You are looking at the demo fleet.</p>

@@ -14,22 +14,9 @@ export const metadata: Metadata = {
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
 
-// What the page may load or contact. Scripts, workers, WASM, fonts and data all come from this site; the one outside
-// connection allowed is NHTSA's VIN decoder, used only when the owner clicks "Decode". CSP is defense in depth;
-// same-origin and inline script permissions are not an XSS sandbox.
-const CSP = [
-  "default-src 'self'",
-  "script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval'",
-  "style-src 'self' 'unsafe-inline'",
-  "img-src 'self' data: blob:",
-  "font-src 'self' data:",
-  "connect-src 'self' blob: data: https://vpic.nhtsa.dot.gov",
-  "worker-src 'self' blob:",
-  "object-src 'none'",
-  "base-uri 'self'",
-  "form-action 'none'",
-  "frame-src 'self' blob:",
-].join("; ");
+// The Content Security Policy is written into every page by scripts/postbuild.mjs, after the build, so it can list the
+// SHA-256 of each inline script instead of allowing 'unsafe-inline'. (Rendering it here would let React re-insert the
+// unhashed policy on navigation.)
 
 // Set the theme before paint: saved choice, else the system preference.
 const themeScript = `try{var t=localStorage.getItem('theme');if(t==='dark'||(!t&&matchMedia('(prefers-color-scheme: dark)').matches))document.documentElement.classList.add('dark')}catch(e){}`;
@@ -38,7 +25,6 @@ export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en" className="antialiased" suppressHydrationWarning>
       <head>
-        <meta httpEquiv="Content-Security-Policy" content={CSP} />
         <meta name="referrer" content="no-referrer" />
         <meta name="theme-color" content="#6366f1" />
         <link rel="manifest" href={`${BASE}/manifest.webmanifest`} />

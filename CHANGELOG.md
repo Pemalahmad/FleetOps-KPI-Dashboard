@@ -13,6 +13,16 @@ What changed in each version of FleetOps KPI. Dates are release dates; the newes
   [Functional Source License 1.1, MIT future licence](LICENSE.md). Free for your own fleet, research, teaching and
   client work; not for resale as a competing product. Each release becomes MIT two years after it is published.
   Versions up to 0.5.0 stay MIT.
+- **Security hardening:**
+  - Strict Content Security Policy: inline scripts pinned by SHA-256 at build time, no `'unsafe-inline'` for scripts.
+  - Optional passphrase protection of the saved fleet (AES-256-GCM, PBKDF2 600,000 iterations), with an unlock bar.
+  - The database engine runs in a blob worker covered by the page's policy, and DuckDB's parquet and json extensions
+    are self-hosted with pinned hashes. Before, the engine fetched the parquet extension from extensions.duckdb.org.
+  - Security end-to-end tests in CI (strict CSP on every page, injected script refused, hostile workbook, encryption at
+    rest, OCR under the policy, same-origin requests only).
+  - Signed build provenance for offline packages; GitHub Actions pinned to commit SHAs; installs without package
+    scripts; OpenSSF Scorecard; secret scanning with push protection; private vulnerability reporting.
+- Fixed: a demo build still running could finish after, and replace, the owner's fleet.
 - Sample files in [`samples/`](samples) to try the app in under a minute.
 - Issue templates, contributing guide, changelog.
 

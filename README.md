@@ -3,6 +3,7 @@
 **Every fleet KPI connected in one network: exact identities that hold to the decimal, and measured drivers with standard errors, p-values and confidence intervals. The tested SQL pipeline runs in your browser, on the demo fleet or on your own files.**
 
 [![CI](https://github.com/Pemalahmad/FleetOps-KPI-Dashboard/actions/workflows/ci.yml/badge.svg)](https://github.com/Pemalahmad/FleetOps-KPI-Dashboard/actions/workflows/ci.yml)
+[![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/Pemalahmad/FleetOps-KPI-Dashboard/badge)](https://securityscorecards.dev/viewer/?uri=github.com/Pemalahmad/FleetOps-KPI-Dashboard)
 ![TypeScript](https://img.shields.io/badge/TypeScript-Next.js-3178C6?logo=typescript&logoColor=white)
 ![SQL](https://img.shields.io/badge/SQL-DuckDB_(WASM)-FFF000?logo=duckdb&logoColor=black)
 ![Models](https://img.shields.io/badge/SQL_models-59-6366F1)
@@ -16,7 +17,7 @@ No install, no server, no upload: DuckDB-WASM runs the 59 SQL models and 24 test
 
 **For fleet owners.** Import your vehicle list from Excel (VINs, plates, trims, configurations; exports from Fleetio, Samsara, Motive, Geotab or Verizon Connect are recognised), photograph your registration cards and insurance policies, and get a fleet register with one next action per vehicle. VINs are validated and decoded, documents are read in English and Arabic and matched by VIN or plate, and their expiries drive compliance. Your data stays in your browser. See [FleetOps as fleet software](docs/FLEET_SOFTWARE.md).
 
-**Works offline.** Install it as an app from the browser, or download the [offline package](https://github.com/Pemalahmad/FleetOps-KPI-Dashboard/releases/latest) (Mac, Windows, Linux launchers; runs on `127.0.0.1` only). Renewal reminders export to your calendar; the register exports to Excel. Every feature is free during early access. [Security](SECURITY.md) · [Privacy](PRIVACY.md) · [Changelog](CHANGELOG.md) · [Contributing](CONTRIBUTING.md).
+**Works offline.** Install it as an app from the browser, or download the [offline package](https://github.com/Pemalahmad/FleetOps-KPI-Dashboard/releases/latest) (Mac, Windows, Linux launchers; runs on `127.0.0.1` only). Renewal reminders export to your calendar; the register exports to Excel. An optional passphrase encrypts everything the browser keeps (AES-256). Every feature is free during early access. [Security](SECURITY.md) · [Privacy](PRIVACY.md) · [Changelog](CHANGELOG.md) · [Contributing](CONTRIBUTING.md).
 
 **Try it in 30 seconds.** Download [`samples/fleet-vehicles.xlsx`](samples/fleet-vehicles.xlsx) and drop it on
 **Import**, then drop [`samples/registration-card-sample.png`](samples/registration-card-sample.png) on **Documents**.
@@ -192,7 +193,8 @@ Built in TypeScript with Next.js (static export), Tailwind, ECharts, KaTeX and D
 ## Quality
 
 - **24 SQL data tests** and **41 SQL validation rules** run inside every build, in Python and in the browser alike, including the clock identity on every work order (`t18`) and the metric-network identities on every region-month (`t21`).
-- **70 TypeScript tests** (Vitest): licence keys signed in Python and verified in the browser (forged and expired keys rejected); calendar and Excel exports (formula injection neutralised); every statistical routine against R / scipy / statsmodels reference values; the metric network's identities and propagation; VIN rules and vPIC mapping; workbook reading (title rows, Excel dates, many sheets) and table / column recognition for common fleet-platform exports; document reading (day-first and Arabic-Indic dates, plates, VINs, weighted document typing).
+- **5 security end-to-end tests** (Playwright, production build in a real browser): strict CSP with no violations on every page, an injected script refused, a hostile workbook (XSS and SQL injection) rendered as text, encryption at rest with wrong and right passphrases, and the document reader under the policy, with every request staying on the app's own site.
+- **75 TypeScript tests** (Vitest): encryption at rest (round trip, wrong passphrase, tamper detection, fresh IVs); licence keys signed in Python and verified in the browser (forged and expired keys rejected); calendar and Excel exports (formula injection neutralised); every statistical routine against R / scipy / statsmodels reference values; the metric network's identities and propagation; VIN rules and vPIC mapping; workbook reading (title rows, Excel dates, many sheets) and table / column recognition for common fleet-platform exports; document reading (day-first and Arabic-Indic dates, plates, VINs, weighted document typing).
 - **20 Python tests** (`pytest`): licence signing; the demo end to end; the fleet register and documents (matched by plate, VIN or id; renewed cards move the expiry); VIN macros against reference VINs; a foreign-format fleet (Excel, its own column names, `dd/mm` dates, monthly usage, no optional tables) that must plug in with mapping only; bad data blocked with the right reasons; dependency order and layer rules; the web export runs exactly the package's SQL.
 - **CI** on Python 3.10 and 3.12, the web app (lint, type-check, tests, build), and a Docker build that runs the demo inside the image.
 

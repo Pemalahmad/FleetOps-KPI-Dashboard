@@ -15,8 +15,15 @@
 
 - No accounts, sign-up or email collection.
 - No cookies, analytics, advertising, tracking pixels or third-party scripts.
-- No fonts, libraries or engines loaded from other sites: everything is served from the same place as the app.
+- No fonts, libraries, engines or engine extensions loaded from other sites: everything is served from the same place
+  as the app, and the browser is told to refuse anything else (Content Security Policy, checked on every build).
 - The page sends no referrer to other sites (`no-referrer`).
+
+## On a shared computer
+
+On the **Plan & offline** page you can protect everything FleetOps keeps in the browser with a passphrase. The data
+is then stored encrypted (AES-256); the passphrase is never stored or sent anywhere, and the fleet locks whenever the
+tab is closed or reloaded. Nobody, including the maintainer, can recover the data without the passphrase.
 
 ## The offline package
 

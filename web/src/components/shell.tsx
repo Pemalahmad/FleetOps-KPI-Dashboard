@@ -10,6 +10,7 @@ import {
 import { useTheme } from "./chart";
 import { useEngine } from "./engine-provider";
 import { OfflineRegistration } from "./offline";
+import { UnlockBanner } from "./vault";
 
 const NAV = [
   { group: "Fleet", items: [
@@ -131,7 +132,7 @@ export function Shell({ children }: { children: ReactNode }) {
           </nav>
           <div className="mt-2.5"><Regions /></div>
         </div>
-        <main id="main-content" tabIndex={-1} className="mx-auto max-w-[1480px] px-4 py-8 md:px-8">{children}</main>
+        <main id="main-content" tabIndex={-1} className="mx-auto max-w-[1480px] px-4 py-8 md:px-8"><UnlockBanner />{children}</main>
       </div>
     </div>
   );

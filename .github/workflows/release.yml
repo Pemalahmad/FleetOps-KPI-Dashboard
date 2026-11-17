@@ -7,17 +7,21 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: write       # create the release and upload the package
+  id-token: write       # sign the build provenance (Sigstore)
+  attestations: write   # store it on GitHub
 
 jobs:
   offline-package:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.12"
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: 22
           cache: npm
@@ -26,7 +30,11 @@ jobs:
         run: pip install -e . && fleetkpi web-export --out web/public
       - name: Test and package
         working-directory: web
-        run: npm ci && npm test && bash scripts/package-offline.sh "${GITHUB_REF_NAME#v}"
+        run: npm ci --ignore-scripts && npm test && bash scripts/package-offline.sh "${GITHUB_REF_NAME#v}"
+      - name: Build provenance attestation (proves the zip was built here, from this commit)
+        uses: actions/attest-build-provenance@e8998f949152b193b063cb0ec769d69d929409be # v2.4.0
+        with:
+          subject-path: web/dist/FleetOps-offline-*.zip
       - name: Publish the release
         env:
           GH_TOKEN: ${{ github.token }}
@@ -34,5 +42,5 @@ jobs:
           TAG="${GITHUB_REF_NAME}"
           [ "${GITHUB_REF_TYPE}" = "tag" ] || TAG="offline-$(date +%Y%m%d-%H%M)"
           gh release view "$TAG" >/dev/null 2>&1 || gh release create "$TAG" --title "FleetOps $TAG" \
-            --notes "Offline package: unzip, then run the launcher for your system (see README.txt inside). Verify with SHA256SUMS.txt."
+            --notes "Offline package: unzip, then run the launcher for your system (see README.txt inside). Verify with SHA256SUMS.txt, or check where it was built: gh attestation verify <zip> -R Pemalahmad/FleetOps-KPI-Dashboard"
           gh release upload "$TAG" web/dist/FleetOps-offline-*.zip web/dist/SHA256SUMS.txt --clobber

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { CheckCircle, DownloadSimple, Key, LockSimpleOpen, ShieldCheck, WifiSlash } from "@phosphor-icons/react";
 import { cacheDocumentReader, useInstallPrompt } from "@/components/offline";
+import { ProtectCard } from "@/components/vault";
 import { Card, PageHeader, SectionTitle } from "@/components/ui";
 import { currentEntitlement, PLAN_FEATURES, saveKey, type Entitlement } from "@/lib/license";
 
@@ -63,6 +64,7 @@ export default function PlanPage() {
           </div>
           {keyMsg && <p className="mt-2 text-[12.5px]" style={{ color: keyMsg.ok ? "var(--good)" : "var(--bad)" }}>{keyMsg.text}</p>}
         </Card>
+        <ProtectCard />
       </div>
 
       <SectionTitle sub="Three ways to run FleetOps without depending on a connection.">Offline</SectionTitle>
