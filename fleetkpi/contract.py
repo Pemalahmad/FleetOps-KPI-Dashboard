@@ -75,6 +75,10 @@ TABLES: dict[str, Table] = {t.name: t for t in [
         C("campaign_id", "VARCHAR", False, "Recall campaign id for recall jobs", ("recall_id", "campaign"), ""),
         C("key_in_at", "TIMESTAMP", False, "Customer handed over the key (defaults to opened_at)", ("key_in", "key_drop", "key_received", "handover_in", "drop_off"), "2026-03-04 08:20"),
         C("key_out_at", "TIMESTAMP", False, "Key handed back to the customer (defaults to closed_at)", ("key_out", "key_return", "handover_out", "pick_up", "collected_at"), "2026-03-05 16:10"),
+        C("ready_at", "TIMESTAMP", False, "Vehicle ready for pick-up (defaults to closed_at)", ("ready", "ready_for_pickup", "ready_time", "job_completed_at", "qc_passed_at"), "2026-03-05 14:30"),
+        C("back_in_service_at", "TIMESTAMP", False, "Vehicle back in operations / first trip after the visit (defaults to key_out_at)", ("back_in_service", "back_to_operations", "returned_to_service", "first_trip_after", "redeployed_at"), "2026-03-05 19:00"),
+        C("issue_category", "VARCHAR", False, "What was wrong: Brakes, Tyres, HV battery, Electrical, Body... (free text is normalised)", ("issue", "fault", "fault_category", "complaint", "system", "repair_category", "concern"), "Brakes"),
+        C("goodwill_amount", "DOUBLE", False, "Amount waived or refunded as goodwill on this job", ("goodwill", "goodwill_value", "waiver", "concession", "courtesy_amount"), "0"),
     ), key=("work_order_id",)),
 
     Table("usage", True, "Distance and hours per vehicle, daily or monthly (both work).", (
@@ -115,6 +119,26 @@ TABLES: dict[str, Table] = {t.name: t for t in [
         C("comment", "VARCHAR", False, "Free-text comment", ("comments", "verbatim", "feedback", "remarks"), ""),
     ), key=("feedback_id",)),
 
+    Table("parts_orders", False, "Parts ordered for a work order, with the promised ETA and actual arrival.", (
+        C("part_order_id", "VARCHAR", True, "Parts order / line id", ("po", "po_number", "order_id", "parts_order", "order_line"), "PO0000001"),
+        C("work_order_id", "VARCHAR", True, "Work order waiting for the part", ("job_id", "wo", "wo_number", "job_number", "ro_number"), "WO0000001"),
+        C("part_description", "VARCHAR", False, "Part name or number", ("part", "part_number", "part_no", "description", "item"), "Front brake pads"),
+        C("supplier", "VARCHAR", False, "Supplier or warehouse", ("vendor", "source", "warehouse", "distributor"), "OEM central warehouse"),
+        C("ordered_at", "TIMESTAMP", True, "When the part was ordered", ("order_date", "ordered", "po_date", "requested_at"), "2026-03-04 10:00"),
+        C("promised_eta", "TIMESTAMP", True, "ETA promised by the supplier", ("eta", "promised_date", "expected_arrival", "due_date"), "2026-03-06 12:00"),
+        C("arrived_at", "TIMESTAMP", False, "Actual arrival (blank while still on order)", ("arrival_date", "received_at", "delivered_at", "grn_date"), "2026-03-06 09:30"),
+    ), key=("part_order_id",)),
+
+    Table("fines", False, "Traffic and regulatory fines registered against a vehicle.", (
+        C("fine_id", "VARCHAR", True, "Fine / violation reference", ("violation_id", "ticket_no", "fine_number", "reference"), "FN0000001"),
+        C("vehicle_id", "VARCHAR", True, "Vehicle fined", ("vehicle", "plate", "plate_no", "vin"), "V0100001"),
+        C("date", "DATE", True, "Date of the offence", ("offence_date", "violation_date", "issued_date", "fine_date"), "2026-03-02"),
+        C("fine_type", "VARCHAR", True, "Speeding, Parking, Toll, Red light, Expired registration... (free text is normalised)", ("type", "violation", "offence", "category", "reason"), "Speeding"),
+        C("amount", "DOUBLE", True, "Fine amount", ("fine_amount", "value", "penalty"), "300"),
+        C("status", "VARCHAR", False, "Paid | Unpaid | Disputed (default Unpaid)", ("payment_status", "state"), "Paid"),
+        C("authority", "VARCHAR", False, "Issuing authority", ("issuer", "issued_by"), "Dubai Police"),
+    ), key=("fine_id",)),
+
     Table("budgets", False, "Fleet-paid maintenance budget per region and month. If absent, fleet.yml rates are used.", (
         C("region", "VARCHAR", True, "Region", ("market", "country"), "UAE"),
         C("month", "DATE", True, "First day of the month", ("period", "date"), "2026-03-01"),
@@ -122,7 +146,8 @@ TABLES: dict[str, Table] = {t.name: t for t in [
     ), key=("region", "month")),
 ]}
 
-LOAD_ORDER = ["sites", "vehicles", "work_orders", "usage", "energy", "feedback", "recalls", "recall_vehicles", "budgets"]
+LOAD_ORDER = ["sites", "vehicles", "work_orders", "usage", "energy", "feedback", "parts_orders", "fines",
+              "recalls", "recall_vehicles", "budgets"]
 
 
 def contract_markdown() -> str:

@@ -69,10 +69,11 @@ def publish(con: duckdb.DuckDBPyConnection, cfg: Config, snapshot_ts: str, analy
         "useful_life_years": cfg["assets"]["useful_life_years"],
         "residual_value_pct": cfg["assets"]["residual_value_pct"],
         "expiring_window_days": cfg["compliance"]["expiring_window_days"],
-        "key_to_key_target_h": s["key_to_key_target_h"],
+        "key_to_key_target_h": s["key_to_key_target_h"], "repeat_window_days": s["repeat_window_days"],
         "snapshot_ts": snapshot_ts, "analysis_start": analysis_start,
         "pm_tolerance_pct": m["pm_tolerance_pct"],
         "intervene_ratio": s["intervene_ratio"], "watch_ratio": s["watch_ratio"],
+        "intervene_min_gap_h": s["intervene_min_gap_h"],
         "min_weekly_jobs": s["min_weekly_jobs"],
     }
     con.execute("CREATE OR REPLACE TABLE cfg_settings (key VARCHAR, value VARCHAR)")

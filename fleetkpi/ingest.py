@@ -119,6 +119,35 @@ NORMALISE = {
         WHEN regexp_matches(lower({x}), 'elec|kwh|charg|ev') THEN 'electricity'
         WHEN {x} IS NULL THEN NULL ELSE 'fuel' END""",
     ("sites", "site_type"): "coalesce(lower({x}), 'workshop')",
+    ("work_orders", "issue_category"): """CASE
+        WHEN {x} IS NULL THEN NULL
+        WHEN regexp_matches(lower({x}), 'hv|high.?voltage|battery pack|traction battery') THEN 'HV battery'
+        WHEN regexp_matches(lower({x}), 'charg|port|inlet|obc') THEN 'Charging system'
+        WHEN regexp_matches(lower({x}), 'brake|pad|disc|rotor') THEN 'Brakes'
+        WHEN regexp_matches(lower({x}), 'tyre|tire|wheel|puncture|alignment') THEN 'Tyres & wheels'
+        WHEN regexp_matches(lower({x}), 'suspens|shock|strut|steering|link') THEN 'Suspension & steering'
+        WHEN regexp_matches(lower({x}), 'software|firmware|ota|infotainment|screen|sensor|camera|adas') THEN 'Software & sensors'
+        WHEN regexp_matches(lower({x}), 'a/?c|air.?con|climate|hvac|cooling') THEN 'Climate & cooling'
+        WHEN regexp_matches(lower({x}), 'engine|oil|exhaust|transmission|gearbox|clutch|fuel') THEN 'Engine & transmission'
+        WHEN regexp_matches(lower({x}), 'electric|12v|wiring|light|lamp|fuse') THEN 'Electrical (12V)'
+        WHEN regexp_matches(lower({x}), 'body|paint|panel|glass|windscreen|bumper|dent') THEN 'Body & glass'
+        WHEN regexp_matches(lower({x}), 'service|inspection|maintenance|filter') THEN 'Scheduled service'
+        ELSE 'Other' END""",
+    ("work_orders", "goodwill_amount"): "coalesce({x}, 0)",
+    ("fines", "fine_type"): """CASE
+        WHEN {x} IS NULL THEN NULL
+        WHEN regexp_matches(lower({x}), 'speed|radar') THEN 'Speeding'
+        WHEN regexp_matches(lower({x}), 'park') THEN 'Parking'
+        WHEN regexp_matches(lower({x}), 'toll|salik|darb|road.?user') THEN 'Toll'
+        WHEN regexp_matches(lower({x}), 'red.?light|signal') THEN 'Red light'
+        WHEN regexp_matches(lower({x}), 'regist|mulkiya|licen[cs]e plate|istimara') THEN 'Expired registration'
+        WHEN regexp_matches(lower({x}), 'insur') THEN 'No insurance'
+        WHEN regexp_matches(lower({x}), 'behaviou?r|driving|phone|seat.?belt|lane|overtak|tailgat|reckless') THEN 'Driving behaviour'
+        ELSE 'Other' END""",
+    ("fines", "status"): """CASE
+        WHEN regexp_matches(lower(coalesce({x}, '')), 'dispute|appeal|objection') THEN 'Disputed'
+        WHEN regexp_matches(lower(coalesce({x}, '')), '^paid|settled|closed') THEN 'Paid'
+        ELSE 'Unpaid' END""",
     ("work_orders", "repeat_visit"): "coalesce({x}, FALSE)",
 }
 

@@ -60,8 +60,10 @@ compliance:
 
 service:
   key_to_key_target_h: 24                 # key handed in -> key handed back
+  repeat_window_days: 14                  # an unplanned return inside this window is a repeat visit / repeat repair
   intervene_ratio: 1.5                    # weekly median turnaround > 1.5x network or own trend
   watch_ratio: 1.2
+  intervene_min_gap_h: 6                  # ...and at least this many hours slower (WATCH needs half)
   min_weekly_jobs: 8                      # below this a week is LOW VOLUME, not judged
 
 budgets:
@@ -73,7 +75,7 @@ targets:
   availability_pct:      {green: 98.3, amber: 97.8, direction: higher}
   utilization_pct:       {green: 70.0, amber: 65.0, direction: higher}
   turnaround_p50_h:      {green: 24.0, amber: 30.0, direction: lower}
-  first_time_fix_pct:    {green: 93.0, amber: 90.0, direction: higher}
+  first_time_fix_pct:    {green: 98.5, amber: 97.0, direction: higher}   # visits that did not come back
   cost_vs_budget_pct:    {green: 0.0,  amber: 5.0,  direction: lower}
   recall_completion_pct: {green: 85.0, amber: 70.0, direction: higher}
   pm_compliance_pct:     {green: 95.0, amber: 90.0, direction: higher}
@@ -84,6 +86,13 @@ targets:
   productivity_pct:      {green: 80.0, amber: 70.0, direction: higher}   # billed / available technician hours
   registration_valid_pct: {green: 99.0, amber: 97.0, direction: higher}
   insurance_valid_pct:   {green: 99.0, amber: 97.0, direction: higher}
+  repeat_repair_pct:     {green: 5.0,  amber: 8.0,  direction: lower}    # same fault repaired again within the window
+  repeat_visit_pct:      {green: 8.0,  amber: 12.0, direction: lower}    # unplanned fault return within the window
+  time_to_pickup_p50_h:  {green: 3.5,  amber: 6.0,  direction: lower}    # vehicle ready -> customer collects
+  back_to_ops_p50_h:     {green: 4.0,  amber: 8.0,  direction: lower}    # collected -> earning again
+  parts_on_time_pct:     {green: 85.0, amber: 75.0, direction: higher}   # parts arriving by the promised ETA
+  fines_per_100_vehicles: {green: 12.0, amber: 20.0, direction: lower}   # per month
+  goodwill_pct:          {green: 1.5,  amber: 3.0,  direction: lower}    # goodwill as % of service spend
 
 gamification:
   score_weights:                          # site Ops Score out of 1,000
