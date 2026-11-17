@@ -12,6 +12,16 @@ test("garage has real queues and retains analytical access", async ({ page }) =>
   await page.getByRole("main").getByRole("link", { name: "Analytics", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Fleet operations, as one system" })).toBeVisible();
 });
+test("mobile garage contains the wide queue without horizontal page overflow", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await ready(page);
+  const pageWidth = await page.evaluate(() => ({
+    content: document.documentElement.scrollWidth,
+    viewport: window.innerWidth,
+  }));
+  expect(pageWidth.content).toBeLessThanOrEqual(pageWidth.viewport);
+  await expect(page.getByRole("region", { name: "Renewal desk queue", exact: true })).toBeVisible();
+});
 test("accident recovery holds a vehicle and requires the complete handover workflow", async ({ page }) => {
   await ready(page);
   await page.getByRole("region", { name: "Road ready queue", exact: true }).locator(".garage-bay").first().click();

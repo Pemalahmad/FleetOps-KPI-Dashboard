@@ -134,7 +134,7 @@ export function GaragePage() {
           <button aria-pressed={filter === "all"} className={"ops-chip " + (filter === "all" ? "ops-chip-active" : "")} onClick={() => { setFilter("all"); setPage(0); }}>All vehicles <span className="ml-2">{NUM.format(vehicles.length)}</span></button>
           {LANES.map((l) => <button key={l.id} aria-pressed={filter === l.id} className={"ops-chip " + (filter === l.id ? "ops-chip-active" : "")} onClick={() => { setFilter(l.id); setPage(0); }}>{l.label}<span className="ml-2">{NUM.format(groups[l.id].length)}</span></button>)}
         </div>
-        <div className="overflow-x-auto rounded-xl border border-border bg-panel">
+        <div className="relative overflow-x-auto rounded-xl border border-border bg-panel">
           <table className="garage-table"><thead><tr><th>Vehicle</th><th>Garage stage</th><th>Source gates</th><th>Next move</th><th>Site</th><th><span className="sr-only">Action</span></th></tr></thead>
             <tbody>{visible.map((v) => {
               const lane = LANES.find((l) => l.id === v.lane)!;
