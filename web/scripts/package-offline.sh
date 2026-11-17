@@ -9,6 +9,9 @@ rm -rf dist && mkdir -p "dist/FleetOps-offline/app"
 cp -R out/. "dist/FleetOps-offline/app/"
 cp offline/start-mac.command offline/start-linux.sh offline/start-windows.bat offline/serve.ps1 offline/README.txt dist/FleetOps-offline/
 chmod +x dist/FleetOps-offline/start-mac.command dist/FleetOps-offline/start-linux.sh
+# Licence, EULA, privacy and copyright policy, and the licence text of every bundled open-source component
+cp ../LICENSE.md ../EULA.md ../PRIVACY.md ../DMCA.md dist/FleetOps-offline/
+node scripts/third-party-licenses.mjs dist/FleetOps-offline/THIRD_PARTY_LICENSES.txt
 (cd dist && zip -qr "FleetOps-offline-${VERSION}.zip" FleetOps-offline && shasum -a 256 "FleetOps-offline-${VERSION}.zip" > SHA256SUMS.txt)
 echo "dist/FleetOps-offline-${VERSION}.zip ($(du -h "dist/FleetOps-offline-${VERSION}.zip" | cut -f1))"
 cat dist/SHA256SUMS.txt

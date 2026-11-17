@@ -1,0 +1,10 @@
+# Vulnerability records reviewed and accepted, read by OSV-Scanner and OpenSSF Scorecard.
+# Each entry says why it does not apply. Anything not listed here is reported.
+
+[[IgnoredVulns]]
+id = "GHSA-4r6h-8v6p-xvw6"
+reason = "SheetJS prototype pollution (CVE-2023-30533), fixed in xlsx 0.19.3. This project installs xlsx 0.20.3 from the SheetJS CDN (web/package.json); the npm registry copy is frozen at 0.18.5, so OSV marks every version affected."
+
+[[IgnoredVulns]]
+id = "GHSA-5pgg-2g8v-p4x9"
+reason = "SheetJS ReDoS (CVE-2024-22363), fixed in xlsx 0.20.2. This project installs xlsx 0.20.3 from the SheetJS CDN; see above."

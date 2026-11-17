@@ -46,6 +46,38 @@ export interface Workspace {
   updated: string;
   /** Operational reviews share the workspace's existing encrypted storage boundary. */
   garage?: GarageState;
+  /** SOP review progress (checked steps, owner, due date, notes), keyed by sopProgressKey; sealed with the workspace. */
+  sops?: Record<string, SopProgress>;
+}
+
+export interface SopProgress { checked: number[]; owner: string; due: string; notes: string }
+
+export const isSopProgress = (v: unknown): v is SopProgress => {
+  const p = v as SopProgress;
+  return !!p && typeof p === "object" && Array.isArray(p.checked) && p.checked.every(Number.isInteger)
+    && (["owner", "due", "notes"] as const).every((k) => typeof p[k] === "string");
+};
+
+const LEGACY_SOP = "fleetops:sop:";
+/**
+ * Move procedure notes that earlier versions kept in plain localStorage into the (encrypted) workspace, then delete
+ * the plain copies. Demo-practice notes are discarded: they never belonged to the owner's data.
+ */
+export function takeLegacySopNotes(): Record<string, SopProgress> {
+  const out: Record<string, SopProgress> = {};
+  try {
+    for (const key of Object.keys(localStorage)) {
+      if (!key.startsWith(LEGACY_SOP)) continue;
+      try {
+        const scope = JSON.parse(key.slice(LEGACY_SOP.length)), value = JSON.parse(localStorage.getItem(key) ?? "null");
+        if (Array.isArray(scope) && scope[0] !== "demo" && isSopProgress(value)) out[key] = value;
+      } catch { /* unreadable legacy entry: dropped */ }
+    }
+  } catch { /* storage blocked */ }
+  return out;
+}
+export function clearLegacySopNotes() {
+  try { for (const key of Object.keys(localStorage)) if (key.startsWith(LEGACY_SOP)) localStorage.removeItem(key); } catch { /* storage blocked */ }
 }
 
 const DB = "fleetops-workspace";
@@ -196,8 +228,8 @@ export async function deleteFile(id: string): Promise<void> {
 export async function clearWorkspace(): Promise<void> {
   await tx("kv", "readwrite", (s) => s.clear());
   await tx("files", "readwrite", (s) => s.clear());
-  // Procedure notes can contain fleet references too; include them in the delete-data action.
-  for (const key of Object.keys(localStorage)) if (key.startsWith("fleetops:sop:")) localStorage.removeItem(key);
+  // Notes from versions that kept them in localStorage can contain fleet references too.
+  clearLegacySopNotes();
   vaultKey = null;
 }
 

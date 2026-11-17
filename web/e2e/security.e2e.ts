@@ -6,15 +6,17 @@
  *  3. A hostile workbook (XSS in headers and cells, SQL injection in an id, spreadsheet formulas) is shown as text,
  *     runs nothing and breaks no SQL.
  *  4. The page talks to its own origin only.
- *  5. Passphrase protection: the stored fleet contains no readable data, a wrong passphrase is refused, the right one
+ *  5. Another site framing the app gets a hidden page (clickjacking guard; Pages cannot send frame-ancestors).
+ *  6. Passphrase protection: the stored fleet and procedure notes contain no readable data, a wrong passphrase is refused, the right one
  *     opens it, and removing protection restores it.
  */
 import { expect, test, type Page } from "@playwright/test";
+import { createServer } from "node:http";
 import path from "node:path";
 import * as XLSX from "xlsx";
 
 const PAGES = ["/", "/overview/", "/fleet/", "/documents/", "/import/", "/plan/", "/network/", "/customer/", "/workshop/", "/ledger/",
-  "/licence/", "/pipeline/", "/doctrine/"];
+  "/licence/", "/pipeline/", "/doctrine/", "/legal/"];
 const SAMPLE = path.resolve(__dirname, "../../samples/fleet-vehicles.xlsx");
 
 /** Collect CSP violations, page errors and every request's origin. */
@@ -102,6 +104,21 @@ test("a hostile workbook is shown as text, runs nothing and breaks no SQL", asyn
   expect([...seen.origins]).toEqual([new URL(baseURL!).origin]);
 });
 
+test("another site framing the app sees a blank page (clickjacking guard)", async ({ page, baseURL }) => {
+  // a second origin (another port) stands in for a hostile site embedding the app in an invisible frame
+  const hostile = createServer((_q, r) => r.writeHead(200, { "content-type": "text/html" })
+    .end(`<iframe src="${baseURL}/fleet/" width="800" height="600"></iframe>`)).listen(4311, "127.0.0.1");
+  try {
+    await page.goto("http://127.0.0.1:4311/");
+    const frame = page.frameLocator("iframe");
+    await expect.poll(async () => frame.locator("html").evaluate((el) => getComputedStyle(el).display).catch(() => "pending"),
+      { timeout: 30_000 }).toBe("none");
+    // the app's own pages are unaffected
+    await page.goto("/fleet/");
+    expect(await page.locator("html").evaluate((el) => getComputedStyle(el).display)).not.toBe("none");
+  } finally { hostile.close(); }
+});
+
 test("passphrase protection: nothing readable at rest, wrong passphrase refused, right one opens", async ({ page }) => {
   const PASS = "blue lorry midnight harbour";
   await importWorkbook(page, SAMPLE);
@@ -111,6 +128,13 @@ test("passphrase protection: nothing readable at rest, wrong passphrase refused,
   await page.getByLabel("Repeat passphrase").fill(PASS);
   await page.getByRole("button", { name: "Protect" }).click();
   await expect(page.getByText(/Protected\. Your fleet data is now encrypted/)).toBeVisible({ timeout: 30_000 });
+
+  // procedure review notes are saved inside the encrypted workspace, never in plain localStorage
+  await page.getByRole("link", { name: /Doctrine & SOPs/ }).first().click();   // in-app navigation keeps the tab unlocked
+  await expect(page.getByText(/My fleet: \d+ SQL models/)).toBeVisible({ timeout: 90_000 });
+  await page.getByLabel("Evidence and handoff notes").fill("Driver statement ROUTE-7781 for FJ-001");
+  await expect(page.getByText(/Saved with this fleet in this browser/)).toBeVisible({ timeout: 30_000 });
+  expect(await page.evaluate(() => JSON.stringify({ ...localStorage }))).not.toContain("ROUTE-7781");
 
   // the raw IndexedDB contents hold no plate, VIN or company name
   const raw = await page.evaluate(() => new Promise<string>((resolve) => {
@@ -122,7 +146,7 @@ test("passphrase protection: nothing readable at rest, wrong passphrase refused,
     };
   }));
   expect(raw).toContain("sealed");
-  for (const secret of ["FJ-001", "D 48213", "5YJ3E1EA5PF100001", "Al Fajr"]) expect(raw).not.toContain(secret);
+  for (const secret of ["FJ-001", "D 48213", "5YJ3E1EA5PF100001", "Al Fajr", "ROUTE-7781"]) expect(raw).not.toContain(secret);
 
   await page.reload();
   await expect(page.getByText("Your fleet data is locked.")).toBeVisible({ timeout: 60_000 });

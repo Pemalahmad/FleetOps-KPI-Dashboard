@@ -1,11 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { BASE, regionWhere, useEngine, useSql } from "@/components/engine-provider";
 import { Card, PageHeader, Skeleton } from "@/components/ui";
 import { usePanel } from "@/components/use-panel";
 import { inlineMarkdown, markdown } from "@/lib/markdown";
+import { isSopProgress, type SopProgress } from "@/lib/workspace";
 import { parseSop, SOP_PAGES, sopProgressKey, sopSignal, type Sop, type SopSignal } from "@/lib/sops";
 
 async function readContent(file: string) {
@@ -84,27 +85,36 @@ export default function DoctrinePage() {
             </button>;
           })}{!visible?.length && <p className="p-4 text-sm text-muted">No procedures match. Clear the search or select All.</p>}</div>
         </section>
-        {chosen && <Procedure key={key} sop={chosen} signal={signal(chosen.meta.id)} storageKey={key} scope={scope} />}
+        {chosen && (engine.status !== "ready" ? <Skeleton height={560} /> : <Procedure key={key} sop={chosen} signal={signal(chosen.meta.id)} storageKey={key} scope={scope} />)}
       </div>}
     {content && <details className="card mt-8 p-5"><summary className="cursor-pointer text-[16px] font-semibold">Read the Three Clocks Doctrine</summary>
       <article className="prose-doc mt-6 max-w-4xl" dangerouslySetInnerHTML={{ __html: content.doc }} /></details>}
   </>;
 }
 
-interface Progress { checked: number[]; owner: string; due: string; notes: string }
+type Progress = SopProgress;
 const empty = (): Progress => ({ checked: [], owner: "", due: "", notes: "" });
-function restore(key: string): Progress {
-  try {
-    const v = JSON.parse(localStorage.getItem(key) ?? "null");
-    return v && Array.isArray(v.checked) && v.checked.every(Number.isInteger) && ["owner", "due", "notes"].every((k) => typeof v[k] === "string") ? v : empty();
-  } catch { return empty(); }
-}
+/** Demo practice stays in this tab's memory and never mixes with the owner's (encrypted) workspace. */
+const practice = new Map<string, Progress>();
 function Procedure({ sop, signal, storageKey, scope }: { sop: Sop; signal: SopSignal; storageKey: string; scope: string }) {
-  const [progress, setProgress] = useState<Progress>(() => restore(storageKey));
+  const { dataset, workspace, updateSop } = useEngine();
+  const demo = dataset === "demo";
+  const [progress, setProgress] = useState<Progress>(() => {
+    const v = demo ? practice.get(storageKey) : workspace?.sops?.[storageKey];
+    return isSopProgress(v) ? v : empty();
+  });
   const [saveError, setSaveError] = useState(false), [saved, setSaved] = useState(false);
+  // Typing re-seals the whole workspace, so keystrokes are batched into one save; a pending save is flushed, never
+  // dropped, if the procedure closes first.
+  const pending = useRef<(() => void) | null>(null), timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const flush = () => { if (timer.current) clearTimeout(timer.current); timer.current = null; const run = pending.current; pending.current = null; run?.(); };
+  useEffect(() => flush, []);
   const update = (next: Progress) => {
     setProgress(next);
-    try { localStorage.setItem(storageKey, JSON.stringify(next)); setSaved(true); setSaveError(false); } catch { setSaveError(true); }
+    if (demo) { practice.set(storageKey, next); setSaved(true); return; }
+    if (timer.current) clearTimeout(timer.current);
+    pending.current = () => { updateSop(storageKey, next).then(() => { setSaved(true); setSaveError(false); }, () => setSaveError(true)); };
+    timer.current = setTimeout(flush, 500);
   };
   const done = sop.steps.filter((_, i) => progress.checked.includes(i)).length;
   const page = SOP_PAGES[sop.meta.id];
@@ -141,7 +151,7 @@ function Procedure({ sop, signal, storageKey, scope }: { sop: Sop; signal: SopSi
     <label className="mt-5 block text-[13px] font-medium">Evidence and handoff notes<textarea value={progress.notes} onChange={(e) => update({ ...progress, notes: e.target.value })}
       placeholder="Root cause, work-order references, agreed action, evidence of recovery…" className="ops-input mt-2 min-h-28 resize-y" /></label>
     <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
-      <p role="status" className={"text-[12px] " + (saveError ? "text-bad" : "text-muted")}>{saveError ? "Changes are not saved. Download the review before leaving." : saved ? "Saved in this browser for this fleet, region and snapshot." : "Progress stays in this browser. Download a review for handoff."}</p>
+      <p role="status" className={"text-[12px] " + (saveError ? "text-bad" : "text-muted")}>{saveError ? "Changes are not saved. Download the review before leaving." : demo ? "Demo practice: kept until this tab reloads." : saved ? "Saved with this fleet in this browser (encrypted if a passphrase is set)." : "Progress is saved with this fleet in this browser. Download a review for handoff."}</p>
       <button onClick={download} className="ops-button">Download review</button>
     </div>
     <article className="prose-doc mt-6 border-t border-border pt-4" dangerouslySetInnerHTML={{ __html: markdown(sop.guidance) }} />

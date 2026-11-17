@@ -12,4 +12,6 @@ copyFileSync(join(pkg, "DOCTRINE.md"), join(dest, "DOCTRINE.md"));
 const sops = readdirSync(join(pkg, "sops")).filter((f) => /^SOP-\d+.*\.md$/.test(f)).sort();
 for (const f of sops) copyFileSync(join(pkg, "sops", f), join(dest, f));
 writeFileSync(join(dest, "sops.json"), JSON.stringify(sops));
+// Legal documents, shown on /legal/ (single source: the repository root)
+for (const f of ["PRIVACY.md", "EULA.md", "DMCA.md"]) copyFileSync(join(root, "..", f), join(dest, f));
 console.log(`Doctrine and ${sops.length} SOPs copied to public/content/`);

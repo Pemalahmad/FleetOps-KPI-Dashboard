@@ -4,7 +4,7 @@ import { createContext, useCallback, useContext, useEffect, useRef, useState, ty
 import { Engine, type IngestInput, type PipelineLog, type Row } from "@/lib/engine";
 import { createTaskQueue } from "@/lib/task-queue";
 import { assertGarageGeneration, emptyGarage, type GarageState } from "@/lib/garage";
-import { documentsCsv, hasFleet, loadWorkspace, persistStorage, saveWorkspace, unlockVault, vaultStatus, vehiclesFromDocuments, type VaultStatus, type Workspace } from "@/lib/workspace";
+import { clearLegacySopNotes, documentsCsv, hasFleet, loadWorkspace, persistStorage, saveWorkspace, takeLegacySopNotes, unlockVault, vaultStatus, vehiclesFromDocuments, type SopProgress, type VaultStatus, type Workspace } from "@/lib/workspace";
 
 export const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
 
@@ -27,6 +27,8 @@ interface EngineState {
   /** Save a changed workspace and rebuild the warehouse from it. */
   commit: (ws: Workspace, opts?: { rebuild?: boolean }) => Promise<void>;
   updateGarage: (update: (state: GarageState) => GarageState) => Promise<void>;
+  /** Save one procedure's review progress into the (encrypted) workspace. */
+  updateSop: (key: string, progress: SopProgress) => Promise<void>;
   runMine: () => Promise<void>;
   /** Passphrase protection of the saved fleet: none, locked (sealed, key not entered) or unlocked. */
   vault: VaultStatus;
@@ -38,6 +40,17 @@ interface EngineState {
 const Ctx = createContext<EngineState | null>(null);
 let shared: Promise<Engine> | null = null;
 const queueRun = createTaskQueue();
+/** Load the saved workspace and fold in procedure notes that older versions left in plain localStorage. */
+async function loadAndMigrate(): Promise<Workspace | null> {
+  const ws = await loadWorkspace();
+  if (!ws) return ws;
+  const legacy = takeLegacySopNotes();
+  if (!Object.keys(legacy).length) { clearLegacySopNotes(); return ws; }
+  const next = { ...ws, sops: { ...legacy, ...ws.sops } };
+  await saveWorkspace(next);
+  clearLegacySopNotes();
+  return next;
+}
 const getEngine = () => shared ??= Engine.create(BASE).catch((error) => { shared = null; throw error; });
 
 export function EngineProvider({ children }: { children: ReactNode }) {
@@ -112,7 +125,7 @@ export function EngineProvider({ children }: { children: ReactNode }) {
 
   const commit = useCallback(
     (ws: Workspace, opts: { rebuild?: boolean } = {}) => saveQueue(async () => {
-      const next = { ...ws, garage: workspaceRef.current?.garage ?? ws.garage };
+      const next = { ...ws, garage: workspaceRef.current?.garage ?? ws.garage, sops: workspaceRef.current?.sops ?? ws.sops };
       await saveWorkspace(next);
       workspaceRef.current = next;
       setWorkspace(next);
@@ -133,6 +146,14 @@ export function EngineProvider({ children }: { children: ReactNode }) {
     setWorkspace(next);
     });
   }, [saveQueue]);
+  const updateSop = useCallback((key: string, progress: SopProgress) => saveQueue(async () => {
+    const current = workspaceRef.current;
+    if (!current) throw new Error("Load and unlock your fleet before saving procedure notes.");
+    const next = { ...current, sops: { ...current.sops, [key]: progress } };
+    await saveWorkspace(next);
+    workspaceRef.current = next;
+    setWorkspace(next);
+  }), [saveQueue]);
 
   const runMine = useCallback(async () => {
     const ws = workspace ?? (await loadWorkspace());
@@ -150,7 +171,7 @@ export function EngineProvider({ children }: { children: ReactNode }) {
       const v = await vaultStatus();
       setVault(v);
       if (v === "locked") return runDemo();   // sealed fleet: show the demo until the passphrase is entered
-      const ws = await loadWorkspace();
+      const ws = await loadAndMigrate();
       workspaceRef.current = ws;
       setWorkspace(ws);
       if (hasFleet(ws)) await runWorkspace(ws!);
@@ -164,7 +185,7 @@ export function EngineProvider({ children }: { children: ReactNode }) {
   const unlock = useCallback(async (passphrase: string) => {
     if (!(await unlockVault(passphrase))) return false;
     setVault(await vaultStatus());
-    const ws = await loadWorkspace();
+    const ws = await loadAndMigrate();
     workspaceRef.current = ws;
     setWorkspace(ws);
     if (hasFleet(ws)) await runWorkspace(ws!);
@@ -174,7 +195,7 @@ export function EngineProvider({ children }: { children: ReactNode }) {
   const refreshVault = useCallback(async () => setVault(await vaultStatus()), []);
 
   return (
-    <Ctx.Provider value={{ status, message, log, runId, engine, region, setRegion, regions, runDemo: demo, dataset, workspace, commit, updateGarage, runMine, vault, unlock, refreshVault }}>
+    <Ctx.Provider value={{ status, message, log, runId, engine, region, setRegion, regions, runDemo: demo, dataset, workspace, commit, updateGarage, updateSop, runMine, vault, unlock, refreshVault }}>
       {children}
     </Ctx.Provider>
   );

@@ -21,6 +21,10 @@ const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
 // Set the theme before paint: saved choice, else the system preference.
 const themeScript = `try{var t=localStorage.getItem('theme');if(t==='dark'||(!t&&matchMedia('(prefers-color-scheme: dark)').matches))document.documentElement.classList.add('dark')}catch(e){}`;
 
+// Clickjacking guard. GitHub Pages cannot send frame-ancestors, so a page framed by another site hides itself and
+// tries to break out. Same-origin frames (the app's own previews) are allowed.
+const frameGuard = `(function(){if(window.top===window.self)return;var ok=false;try{ok=window.top.location.origin===window.location.origin}catch(e){}if(!ok){document.documentElement.style.display='none';try{window.top.location.replace(window.location.href)}catch(e){}}})()`;
+
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en" className="antialiased" suppressHydrationWarning>
@@ -30,6 +34,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <link rel="manifest" href={`${BASE}/manifest.webmanifest`} />
         <link rel="icon" href={`${BASE}/icons/icon-192.png`} />
         <link rel="apple-touch-icon" href={`${BASE}/icons/icon-192.png`} />
+        <script dangerouslySetInnerHTML={{ __html: frameGuard }} />
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
       </head>
       <body suppressHydrationWarning>

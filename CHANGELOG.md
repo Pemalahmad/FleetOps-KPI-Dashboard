@@ -4,6 +4,17 @@ What changed in each version of FleetOps KPI. Dates are release dates; the newes
 
 ## Unreleased
 
+### Security and legal (2026-11-18)
+- SOP review notes, owners and due dates are saved in the encrypted workspace instead of plain localStorage; older
+  notes are migrated and deleted. Notes typed while a report rebuilds are no longer lost.
+- Clickjacking guard for hosts that cannot send `frame-ancestors`.
+- Property-based fuzz tests for every untrusted-input parser and for encryption round-trips.
+- Hash-locked Python installs in CI and Docker, Docker base image pinned by digest and run as non-root, least-privilege
+  workflow permissions, CodeQL tag-filter fix.
+- Privacy Policy rewritten as a formal policy; new EULA and Copyright/DMCA policy, shown in the app at /legal/ and
+  shipped in the offline package with THIRD_PARTY_LICENSES.txt.
+- AGENTS.md and `.agents/` role briefs: the security invariants and the specialist agents that work on the project.
+
 - Visual garage home with six status zones, vehicle cards, recorded repair milestones and a full searchable queue.
 - Accident reporting and staged recovery; registration/insurance renewal tasks; source-gated dispatch checklists with review owner, target date, history and handover evidence.
 - Paged in-app alerts, recovery missions and handover XP, isolated demo practice, optional encrypted operational storage, and an Analytics route for the previous KPI dashboard.

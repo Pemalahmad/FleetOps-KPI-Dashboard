@@ -23,6 +23,12 @@ dependencies = [
 dev = ["pytest>=8", "cryptography>=42"]
 license = ["cryptography>=42"]
 
+[dependency-groups]
+# CI and container installs only; locked with hashes in requirements/*.txt (see requirements/README.md).
+build = ["hatchling>=1.24", "editables>=0.5"]
+audit = ["pip-audit>=2.7"]
+lock = ["uv>=0.5"]   # CI checks requirements/*.txt still match uv.lock
+
 [project.scripts]
 fleetkpi = "fleetkpi.cli:main"
 

@@ -82,6 +82,16 @@ function Regions() {
   );
 }
 
+function LegalLinks({ className = "" }: { className?: string }) {
+  return (
+    <p className={`flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-faint ${className}`}>
+      <Link href="/legal/#privacy" className="hover:text-text">Privacy</Link>
+      <Link href="/legal/#eula" className="hover:text-text">EULA</Link>
+      <Link href="/legal/#dmca" className="hover:text-text">DMCA</Link>
+    </p>
+  );
+}
+
 export function Shell({ children }: { children: ReactNode }) {
   const path = usePathname();
   return (
@@ -116,6 +126,7 @@ export function Shell({ children }: { children: ReactNode }) {
         <p className="px-2 text-[11px] leading-relaxed text-faint">
           Files are processed on this device. Optional VIN decoding sends selected VINs to NHTSA.
         </p>
+        <LegalLinks className="mt-2 px-2" />
       </aside>
       <div className="min-w-0 flex-1">
         <div className="sticky top-0 z-10 border-b border-border bg-bg/85 px-4 py-3 backdrop-blur md:px-8">
@@ -134,6 +145,7 @@ export function Shell({ children }: { children: ReactNode }) {
           <div className="mt-2.5"><Regions /></div>
         </div>
         <main id="main-content" tabIndex={-1} className="mx-auto max-w-[1480px] px-4 py-8 md:px-8"><UnlockBanner />{children}</main>
+        <footer className="mx-auto max-w-[1480px] px-4 pb-8 md:px-8 lg:hidden"><LegalLinks /></footer>
       </div>
     </div>
   );
