@@ -1,0 +1,42 @@
+{
+  "name": "fleetops-kpi-web",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "copy-assets": "node scripts/copy-duckdb.mjs && node scripts/copy-content.mjs",
+    "predev": "npm run copy-assets",
+    "dev": "next dev",
+    "prebuild": "npm run copy-assets",
+    "build": "next build",
+    "start": "npx serve out",
+    "lint": "eslint src",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "@duckdb/duckdb-wasm": "^1.33.1-dev57.0",
+    "@number-flow/react": "^0.6.2",
+    "@phosphor-icons/react": "^2.1.10",
+    "@radix-ui/react-dialog": "^1.3.1",
+    "@radix-ui/react-tooltip": "^1.4.1",
+    "echarts": "^6.1.0",
+    "katex": "^0.19.1",
+    "marked": "^18.2.1",
+    "next": "16.4.6",
+    "react": "19.3.0",
+    "react-dom": "19.3.0"
+  },
+  "devDependencies": {
+    "@tailwindcss/turbopack": "4.3.3",
+    "@types/katex": "^0.16.8",
+    "@types/node": "^22.20.5",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "eslint": "^9",
+    "eslint-config-next": "16.4.6",
+    "tailwindcss": "4.3.3",
+    "typescript": "^5",
+    "vitest": "^5.1.0"
+  }
+}
