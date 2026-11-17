@@ -24,15 +24,19 @@ No install, no server, no upload: DuckDB-WASM runs the 59 SQL models and 24 test
 The sample fleet has an expired registration, an insurance renewal due, a broken VIN and a missing VIN; the scanned
 card renews the expired one.
 
-![Import a vehicle list, read the register, scan a registration card and watch the vehicle come back into service](docs/demo.gif)
+![The garage home page, a vehicle's road checklist, importing a vehicle list, the fleet register and scanning a registration card](docs/demo.gif)
 
-![Overview](docs/web-overview.jpg)
+![The visual garage: every vehicle grouped by what is holding it back](docs/web-garage.jpg)
 
 ## The visual garage
 
 The home dashboard groups vehicles into Road ready, Repair bays, Renewal desk, Accident intake, Dispatch review and Safety checks. Open a car for recorded repair milestones, registration and insurance stages, source blockers, a release checklist, a named owner and a target return date.
 
+![A vehicle's road checklist, recorded repair milestones and registration and insurance stages](docs/web-garage-vehicle.jpg)
+
 Report an accident to hold the vehicle and track assessment, repair, quality checks and dispatch review. The alert inbox includes paging, type filters and read status. Recovery missions and handover XP reward completed work; points cannot bypass an expired document, unresolved repair or evidence gap. The existing KPI dashboard is available under **Analytics**.
+
+![Analytics: the KPI dashboard](docs/web-overview.jpg)
 
 Garage actions for your fleet use the same device-local Workspace and optional passphrase encryption. Demo actions are isolated practice in tab memory. Notifications update from imported evidence and in-app incident reports; there is no automatic accident detection or external alert service. Current handovers recheck document dates, source freshness, vehicle-level usage coverage and all release requirements. See [garage workflow](docs/GARAGE.md).
 
