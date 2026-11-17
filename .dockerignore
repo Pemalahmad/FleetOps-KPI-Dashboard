@@ -6,3 +6,4 @@ tests
 .omc
 __pycache__
 *.duckdb
+web/

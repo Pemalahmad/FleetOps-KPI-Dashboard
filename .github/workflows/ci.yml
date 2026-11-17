@@ -6,7 +6,7 @@ on:
   pull_request:
 
 jobs:
-  test:
+  python:
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -20,6 +20,31 @@ jobs:
       - run: pytest -q
       - name: Demo fleet end to end
         run: fleetkpi demo /tmp/demo
+
+  web:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - name: Export the SQL engine and demo fleet from the Python package
+        working-directory: .
+        run: pip install -e . && fleetkpi web-export --out web/public
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run typecheck
+      - name: Maths and metric-network tests
+        run: npm test
+      - run: npm run build
 
   docker:
     runs-on: ubuntu-latest
