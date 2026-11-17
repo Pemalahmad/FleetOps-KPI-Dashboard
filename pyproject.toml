@@ -9,7 +9,7 @@ description = "Plug-and-play fleet KPI warehouse and gamified dashboard for elec
 readme = "README.md"
 license = { text = "FSL-1.1-MIT" }
 authors = [{ name = "Mohammad Alahmad" }]
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 dependencies = [
     "duckdb>=1.1",
     "streamlit>=1.40",

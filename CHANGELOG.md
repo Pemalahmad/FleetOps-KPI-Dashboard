@@ -22,6 +22,8 @@ What changed in each version of FleetOps KPI. Dates are release dates; the newes
     rest, OCR under the policy, same-origin requests only).
   - Signed build provenance for offline packages; GitHub Actions pinned to commit SHAs; installs without package
     scripts; OpenSSF Scorecard; secret scanning with push protection; private vulnerability reporting.
+- Python 3.11 or newer is now required (3.10 reached end of life in October 2026); this lets the lock file move to
+  Pillow 13.0.0, which fixes 43 published Pillow advisories (5 critical).
 - Fixed: a demo build still running could finish after, and replace, the owner's fleet.
 - Sample files in [`samples/`](samples) to try the app in under a minute.
 - Issue templates, contributing guide, changelog.

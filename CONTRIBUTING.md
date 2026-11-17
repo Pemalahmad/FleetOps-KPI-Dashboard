@@ -9,7 +9,7 @@ rows with the values changed, or one of the files in [`samples/`](samples).
 
 ## Set up
 
-You need Python 3.10+ and Node 22.
+You need Python 3.11+ and Node 22.
 
 ```bash
 git clone https://github.com/Pemalahmad/FleetOps-KPI-Dashboard.git
