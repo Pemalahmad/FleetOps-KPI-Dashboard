@@ -17,5 +17,3 @@ A policy that says more or less than the code does is a liability. Your job is t
   unusual licences (GPL, AGPL, SSPL, non-commercial) are flagged to the maintainer before merge.
 - Update the effective date and add a CHANGELOG line whenever a policy changes. The in-app `/legal/` page reads the
   same files (copied by `web/scripts/copy-content.mjs`), so there is one source.
-
-These documents are drafted for clarity, not as legal advice; recommend a lawyer's review before charging customers.
