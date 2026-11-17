@@ -33,7 +33,7 @@
   },
   "devDependencies": {
     "@playwright/test": "^1.57.0",
-    "@tailwindcss/turbopack": "4.3.3",
+    "@tailwindcss/turbopack": "4.3.5",
     "@tesseract.js-data/ara": "^1.0.0",
     "@tesseract.js-data/eng": "^1.0.0",
     "@types/katex": "^0.16.8",
