@@ -35,21 +35,21 @@ SELECT * FROM (VALUES
 
 CREATE OR REPLACE TABLE sites AS
 SELECT * FROM (VALUES
-    ('WS01', 'Dubai Al Quoz',         'UAE',     'workshop', 14, DATE '2024-01-01'),
-    ('WS02', 'Dubai JAFZA',           'UAE',     'workshop', 10, DATE '2024-06-01'),
-    ('WS03', 'Abu Dhabi Mussafah',    'UAE',     'workshop', 10, DATE '2024-03-01'),
-    ('WS04', 'Riyadh North',          'KSA',     'workshop', 12, DATE '2025-07-01'),
-    ('WS05', 'Riyadh South',          'KSA',     'workshop', 10, DATE '2025-07-01'),
-    ('WS06', 'Jeddah',                'KSA',     'workshop',  8, DATE '2025-10-01'),
-    ('WS07', 'Dammam',                'KSA',     'workshop',  6, DATE '2026-01-01'),
-    ('WS08', 'Doha Industrial Area',  'Qatar',   'workshop',  9, DATE '2024-06-01'),
-    ('WS09', 'Kuwait Shuwaikh',       'Kuwait',  'workshop',  8, DATE '2024-09-01'),
-    ('WS10', 'Bahrain Sitra',         'Bahrain', 'workshop',  5, DATE '2025-01-01'),
-    ('WS11', 'Muscat Ghala',          'Oman',    'workshop',  5, DATE '2025-03-01'),
-    ('WS12', 'Istanbul Asia (Tuzla)', 'Türkiye', 'workshop', 12, DATE '2024-03-01'),
-    ('WS13', 'Istanbul Europe',       'Türkiye', 'workshop', 12, DATE '2024-03-01'),
-    ('WS14', 'Ankara',                'Türkiye', 'workshop',  8, DATE '2024-06-01'),
-    ('WS15', 'Izmir',                 'Türkiye', 'workshop',  7, DATE '2024-09-01')
+    ('WS01', 'Dubai Al Quoz',         'UAE',     'workshop', 8, DATE '2024-01-01'),
+    ('WS02', 'Dubai JAFZA',           'UAE',     'workshop', 8, DATE '2024-06-01'),
+    ('WS03', 'Abu Dhabi Mussafah',    'UAE',     'workshop', 8, DATE '2024-03-01'),
+    ('WS04', 'Riyadh North',          'KSA',     'workshop', 7, DATE '2025-07-01'),
+    ('WS05', 'Riyadh South',          'KSA',     'workshop', 6, DATE '2025-07-01'),
+    ('WS06', 'Jeddah',                'KSA',     'workshop',  5, DATE '2025-10-01'),
+    ('WS07', 'Dammam',                'KSA',     'workshop',  5, DATE '2026-01-01'),
+    ('WS08', 'Doha Industrial Area',  'Qatar',   'workshop',  7, DATE '2024-06-01'),
+    ('WS09', 'Kuwait Shuwaikh',       'Kuwait',  'workshop',  5, DATE '2024-09-01'),
+    ('WS10', 'Bahrain Sitra',         'Bahrain', 'workshop',  4, DATE '2025-01-01'),
+    ('WS11', 'Muscat Ghala',          'Oman',    'workshop',  4, DATE '2025-03-01'),
+    ('WS12', 'Istanbul Asia (Tuzla)', 'Türkiye', 'workshop', 7, DATE '2024-03-01'),
+    ('WS13', 'Istanbul Europe',       'Türkiye', 'workshop', 7, DATE '2024-03-01'),
+    ('WS14', 'Ankara',                'Türkiye', 'workshop',  5, DATE '2024-06-01'),
+    ('WS15', 'Izmir',                 'Türkiye', 'workshop',  6, DATE '2024-09-01')
 ) t(site_id, site_name, region, site_type, technicians, open_date);
 
 -- ------------------------------------------------------------------ vehicles
@@ -89,7 +89,17 @@ SELECT
     CAST(NULL AS DATE) AS out_of_service_date,
     round(CASE powertrain WHEN 'BEV' THEN 42000 WHEN 'PHEV' THEN 38000 WHEN 'HEV' THEN 31000 ELSE 27000 END
           * (0.92 + 0.16 * rnd(vehicle_id || 'pc')), -2) AS purchase_cost,
-    CASE WHEN is_delivery THEN 'Delivery' ELSE 'Ride-hail' END AS use_case
+    CASE WHEN is_delivery THEN 'Delivery' ELSE 'Ride-hail' END AS use_case,
+    -- Annual registration from the in-service anniversary; ~1.5% lapsed, renewals spread over the year.
+    CASE WHEN rnd(vehicle_id || 'regx') < 0.015
+         THEN DATE '2026-10-01' - to_days(CAST(1 + floor(rnd(vehicle_id || 'regd') * 40) AS INTEGER))
+         ELSE DATE '2026-10-01' + to_days(CAST(1 + floor(rnd(vehicle_id || 'regd') * 364) AS INTEGER)) END AS registration_expiry,
+    -- Annual insurance policies, renewals spread over the year; ~2% lapsed.
+    CASE WHEN rnd(vehicle_id || 'insx') < 0.02
+         THEN DATE '2026-10-01' - to_days(CAST(1 + floor(rnd(vehicle_id || 'insd') * 30) AS INTEGER))
+         ELSE DATE '2026-10-01' + to_days(CAST(1 + floor(rnd(vehicle_id || 'insd') * 364) AS INTEGER)) END AS insurance_expiry,
+    ['Gulf Insurance', 'Oasis Assurance', 'Crescent Mutual', 'Anatolia Sigorta'][
+        CASE WHEN region = 'Türkiye' THEN 4 ELSE 1 + CAST(floor(rnd(vehicle_id || 'ins') * 3) AS INTEGER) END] AS insurer
 FROM typed;
 
 -- ------------------------------------------------------ vehicle-months (helper)
@@ -292,8 +302,39 @@ SELECT
     vehicle_id, site_id, job_type, opened_at,
     CASE WHEN opened_at + to_minutes(CAST(round(turnaround_h * 60) AS INTEGER)) < TIMESTAMP '2026-10-01'
          THEN opened_at + to_minutes(CAST(round(turnaround_h * 60) AS INTEGER)) END AS closed_at,
-    labour_h AS labour_hours, parts_wait_h AS parts_wait_hours, total_cost, paid_by, repeat_visit, campaign_id
+    labour_h AS labour_hours, parts_wait_h AS parts_wait_hours, total_cost, paid_by, repeat_visit, campaign_id,
+    -- key handed over 0-2h before the job opens; collected 0.5-6h after it closes
+    opened_at - to_minutes(CAST(floor(rnd(jk || 'ki') * 120) AS INTEGER)) AS key_in_at,
+    CASE WHEN opened_at + to_minutes(CAST(round(turnaround_h * 60) AS INTEGER)) < TIMESTAMP '2026-10-01'
+         THEN least(opened_at + to_minutes(CAST(round(turnaround_h * 60) AS INTEGER))
+                    + to_minutes(CAST(30 + floor(rnd(jk || 'ko') * 330) AS INTEGER)), TIMESTAMP '2026-09-30 23:59:00') END AS key_out_at
 FROM unioned;
+
+-- --------------------------------------------------------------- feedback
+-- ~35% of customers answer the post-visit survey. Stars fall with long key-to-key time and repeat visits,
+-- so service problems show up in satisfaction too.
+CREATE OR REPLACE TABLE feedback AS
+WITH j AS (
+    SELECT w.*, date_diff('minute', w.key_in_at, w.key_out_at) / 60.0 AS k2k_h
+    FROM work_orders w
+    WHERE w.key_out_at IS NOT NULL AND w.job_type <> 'Recall'
+      AND rnd(w.work_order_id || 'resp') < 0.35
+)
+SELECT
+    'F' || lpad((row_number() OVER (ORDER BY key_out_at, work_order_id))::VARCHAR, 7, '0') AS feedback_id,
+    work_order_id, CAST(NULL AS VARCHAR) AS vehicle_id, CAST(NULL AS VARCHAR) AS site_id,
+    (key_out_at + to_days(CAST(floor(rnd(work_order_id || 'fd') * 3) AS INTEGER)))::DATE AS date,
+    CAST(greatest(1, least(5, round(
+        5.15
+        - 0.022 * greatest(k2k_h - 18, 0)
+        - CASE WHEN repeat_visit THEN 1.4 ELSE 0 END
+        - CASE WHEN job_type = 'Collision' THEN 0.3 ELSE 0 END
+        - 1.6 * pow(rnd(work_order_id || 'fs'), 2.2)
+    ))) AS INTEGER) AS rating,
+    CASE WHEN rnd(work_order_id || 'ch') < 0.6 THEN 'SMS' ELSE 'App' END AS channel,
+    CAST(NULL AS VARCHAR) AS comment
+FROM j
+WHERE (key_out_at + to_days(CAST(floor(rnd(work_order_id || 'fd') * 3) AS INTEGER)))::DATE < DATE '2026-10-01';
 
 -- ---------------------------------------------------------------- budgets
 CREATE OR REPLACE TABLE budgets AS

@@ -25,17 +25,17 @@ def demo_build(tmp_path_factory):
 def test_demo_pipeline_all_stages_pass(demo_build):
     assert demo_build.ok
     assert [s.stage for s in demo_build.stages] == [
-        "Ingest", "Map & standardise", "Validate", "Model", "Quality gate", "Publish"]
+        "Ingest", "Standardise", "Validate", "Staging", "Intermediate", "Marts", "Test", "Publish"]
     assert all(s.status == "ok" for s in demo_build.stages), [(s.stage, s.status, s.detail) for s in demo_build.stages]
 
 
 def test_demo_covers_every_powertrain(demo_build):
     con = _db(demo_build)
-    pts = {r[0] for r in con.execute("SELECT powertrain FROM powertrain_kpis").fetchall()}
+    pts = {r[0] for r in con.execute("SELECT powertrain FROM mart_powertrain_kpis").fetchall()}
     assert pts == {"BEV", "PHEV", "HEV", "ICE"}
     # Physics sanity: electric is cheapest per km on energy and lowest CO2; combustion highest.
-    e = dict(con.execute("SELECT powertrain, energy_cost_per_km FROM powertrain_kpis").fetchall())
-    c = dict(con.execute("SELECT powertrain, co2_g_per_km FROM powertrain_kpis").fetchall())
+    e = dict(con.execute("SELECT powertrain, energy_cost_per_km FROM mart_powertrain_kpis").fetchall())
+    c = dict(con.execute("SELECT powertrain, co2_g_per_km FROM mart_powertrain_kpis").fetchall())
     assert e["BEV"] < e["HEV"] < e["ICE"]
     assert c["BEV"] < c["HEV"] < c["ICE"]
 
@@ -45,7 +45,7 @@ def test_demo_detects_riyadh_north_crisis_and_recovery(demo_build):
     crisis, after = con.execute("""
         SELECT count(*) FILTER (WHERE status = 'INTERVENE' AND wk BETWEEN DATE '2026-03-01' AND DATE '2026-06-30'),
                count(*) FILTER (WHERE status = 'INTERVENE' AND wk >= DATE '2026-08-01')
-        FROM center_weekly WHERE site_name = 'Riyadh North'""").fetchone()
+        FROM mart_site_weekly WHERE site_name = 'Riyadh North'""").fetchone()
     assert crisis >= 10 and after == 0
 
 
@@ -54,22 +54,57 @@ def test_demo_detects_istanbul_turnaround(demo_build):
     before, after = con.execute("""
         SELECT avg(p50_turnaround_h) FILTER (WHERE wk < DATE '2025-10-01' AND status <> 'LOW VOLUME'),
                avg(p50_turnaround_h) FILTER (WHERE wk >= DATE '2025-11-01')
-        FROM center_weekly WHERE site_name = 'Istanbul Asia (Tuzla)'""").fetchone()
+        FROM mart_site_weekly WHERE site_name = 'Istanbul Asia (Tuzla)'""").fetchone()
     assert after <= 0.7 * before
 
 
 def test_demo_gamification_is_complete(demo_build):
     con = _db(demo_build)
-    lb = con.execute("SELECT * FROM leaderboard").df()
+    lb = con.execute("SELECT * FROM mart_leaderboard").df()
     assert len(lb) == 15
     assert lb.ops_score.between(0, 1000).all()
     assert lb.tier.notna().all()
     assert lb["rank"].min() == 1
 
 
+def test_demo_sql_tests_all_pass(demo_build):
+    assert demo_build.tests and all(t["status"] == "pass" for t in demo_build.tests), \
+        [t for t in demo_build.tests if t["status"] != "pass"]
+
+
+def test_demo_new_kpis(demo_build):
+    con = _db(demo_build)
+    sc = con.execute("SELECT * FROM mart_exec_scorecard").df()
+    for col in ["csat_pct", "low_rating_pct", "key_to_key_p50_h", "productivity_pct", "backlog_days",
+                "registration_valid_pct", "insurance_valid_pct"]:
+        assert sc[col].notna().all(), col
+    assert sc.csat_pct.between(50, 100).all() and sc.low_rating_pct.between(0, 25).all()
+    # every star rating present; registration and insurance statuses all represented
+    assert {r[0] for r in con.execute("SELECT DISTINCT rating FROM mart_rating_distribution").fetchall()} == {1, 2, 3, 4, 5}
+    st = {(d, s) for d, s in con.execute("SELECT DISTINCT document, status FROM mart_compliance_status").fetchall()}
+    assert {("Registration", "Expired"), ("Insurance", "Expiring"), ("Insurance", "Valid")} <= st
+    # depreciation: value retained falls as the fleet ages, never below the residual floor
+    vr = con.execute("SELECT min(value_retained_pct), max(value_retained_pct) FROM mart_asset_value_monthly").fetchall()[0]
+    assert 20 <= vr[0] < vr[1] <= 100
+    # the Riyadh North crisis shows up in satisfaction too
+    ksa = dict(con.execute("""SELECT month_start::VARCHAR, low_rating_pct FROM mart_customer_monthly
+                              WHERE region = 'KSA'""").fetchall())
+    assert ksa["2026-06-01"] > ksa["2026-09-01"]
+
+
+def test_runner_orders_models_and_enforces_layers():
+    from fleetkpi import sqlrunner
+    plan = sqlrunner.plan()
+    pos = {m.name: i for i, m in enumerate(plan)}
+    for m in plan:
+        assert all(pos[d] < pos[m.name] for d in m.deps), m.name
+    assert {m.layer for m in plan} == {"staging", "intermediate", "marts"}
+    assert len(sqlrunner.discover("tests")) >= 15 and len(sqlrunner.discover("validation")) >= 20
+
+
 def test_demo_pm_compliance_by_powertrain_interval(demo_build):
     con = _db(demo_build)
-    rows = con.execute("SELECT DISTINCT powertrain, interval_km FROM pm_status ORDER BY 1").fetchall()
+    rows = con.execute("SELECT DISTINCT powertrain, interval_km FROM int_pm_status ORDER BY 1").fetchall()
     assert dict(rows) == {"BEV": 25000, "HEV": 15000, "ICE": 10000, "PHEV": 15000}
 
 
@@ -128,8 +163,8 @@ def test_foreign_format_fleet_plugs_in(tmp_path):
     assert con.execute("SELECT max(total_cost) FROM work_orders").fetchone()[0] == 1250.0
     assert con.execute("SELECT min(in_service_date) FROM vehicles").fetchone()[0].isoformat() == "2025-01-01"
     # optional tables absent -> views exist and are empty, scorecard still produced
-    assert con.execute("SELECT count(*) FROM recall_completion").fetchone()[0] == 0
-    assert con.execute("SELECT count(*) FROM exec_scorecard").fetchone()[0] == 1
+    assert con.execute("SELECT count(*) FROM mart_recall_completion").fetchone()[0] == 0
+    assert con.execute("SELECT count(*) FROM mart_exec_scorecard").fetchone()[0] == 1
     assert con.execute("SELECT value FROM cfg_settings WHERE key = 'currency'").fetchone()[0] == "EGP"
 
 
@@ -177,4 +212,4 @@ def test_init_creates_templates_and_contract(tmp_path):
     assert main(["init", str(tmp_path)]) == 0
     assert (tmp_path / "fleet.yml").exists()
     assert (tmp_path / "DATA_CONTRACT.md").read_text().startswith("# fleetkpi data contract")
-    assert len(list((tmp_path / "templates").glob("*.csv"))) == 8
+    assert len(list((tmp_path / "templates").glob("*.csv"))) == 9

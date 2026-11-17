@@ -4,14 +4,14 @@ title: Weekly operations review
 owner: Fleet operations manager
 cadence: Every Monday, 30 minutes
 trigger: Weekly
-page: Command Center
+page: Overview
 ---
 
 ## Purpose
 One rhythm that turns the dashboard into decisions: what moved, why, who acts, by when.
 
 ## Steps
-- [ ] Open the Command Center and read **What needs attention** top to bottom.
+- [ ] Open the Overview and read **What needs attention** top to bottom.
 - [ ] For every site flagged **INTERVENE**, open SOP-03 and assign an owner today.
 - [ ] Review the **Leaderboard**: call out the top mover, and agree a support plan with the bottom two sites.
 - [ ] Check the open **backlog over 72h**. Every vehicle on it gets a release date.

@@ -55,6 +55,9 @@ TABLES: dict[str, Table] = {t.name: t for t in [
         C("out_of_service_date", "DATE", False, "Date it left the fleet (blank if active)", ("disposal_date", "end_date", "defleet_date", "sold_date"), ""),
         C("purchase_cost", "DOUBLE", False, "Acquisition cost, for depreciation in total cost of ownership", ("price", "cost", "acquisition_cost", "capex"), "42000"),
         C("use_case", "VARCHAR", False, "Ride-hail, delivery, pool car...", ("usage_type", "segment", "application"), "Ride-hail"),
+        C("registration_expiry", "DATE", False, "Registration / licence (mulkiya, MOT, tax disc) expiry date", ("registration_expiry_date", "reg_expiry", "mulkiya_expiry", "licence_expiry", "license_expiry", "registration_valid_until"), "2027-02-13"),
+        C("insurance_expiry", "DATE", False, "Insurance policy expiry date", ("insurance_expiry_date", "policy_expiry", "insurance_valid_until", "policy_end"), "2026-12-31"),
+        C("insurer", "VARCHAR", False, "Insurance company", ("insurance_company", "insurance_provider", "policy_provider"), "Gulf Insurance"),
     ), key=("vehicle_id",)),
 
     Table("work_orders", True, "Every workshop visit: preventive maintenance, repairs, warranty, collisions, tyres, recalls.", (
@@ -70,6 +73,8 @@ TABLES: dict[str, Table] = {t.name: t for t in [
         C("paid_by", "VARCHAR", False, "Fleet | OEM | Insurance (default Fleet)", ("payer", "billing", "charge_to"), "Fleet"),
         C("repeat_visit", "BOOLEAN", False, "TRUE if the vehicle came back for the same fault", ("repeat", "comeback", "rework"), "false"),
         C("campaign_id", "VARCHAR", False, "Recall campaign id for recall jobs", ("recall_id", "campaign"), ""),
+        C("key_in_at", "TIMESTAMP", False, "Customer handed over the key (defaults to opened_at)", ("key_in", "key_drop", "key_received", "handover_in", "drop_off"), "2026-03-04 08:20"),
+        C("key_out_at", "TIMESTAMP", False, "Key handed back to the customer (defaults to closed_at)", ("key_out", "key_return", "handover_out", "pick_up", "collected_at"), "2026-03-05 16:10"),
     ), key=("work_order_id",)),
 
     Table("usage", True, "Distance and hours per vehicle, daily or monthly (both work).", (
@@ -99,6 +104,17 @@ TABLES: dict[str, Table] = {t.name: t for t in [
         C("vehicle_id", "VARCHAR", True, "Affected vehicle", ("vehicle", "plate", "vin"), "V0100002"),
     ), key=("campaign_id", "vehicle_id")),
 
+    Table("feedback", False, "Customer satisfaction responses (1-5 stars), ideally linked to a work order.", (
+        C("feedback_id", "VARCHAR", False, "Response id", ("response_id", "survey_id", "id"), "F0000001"),
+        C("work_order_id", "VARCHAR", False, "Work order the rating is about", ("job_id", "wo", "wo_number", "job_number", "ro_number"), "WO0000001"),
+        C("vehicle_id", "VARCHAR", False, "Vehicle (if not linked to a work order)", ("vehicle", "plate", "plate_no", "vin"), "V0100001"),
+        C("site_id", "VARCHAR", False, "Site (if not linked to a work order)", ("site", "workshop_id", "branch_id"), "WS01"),
+        C("date", "DATE", True, "Response date", ("response_date", "survey_date", "submitted_at", "created_at"), "2026-03-06"),
+        C("rating", "INTEGER", True, "Stars, 1 (worst) to 5 (best)", ("stars", "score", "csat", "satisfaction"), "5"),
+        C("channel", "VARCHAR", False, "SMS, app, call...", ("source", "medium"), "SMS"),
+        C("comment", "VARCHAR", False, "Free-text comment", ("comments", "verbatim", "feedback", "remarks"), ""),
+    ), key=("feedback_id",)),
+
     Table("budgets", False, "Fleet-paid maintenance budget per region and month. If absent, fleet.yml rates are used.", (
         C("region", "VARCHAR", True, "Region", ("market", "country"), "UAE"),
         C("month", "DATE", True, "First day of the month", ("period", "date"), "2026-03-01"),
@@ -106,7 +122,7 @@ TABLES: dict[str, Table] = {t.name: t for t in [
     ), key=("region", "month")),
 ]}
 
-LOAD_ORDER = ["sites", "vehicles", "work_orders", "usage", "energy", "recalls", "recall_vehicles", "budgets"]
+LOAD_ORDER = ["sites", "vehicles", "work_orders", "usage", "energy", "feedback", "recalls", "recall_vehicles", "budgets"]
 
 
 def contract_markdown() -> str:

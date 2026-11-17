@@ -14,6 +14,7 @@ import csv
 import os
 import subprocess
 import sys
+import tempfile
 from importlib import resources
 from pathlib import Path
 
@@ -83,14 +84,18 @@ def cmd_serve(args) -> int:
         print("No warehouse yet: run `fleetkpi build` (or `fleetkpi demo`) first.")
         return 1
     app = resources.files("fleetkpi").joinpath("app", "dashboard.py")
+    # Streamlit reads .streamlit/config.toml from the working directory: run from a temp dir that
+    # carries the packaged light/dark theme, so the user's own folder is never touched.
+    run_dir = Path(tempfile.mkdtemp(prefix="fleetkpi-"))
+    (run_dir / ".streamlit").mkdir()
+    (run_dir / ".streamlit" / "config.toml").write_text(
+        resources.files("fleetkpi").joinpath("app", "theme.toml").read_text())
     env = {**os.environ, "FLEETKPI_CONFIG": str(cfg.path)}
     cmd = [sys.executable, "-m", "streamlit", "run", str(app), "--server.port", str(args.port),
            "--server.address", args.host, "--browser.gatherUsageStats", "false",
            # headless when there is no terminal (Docker, CI, background): skips Streamlit's first-run prompt
-           "--server.headless", "false" if sys.stdin.isatty() else "true",
-           "--theme.base", "light", "--theme.primaryColor", "#4F46E5", "--theme.backgroundColor", "#FAFAFA",
-           "--theme.secondaryBackgroundColor", "#F4F4F5", "--theme.textColor", "#18181B"]
-    return subprocess.call(cmd, env=env)
+           "--server.headless", "false" if sys.stdin.isatty() else "true"]
+    return subprocess.call(cmd, env=env, cwd=run_dir)
 
 
 def main(argv: list[str] | None = None) -> int:

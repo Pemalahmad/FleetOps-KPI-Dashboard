@@ -8,7 +8,13 @@ fleet:
   snapshot_date: auto                     # "auto" = day after the latest data, or YYYY-MM-DD
   analysis_start: auto                    # "auto" = first month in usage data, or YYYY-MM-DD
   kpi_window_months: 3                    # window for energy / cost-per-km / TCO comparisons
-  depreciation_years: 5                   # straight-line, for total cost of ownership
+  productive_hours_per_day: 8             # per technician, for workshop productivity
+  working_days_per_week: 6
+
+assets:
+  depreciation_method: straight_line      # straight_line | declining_balance
+  useful_life_years: 5
+  residual_value_pct: 20                  # value left at end of useful life
 
 data:
   input_dir: data/input                   # relative to this file
@@ -49,7 +55,11 @@ maintenance:
     BEV:  {km: 25000, months: 12}
   pm_tolerance_pct: 10                    # grace before a vehicle counts as overdue
 
+compliance:
+  expiring_window_days: 30                # registration / insurance shown as "Expiring" inside this window
+
 service:
+  key_to_key_target_h: 24                 # key handed in -> key handed back
   intervene_ratio: 1.5                    # weekly median turnaround > 1.5x network or own trend
   watch_ratio: 1.2
   min_weekly_jobs: 8                      # below this a week is LOW VOLUME, not judged
@@ -67,13 +77,21 @@ targets:
   cost_vs_budget_pct:    {green: 0.0,  amber: 5.0,  direction: lower}
   recall_completion_pct: {green: 85.0, amber: 70.0, direction: higher}
   pm_compliance_pct:     {green: 95.0, amber: 90.0, direction: higher}
+  csat_pct:              {green: 85.0, amber: 75.0, direction: higher}   # share of 4-5 star ratings
+  low_rating_pct:        {green: 5.0,  amber: 8.0,  direction: lower}    # share of 1-2 star ratings
+  key_to_key_p50_h:      {green: 24.0, amber: 36.0, direction: lower}
+  backlog_days:          {green: 1.5,  amber: 3.0,  direction: lower}
+  productivity_pct:      {green: 80.0, amber: 70.0, direction: higher}   # billed / available technician hours
+  registration_valid_pct: {green: 99.0, amber: 97.0, direction: higher}
+  insurance_valid_pct:   {green: 99.0, amber: 97.0, direction: higher}
 
 gamification:
   score_weights:                          # site Ops Score out of 1,000
-    turnaround: 0.35
-    first_time_fix: 0.25
-    same_day_release: 0.15
-    pm_compliance: 0.25
+    key_to_key: 0.25
+    first_time_fix: 0.20
+    csat: 0.20
+    productivity: 0.15
+    pm_compliance: 0.20
   tiers:                                  # minimum score per tier
     Platinum: 780
     Gold: 700

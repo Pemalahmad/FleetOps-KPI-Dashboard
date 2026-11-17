@@ -1,0 +1,35 @@
+# fleetkpi theme: light and dark palettes; users switch via Settings -> Theme (or follow the system).
+[theme]
+font = "Inter:https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+headingFont = "Inter:https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+baseRadius = "0.85rem"
+buttonRadius = "0.6rem"
+showWidgetBorder = true
+showSidebarBorder = false
+metricValueFontSize = "1.85rem"
+metricValueFontWeight = 650
+chartCategoricalColors = ["#6366F1", "#06B6D4", "#10B981", "#F59E0B", "#F43F5E", "#8B5CF6", "#64748B", "#EC4899"]
+
+[theme.light]
+primaryColor = "#4F46E5"
+backgroundColor = "#F6F7FB"
+secondaryBackgroundColor = "#FFFFFF"
+textColor = "#0F172A"
+borderColor = "#E4E7EF"
+dataframeHeaderBackgroundColor = "#F1F3F9"
+
+[theme.light.sidebar]
+backgroundColor = "#FFFFFF"
+secondaryBackgroundColor = "#F6F7FB"
+
+[theme.dark]
+primaryColor = "#818CF8"
+backgroundColor = "#0A0E1A"
+secondaryBackgroundColor = "#121829"
+textColor = "#E5E9F2"
+borderColor = "#1E2740"
+dataframeHeaderBackgroundColor = "#161D31"
+
+[theme.dark.sidebar]
+backgroundColor = "#0D1221"
+secondaryBackgroundColor = "#121829"

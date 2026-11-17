@@ -4,7 +4,7 @@ title: Recall campaign management
 owner: Compliance & aftersales lead
 cadence: From launch until closed; weekly progress
 trigger: New campaign issued, or completion below target 8 weeks after launch
-page: Recalls
+page: Compliance
 ---
 
 ## Purpose

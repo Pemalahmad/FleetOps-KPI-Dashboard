@@ -4,7 +4,7 @@ title: Month-end cost, energy & TCO review
 owner: Fleet finance business partner
 cadence: Monthly, working day 3
 trigger: Month close; a region red on cost vs budget
-page: Energy & TCO
+page: Fleet & Assets
 ---
 
 ## Purpose
