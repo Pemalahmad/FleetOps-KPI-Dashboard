@@ -92,6 +92,27 @@ def test_demo_new_kpis(demo_build):
     assert ksa["2026-06-01"] > ksa["2026-09-01"]
 
 
+def test_demo_service_quality_kpis(demo_build):
+    con = _db(demo_build)
+    sc = con.execute("SELECT * FROM mart_exec_scorecard").df()
+    for col in ["repeat_repair_pct", "repeat_visit_pct", "time_to_pickup_p50_h", "back_to_ops_p50_h",
+                "parts_on_time_pct", "fines_per_100_vehicles", "goodwill_pct"]:
+        assert sc[col].notna().all(), col
+    assert sc.repeat_repair_pct.between(0, 25).all() and sc.parts_on_time_pct.between(40, 100).all()
+    # every category and fine type the demo plants is recognised (nothing falls into 'Other')
+    cats = {r[0] for r in con.execute("SELECT DISTINCT issue_category FROM mart_issue_categories").fetchall()}
+    assert {"Brakes", "HV battery", "Charging system", "Engine & transmission", "Body & glass"} <= cats
+    types = {r[0] for r in con.execute("SELECT DISTINCT fine_type FROM stg_fines").fetchall()}
+    assert "Other" not in types and "Expired registration" in types
+    # the Riyadh North crisis breaks supplier promises: KSA parts on-time collapses, then recovers
+    ksa = dict(con.execute("""SELECT month_start::VARCHAR, parts_on_time_pct FROM mart_region_month_kpis
+                              WHERE region = 'KSA'""").fetchall())
+    assert ksa["2026-05-01"] < 50 < ksa["2026-09-01"]
+    # combustion vehicles cost the most to service per km; electric the least
+    spend = dict(con.execute("SELECT powertrain, avg(spend_per_1000_km) FROM mart_vehicle_service_spend GROUP BY 1").fetchall())
+    assert spend["BEV"] < spend["ICE"]
+
+
 def test_runner_orders_models_and_enforces_layers():
     from fleetkpi import sqlrunner
     plan = sqlrunner.plan()
@@ -99,7 +120,7 @@ def test_runner_orders_models_and_enforces_layers():
     for m in plan:
         assert all(pos[d] < pos[m.name] for d in m.deps), m.name
     assert {m.layer for m in plan} == {"staging", "intermediate", "marts"}
-    assert len(sqlrunner.discover("tests")) >= 15 and len(sqlrunner.discover("validation")) >= 20
+    assert len(sqlrunner.discover("tests")) >= 20 and len(sqlrunner.discover("validation")) >= 30
 
 
 def test_demo_pm_compliance_by_powertrain_interval(demo_build):
@@ -212,4 +233,4 @@ def test_init_creates_templates_and_contract(tmp_path):
     assert main(["init", str(tmp_path)]) == 0
     assert (tmp_path / "fleet.yml").exists()
     assert (tmp_path / "DATA_CONTRACT.md").read_text().startswith("# fleetkpi data contract")
-    assert len(list((tmp_path / "templates").glob("*.csv"))) == 9
+    assert len(list((tmp_path / "templates").glob("*.csv"))) == 11
