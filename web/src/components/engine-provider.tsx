@@ -1,11 +1,13 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from "react";
-import { Engine, type PipelineLog, type Row } from "@/lib/engine";
+import { Engine, type IngestInput, type PipelineLog, type Row } from "@/lib/engine";
+import { documentsCsv, hasFleet, loadWorkspace, persistStorage, saveWorkspace, vehiclesFromDocuments, type Workspace } from "@/lib/workspace";
 
 export const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
 
 type Status = "booting" | "running" | "ready" | "failed";
+export type Dataset = "demo" | "mine";
 
 interface EngineState {
   status: Status;
@@ -16,8 +18,13 @@ interface EngineState {
   region: string | null;
   setRegion: (r: string | null) => void;
   regions: string[];
-  runFiles: (files: File[]) => Promise<void>;
   runDemo: () => Promise<void>;
+  /** The owner's fleet, saved in this browser. */
+  dataset: Dataset;
+  workspace: Workspace | null;
+  /** Save a changed workspace and rebuild the warehouse from it. */
+  commit: (ws: Workspace, opts?: { rebuild?: boolean }) => Promise<void>;
+  runMine: () => Promise<void>;
 }
 
 const Ctx = createContext<EngineState | null>(null);
@@ -36,7 +43,7 @@ export function EngineProvider({ children }: { children: ReactNode }) {
   const finish = useCallback(async (e: Engine, l: PipelineLog) => {
     setLog(l);
     if (l.ok) {
-      const rs = await e.query<{ region: string }>("SELECT DISTINCT region FROM mart_metric_panel ORDER BY 1");
+      const rs = await e.query<{ region: string }>("SELECT DISTINCT region FROM mart_fleet_registry WHERE region IS NOT NULL ORDER BY 1");
       setRegions(rs.map((r) => r.region));
       setRegion(null);
       setStatus("ready");
@@ -58,14 +65,23 @@ export function EngineProvider({ children }: { children: ReactNode }) {
     await finish(e, await e.run("Sahra Mobility (demo)", loads));
   }, [finish]);
 
-  const runFiles = useCallback(
-    async (files: File[]) => {
+  const [dataset, setDataset] = useState<Dataset>("demo");
+  const [workspace, setWorkspace] = useState<Workspace | null>(null);
+
+  const runWorkspace = useCallback(
+    async (ws: Workspace) => {
       const e = await (shared ??= Engine.create(BASE));
+      setEngine(e);
       setStatus("running");
-      setMessage(`Reading ${files.length} file(s) and running the pipeline…`);
+      setMessage(`Building ${ws.name} from ${ws.inputs.length} sheet(s) and ${ws.documents.filter((d) => d.confirmed).length} document(s)…`);
       try {
-        const loads = await e.loadFiles(files);
-        await finish(e, await e.run("Your fleet", loads));
+        const inputs: IngestInput[] = ws.inputs.map((i) => ({ table: i.table, label: i.label, kind: i.kind, csv: i.csv, bytes: i.bytes, mapping: i.mapping }));
+        const fromCards = vehiclesFromDocuments(ws.documents);
+        if (fromCards) inputs.push({ table: "vehicles", label: "Vehicles added from documents", kind: "tabular", csv: fromCards,
+          mapping: { vehicle_id: "vehicle_id", plate_number: "plate_number", vin: "vin" } });
+        const loads = await e.ingest(inputs, { documentsCsv: documentsCsv(ws.documents), vinSpecs: Object.values(ws.vinSpecs) });
+        setDataset("mine");
+        await finish(e, await e.run(ws.name, loads));
       } catch (err) {
         setStatus("failed");
         setMessage((err as Error).message.split("\n")[0]);
@@ -74,17 +90,42 @@ export function EngineProvider({ children }: { children: ReactNode }) {
     [finish],
   );
 
+  const commit = useCallback(
+    async (ws: Workspace, opts: { rebuild?: boolean } = {}) => {
+      setWorkspace(ws);
+      await saveWorkspace(ws);
+      persistStorage();
+      if ((opts.rebuild ?? true) && hasFleet(ws)) await runWorkspace(ws);
+    },
+    [runWorkspace],
+  );
+
+  const runMine = useCallback(async () => {
+    const ws = workspace ?? (await loadWorkspace());
+    if (hasFleet(ws)) await runWorkspace(ws!);
+  }, [workspace, runWorkspace]);
+
+  const demo = useCallback(async () => {
+    setDataset("demo");
+    await runDemo();
+  }, [runDemo]);
+
   useEffect(() => {
     if (started.current) return;
     started.current = true;
-    runDemo().catch((err) => {
+    (async () => {
+      const ws = await loadWorkspace();
+      setWorkspace(ws);
+      if (hasFleet(ws)) await runWorkspace(ws!);
+      else await runDemo();
+    })().catch((err) => {
       setStatus("failed");
       setMessage(`Engine failed to start: ${(err as Error).message}`);
     });
-  }, [runDemo]);
+  }, [runDemo, runWorkspace]);
 
   return (
-    <Ctx.Provider value={{ status, message, log, runId, engine, region, setRegion, regions, runFiles, runDemo }}>
+    <Ctx.Provider value={{ status, message, log, runId, engine, region, setRegion, regions, runDemo: demo, dataset, workspace, commit, runMine }}>
       {children}
     </Ctx.Provider>
   );

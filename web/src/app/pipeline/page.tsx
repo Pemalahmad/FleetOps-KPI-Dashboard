@@ -1,33 +1,22 @@
 "use client";
 
-import { useState } from "react";
-import { CheckCircle, DownloadSimple, UploadSimple, WarningCircle, XCircle } from "@phosphor-icons/react";
+import Link from "next/link";
+import { CheckCircle, UploadSimple, WarningCircle, XCircle } from "@phosphor-icons/react";
 import { Chart } from "@/components/chart";
 import { useEngine } from "@/components/engine-provider";
 import { Card, PageHeader, SectionTitle, Skeleton } from "@/components/ui";
 
 const LAYER_COLOR: Record<string, string> = { source: "#94A3B8", staging: "#06B6D4", intermediate: "#6366F1", marts: "#10B981" };
 
-function template(name: string, cols: { name: string }[]) {
-  const blob = new Blob([cols.map((c) => c.name).join(",") + "\n"], { type: "text/csv" });
-  const a = document.createElement("a");
-  a.href = URL.createObjectURL(blob);
-  a.download = `${name}.csv`;
-  a.click();
-  URL.revokeObjectURL(a.href);
-}
-
 export default function PipelinePage() {
-  const { log, engine, runFiles, runDemo, status } = useEngine();
-  const [drag, setDrag] = useState(false);
+  const { log, runDemo, runMine, dataset, workspace, status } = useEngine();
   const busy = status === "running" || status === "booting";
-  const onFiles = (fl: FileList | null) => fl && fl.length && runFiles([...fl]);
 
   return (
     <>
       <PageHeader eyebrow="Govern" title="The pipeline, running in your browser">
         The same SQL files as the Python package (<code>fleetkpi build</code>), executed by DuckDB-WASM on this page: ingest, settings,
-        validation rules, staging → intermediate → marts, then data tests. Drop your own fleet&apos;s files to run it on them; nothing is uploaded anywhere.
+        validation rules, staging → intermediate → marts, then data tests. Import your own fleet to run it on yours; nothing is uploaded anywhere.
       </PageHeader>
 
       <div className="grid gap-4 lg:grid-cols-[1.4fr_1fr]">
@@ -52,36 +41,25 @@ export default function PipelinePage() {
           ) : <Skeleton />}
         </Card>
 
-        <Card title="Run it on your fleet" sub="CSV, Parquet or JSON; one file per table, named like the table (vehicles.csv…). Column names are matched by 300+ synonyms.">
-          <label
-            onDragOver={(e) => { e.preventDefault(); setDrag(true); }}
-            onDragLeave={() => setDrag(false)}
-            onDrop={(e) => { e.preventDefault(); setDrag(false); onFiles(e.dataTransfer.files); }}
-            className={`flex cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed px-4 py-8 text-center transition ${drag ? "border-accent bg-accent-soft" : "border-border hover:border-accent"} ${busy ? "pointer-events-none opacity-60" : ""}`}>
-            <UploadSimple size={26} className="text-accent" />
-            <span className="text-[14px] font-medium">Drop files here or click to choose</span>
-            <span className="text-[12px] text-muted">Required: sites, vehicles, work_orders, usage</span>
-            <input type="file" multiple accept=".csv,.parquet,.json" className="hidden" onChange={(e) => onFiles(e.target.files)} />
-          </label>
-          <div className="mt-3 flex flex-wrap items-center gap-2">
-            <button onClick={() => runDemo()} disabled={busy}
-              className="rounded-lg border border-border px-3 py-1.5 text-[12.5px] text-muted transition hover:text-text active:scale-95 disabled:opacity-50">
-              Back to the demo fleet
-            </button>
-          </div>
-          {engine && (
-            <div className="mt-4">
-              <p className="mb-1.5 text-[12px] font-semibold uppercase tracking-[0.08em] text-faint">Blank templates</p>
-              <div className="flex flex-wrap gap-1.5">
-                {engine.manifest.tables.map((t) => (
-                  <button key={t.name} onClick={() => template(t.name, t.columns)} title={t.description}
-                    className="inline-flex items-center gap-1 rounded-full border border-border px-2.5 py-1 text-[12px] text-muted transition hover:border-accent hover:text-accent">
-                    <DownloadSimple size={12} /> {t.name}{t.required ? "" : " (optional)"}
-                  </button>
-                ))}
-              </div>
+        <Card title="Run it on your fleet" sub="Import your vehicle list, registration cards and service history; the same pipeline runs on them here, in your browser.">
+          <div className="flex flex-col gap-2">
+            <Link href="/import/" className="inline-flex items-center justify-center gap-2 rounded-xl bg-accent px-4 py-3 text-[14px] font-medium text-white transition hover:opacity-90 active:scale-[0.98]">
+              <UploadSimple size={18} /> Import your fleet (Excel, CSV)
+            </Link>
+            <Link href="/documents/" className="inline-flex items-center justify-center gap-2 rounded-xl border border-border px-4 py-2.5 text-[13.5px] text-muted transition hover:text-text">
+              Scan registration cards and policies
+            </Link>
+            <div className="mt-1 flex gap-2">
+              <button onClick={() => runDemo()} disabled={busy || dataset === "demo"}
+                className="flex-1 rounded-lg border border-border px-3 py-1.5 text-[12.5px] text-muted transition hover:text-text active:scale-95 disabled:opacity-40">
+                Show the demo fleet
+              </button>
+              <button onClick={() => runMine()} disabled={busy || dataset === "mine" || !workspace?.inputs.length}
+                className="flex-1 rounded-lg border border-border px-3 py-1.5 text-[12.5px] text-muted transition hover:text-text active:scale-95 disabled:opacity-40">
+                Show my fleet
+              </button>
             </div>
-          )}
+          </div>
         </Card>
       </div>
 

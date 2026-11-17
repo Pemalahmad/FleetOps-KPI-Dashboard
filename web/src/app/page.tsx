@@ -22,7 +22,7 @@ const SCORE: [string, string, string][] = [
 ];
 
 export default function Overview() {
-  const { region, status } = useEngine();
+  const { region, status, log } = useEngine();
   const p = usePanel();
   const sc = useSql<Record<string, string | number>>(`SELECT * FROM mart_exec_scorecard ORDER BY region`);
   const lb = useSql<{ site_name: string; ops_score: number; tier: string; badges: string; rank_change: number }>(
@@ -36,6 +36,16 @@ export default function Overview() {
         Every number below is computed in your browser by the same tested SQL pipeline, and every KPI is connected to the north
         star by exact algebra or a measured driver. Open the <Link href="/network/" className="text-accent underline-offset-2 hover:underline">metric network</Link> to see the maths.
       </PageHeader>
+
+      {log?.mode === "registry" && (
+        <Card className="mb-4">
+          <p className="text-[13.5px] text-muted">
+            <b className="text-text">Your fleet is in registry mode.</b> The <Link href="/fleet/" className="text-accent hover:underline">fleet register</Link>,{" "}
+            documents and licence are live. The operating KPIs below need work orders: add your service history on the{" "}
+            <Link href="/import/" className="text-accent hover:underline">import page</Link>.
+          </p>
+        </Card>
+      )}
 
       <div className="grid gap-4 lg:grid-cols-[1.15fr_2fr]">
         <div className="card relative overflow-hidden p-6">

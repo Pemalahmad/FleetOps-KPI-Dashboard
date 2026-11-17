@@ -5,6 +5,7 @@
  * Data never leaves the browser.
  */
 import * as duckdb from "@duckdb/duckdb-wasm";
+import type { VinSpec } from "./vin";
 
 export type Row = Record<string, unknown>;
 
@@ -16,8 +17,10 @@ interface ColumnSpec {
   synonyms: string[];
   expr: string;
   empty_expr: string;
+  shared?: boolean;
+  example?: string;
 }
-interface TableSpec {
+export interface TableSpec {
   name: string;
   required: boolean;
   description: string;
@@ -45,6 +48,16 @@ export interface Manifest {
   models: ModelSpec[];
   tests: (SqlSpec & { severity: string })[];
 }
+
+export interface IngestInput {
+  table: string;
+  label: string;
+  kind: "tabular" | "parquet" | "json";
+  csv?: string;
+  bytes?: Uint8Array;
+  mapping: Record<string, string | null>;
+}
+export type VinSpecRow = Pick<VinSpec, "vin" | "make" | "model" | "model_year" | "trim" | "configuration" | "powertrain" | "fuel_type">;
 
 export interface StageLog {
   name: string;
@@ -88,6 +101,7 @@ export interface LoadLog {
 export interface PipelineLog {
   ok: boolean;
   dataset: string;
+  mode: "operations" | "registry";
   snapshot: string;
   stages: StageLog[];
   models: ModelLog[];
@@ -97,7 +111,6 @@ export interface PipelineLog {
   totalMs: number;
 }
 
-const norm = (s: string) => s.trim().toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "");
 const qid = (s: string) => `"${s.replace(/"/g, '""')}"`;
 const lit = (s: string) => `'${s.replace(/'/g, "''")}'`;
 const now = () => performance.now();
@@ -156,6 +169,7 @@ export class Engine {
 
   /** The demo fleet: standardised parquet files, loaded as-is. */
   async loadDemo(): Promise<LoadLog[]> {
+    this.mode = "operations";
     const loads: LoadLog[] = [];
     await Promise.all(
       this.manifest.tables.map(async (t) => {
@@ -171,58 +185,92 @@ export class Engine {
     return loads;
   }
 
-  /** Anyone's files (CSV / Parquet / JSON), mapped to the data contract by column synonyms. */
-  async loadFiles(files: File[]): Promise<LoadLog[]> {
-    const byTable = new Map<string, File>();
-    for (const f of files) byTable.set(norm(f.name.replace(/\.[^.]+$/, "")), f);
+  /**
+   * Anyone's data, as mapped in the import wizard. Several sheets may feed one table (they are stacked).
+   * A mapping value is a source header, "=text" for a constant on every row, or null for "not supplied".
+   * Without work orders the fleet runs in registry mode: only the vehicle list is required.
+   */
+  async ingest(inputs: IngestInput[], extra: { documentsCsv?: string | null; vinSpecs?: VinSpecRow[] } = {}): Promise<LoadLog[]> {
+    const all = [...inputs];
+    if (extra.documentsCsv) {
+      const docs = this.manifest.tables.find((t) => t.name === "documents")!;
+      const header = extra.documentsCsv.split("\n", 1)[0].split(",");
+      all.push({ table: "documents", label: "Document vault", kind: "tabular", csv: extra.documentsCsv,
+        mapping: Object.fromEntries(docs.columns.map((c) => [c.name, header.includes(c.name) ? c.name : null])) });
+    }
+    const registry = !all.some((i) => i.table === "work_orders");
     const loads: LoadLog[] = [];
+    let n = 0;
     for (const t of this.manifest.tables) {
-      const file = byTable.get(t.name);
-      const log: LoadLog = { table: t.name, source: file?.name ?? null, rows: 0, mapped: {}, missingRequired: [] };
-      if (!file) {
+      const mine = all.filter((i) => i.table === t.name);
+      const log: LoadLog = { table: t.name, source: mine.map((i) => i.label).join(" + ") || null, rows: 0, mapped: {}, missingRequired: [] };
+      const required = registry ? (t.name === "vehicles" ? ["vehicle_id"] : []) : t.required ? t.columns.filter((c) => c.required).map((c) => c.name) : [];
+      if (!mine.length) {
         const cols = t.columns.map((c) => `CAST(NULL AS ${c.type}) AS ${c.name}`).join(", ");
         await this.exec(`CREATE OR REPLACE TABLE ${t.name} AS SELECT ${cols} WHERE FALSE`);
-        if (t.required) log.missingRequired = t.columns.filter((c) => c.required).map((c) => c.name);
+        if (required.length) log.missingRequired = required;
         loads.push(log);
         continue;
       }
-      const vname = `upload_${t.name}${file.name.slice(file.name.lastIndexOf("."))}`;
-      await this.db.registerFileBuffer(vname, new Uint8Array(await file.arrayBuffer()));
-      const ext = file.name.toLowerCase().split(".").pop();
-      const reader =
-        ext === "parquet" ? `SELECT COLUMNS(*)::VARCHAR FROM read_parquet(${lit(vname)})`
-        : ext === "json" ? `SELECT COLUMNS(*)::VARCHAR FROM read_json_auto(${lit(vname)})`
-        : `SELECT * FROM read_csv(${lit(vname)}, all_varchar = true, header = true, auto_detect = true)`;
-      await this.exec(`CREATE OR REPLACE TEMP TABLE raw_${t.name} AS ${reader}`);
-      const srcCols = (await this.query<{ column_name: string }>(`DESCRIBE raw_${t.name}`)).map((r) => r.column_name);
-      const byNorm = new Map(srcCols.map((s) => [norm(s), s]));
-      const used = new Set<string>();
-      const select = t.columns.map((c) => {
-        const src = c.synonyms.map((s) => byNorm.get(norm(s))).find((s) => s && !used.has(s));
-        if (!src) {
-          if (c.required && t.required) log.missingRequired.push(c.name);
-          if (t.name === "vehicles" && c.name === "fuel_type" && log.mapped.powertrain)
-            return `CASE WHEN regexp_matches(lower(${qid(log.mapped.powertrain)}::VARCHAR), 'diesel') THEN 'diesel' END AS fuel_type`;
+      const selects: string[] = [];
+      for (const inp of mine) {
+        const raw = `raw_${t.name}_${n++}`;
+        const fname = `${raw}.${inp.kind === "tabular" ? "csv" : inp.kind}`;
+        await this.db.registerFileBuffer(fname, inp.kind === "tabular" ? new TextEncoder().encode(inp.csv ?? "") : inp.bytes!);
+        const reader =
+          inp.kind === "parquet" ? `SELECT COLUMNS(*)::VARCHAR FROM read_parquet(${lit(fname)})`
+          : inp.kind === "json" ? `SELECT COLUMNS(*)::VARCHAR FROM read_json_auto(${lit(fname)})`
+          : `SELECT * FROM read_csv(${lit(fname)}, all_varchar = true, header = true, auto_detect = true, quote = '"', escape = '"')`;
+        await this.exec(`CREATE OR REPLACE TEMP TABLE ${raw} AS ${reader}`);
+        const sheetNo = n;
+        const cols = t.columns.map((c) => {
+          const m = inp.mapping[c.name];
+          // automatic ids (documents without one) are numbered per sheet, so two sheets never collide
+          if (!m && t.name === "documents" && c.name === "document_id")
+            return `${c.empty_expr.replace("'DOC-'", `'DOC-${sheetNo}-'`)} AS ${c.name}`;
+          if (m && m.startsWith("=")) return `${c.expr.replaceAll("{src}", lit(m.slice(1)))} AS ${c.name}`;
+          if (m) {
+            log.mapped[c.name] = m;
+            return `${c.expr.replaceAll("{src}", `${qid(m)}::VARCHAR`)} AS ${c.name}`;
+          }
+          if (t.name === "vehicles" && c.name === "fuel_type" && inp.mapping.powertrain && !inp.mapping.powertrain.startsWith("="))
+            return `CASE WHEN regexp_matches(lower(${qid(inp.mapping.powertrain)}::VARCHAR), 'diesel') THEN 'diesel' END AS fuel_type`;
           return `${c.empty_expr} AS ${c.name}`;
-        }
-        used.add(src);
-        log.mapped[c.name] = src;
-        return `${c.expr.replaceAll("{src}", `${qid(src)}::VARCHAR`)} AS ${c.name}`;
-      });
-      await this.exec(`CREATE OR REPLACE TABLE ${t.name} AS SELECT ${select.join(", ")} FROM raw_${t.name}`);
+        });
+        selects.push(`SELECT ${cols.join(", ")} FROM ${raw}`);
+      }
+      log.missingRequired = required.filter((c) => !mine.some((i) => i.mapping[c]));
+      await this.exec(`CREATE OR REPLACE TABLE ${t.name} AS ${selects.join(" UNION ALL ")}`);
       log.rows = (await this.query<{ n: number }>(`SELECT count(*) AS n FROM ${t.name}`))[0].n;
       loads.push(log);
     }
     for (const sql of this.manifest.post_ingest) await this.exec(sql);
+    if (extra.vinSpecs?.length) await this.applyVinSpecs(extra.vinSpecs);
+    this.mode = registry ? "registry" : "operations";
     return loads;
   }
+
+  /** Fill blanks in the vehicle list from decoded VINs (never overwrite what the owner supplied). */
+  private async applyVinSpecs(specs: VinSpecRow[]) {
+    const v = (x: string | number | null) => (x === null || x === undefined ? "NULL" : typeof x === "number" ? String(x) : lit(x));
+    const rows = specs.map((s) => `(${[s.vin, s.make, s.model, s.model_year, s.trim, s.configuration, s.powertrain, s.fuel_type].map(v).join(", ")})`);
+    await this.exec(`CREATE OR REPLACE TEMP TABLE vin_spec AS SELECT * FROM (VALUES ${rows.join(", ")})
+                     AS t(vin, make, model, model_year, trim, configuration, powertrain, fuel_type)`);
+    await this.exec(`UPDATE vehicles SET make = coalesce(vehicles.make, s.make), model = coalesce(vehicles.model, s.model),
+                       model_year = coalesce(vehicles.model_year, s.model_year::INTEGER), trim = coalesce(vehicles.trim, s.trim),
+                       configuration = coalesce(vehicles.configuration, s.configuration),
+                       powertrain = coalesce(vehicles.powertrain, s.powertrain), fuel_type = coalesce(vehicles.fuel_type, s.fuel_type)
+                     FROM vin_spec s WHERE vehicles.vin = s.vin`);
+  }
+
+  private mode: "operations" | "registry" = "operations";
 
   /** Stages 2-8 on whatever is loaded. */
   async run(dataset: string, loads: LoadLog[]): Promise<PipelineLog> {
     const m = this.manifest;
     const t0 = now();
     const log: PipelineLog = {
-      ok: false, dataset, snapshot: "", stages: [], models: [], tests: [], issues: [], loads, totalMs: 0,
+      ok: false, dataset, mode: this.mode, snapshot: "", stages: [], models: [], tests: [], issues: [], loads, totalMs: 0,
     };
     const stage = async (name: string, fn: () => Promise<[StageLog["status"], string]>) => {
       const s0 = now();
@@ -243,12 +291,16 @@ export class Engine {
       const found = loads.filter((l) => l.source).length;
       if (missing.length)
         return ["blocked", `missing required: ${missing.map((l) => `${l.table} (${l.missingRequired.join(", ")})`).join("; ")}`];
-      return ["ok", `${found} of ${loads.length} tables, ${rows.toLocaleString()} rows`];
+      return ["ok", `${found} of ${loads.length} tables, ${rows.toLocaleString()} rows${this.mode === "registry" ? " · registry mode (no work orders yet)" : ""}`];
     });
     if (!ingestOk) return this.finish(log, t0);
 
     if (!(await stage("Settings", async () => {
-      const [snap] = await this.query<{ snapshot_ts: string; analysis_start: string }>(m.snapshot_sql);
+      const [snap] = await this.query<{ snapshot_ts: string | null; analysis_start: string | null }>(m.snapshot_sql);
+      // A register without work orders or usage has no activity dates: measure it as of today.
+      const today = new Date().toISOString().slice(0, 10);
+      snap.snapshot_ts ??= `${today} 00:00:00`;
+      snap.analysis_start ??= `${today.slice(0, 7)}-01`;
       log.snapshot = snap.snapshot_ts;
       for (const sql of m.settings_sql)
         await this.exec(sql.replaceAll("{{snapshot_ts}}", snap.snapshot_ts).replaceAll("{{analysis_start}}", snap.analysis_start));

@@ -20,7 +20,7 @@ export default function LicencePage() {
   const offenders = useSql<{ vehicle_id: string; region: string; fines: number; amount: number; unpaid_amount: number }>(
     `SELECT vehicle_id, region, fines, amount, unpaid_amount FROM mart_fines_vehicle${w} ORDER BY fines DESC, amount DESC LIMIT 12`);
   const pm = useSql<{ powertrain: string; vehicles: number; overdue: number; due_soon: number }>(
-    `SELECT powertrain, sum(vehicles)::INT vehicles, sum(overdue)::INT overdue, sum(due_soon)::INT due_soon FROM mart_pm_compliance${w} GROUP BY 1 ORDER BY 1`);
+    `SELECT powertrain, sum(vehicles)::INT AS vehicles, sum(overdue)::INT AS overdue, sum(due_soon)::INT AS due_soon FROM mart_pm_compliance${w} GROUP BY 1 ORDER BY 1`);
   const recall = useSql<{ campaign_id: string; region: string; week_no: number; cumulative_completion_pct: number }>(
     `SELECT * FROM mart_recall_curve${w} ORDER BY week_no`);
 

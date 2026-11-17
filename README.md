@@ -5,14 +5,16 @@
 [![CI](https://github.com/Pemalahmad/FleetOps-KPI-Dashboard/actions/workflows/ci.yml/badge.svg)](https://github.com/Pemalahmad/FleetOps-KPI-Dashboard/actions/workflows/ci.yml)
 ![TypeScript](https://img.shields.io/badge/TypeScript-Next.js-3178C6?logo=typescript&logoColor=white)
 ![SQL](https://img.shields.io/badge/SQL-DuckDB_(WASM)-FFF000?logo=duckdb&logoColor=black)
-![Models](https://img.shields.io/badge/SQL_models-56-6366F1)
-![Tests](https://img.shields.io/badge/SQL_tests-22-10B981)
-![Rules](https://img.shields.io/badge/validation_rules-34-F59E0B)
+![Models](https://img.shields.io/badge/SQL_models-59-6366F1)
+![Tests](https://img.shields.io/badge/SQL_tests-24-10B981)
+![Rules](https://img.shields.io/badge/validation_rules-41-F59E0B)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
 ### ▶ [Open the live dashboard](https://pemalahmad.github.io/FleetOps-KPI-Dashboard/)
 
-No install, no server, no upload: DuckDB-WASM runs the 56 SQL models and 22 tests on a 6,500-vehicle demo fleet in about 2 seconds, in the page. Drop your own CSVs on the **Pipeline** page to see your fleet.
+No install, no server, no upload: DuckDB-WASM runs the 59 SQL models and 24 tests on a 6,500-vehicle demo fleet in about 2 seconds, in the page.
+
+**For fleet owners.** Import your vehicle list from Excel (VINs, plates, trims, configurations; exports from Fleetio, Samsara, Motive, Geotab or Verizon Connect are recognised), photograph your registration cards and insurance policies, and get a fleet register with one next action per vehicle. VINs are validated and decoded, documents are read in English and Arabic and matched by VIN or plate, and their expiries drive compliance. Your data stays in your browser. See [FleetOps as fleet software](docs/FLEET_SOFTWARE.md).
 
 ![Overview](docs/web-overview.jpg)
 
@@ -164,7 +166,7 @@ docker build -t fleetkpi . && docker run -p 8501:8501 -v "$PWD/my-fleet:/fleet" 
 
 ## The dashboard
 
-Nine pages: **Overview** (north star, KPI tiles with sparklines, region × KPI scorecard, site league), **Metric network**, **Customer clock** (the three clocks by region, CSAT, rating mix, key-to-key p50/p90), **Workshop** (weekly INTERVENE heatmap, repeat repairs, issue-category treemap, supplier on-time, overdue parts, backlog ageing), **Ledger & assets** (spend per 1,000 km by powertrain, goodwill, cost vs budget, cost per km, value retained), **Licence** (registration and insurance status, renewal waves, PM, fines, recall curves), **Pipeline & your data** and **Doctrine & SOPs**. A global region filter applies everywhere; light and dark follow the system or a toggle.
+Twelve pages. **Fleet register** (identity, licence and next action for every vehicle, with a vehicle drawer), **Documents** (scan, review, vault), **Import** (workbooks, mapping, templates), **Overview** (north star, KPI tiles with sparklines, region × KPI scorecard, site league), **Metric network**, **Customer clock** (the three clocks by region, CSAT, rating mix, key-to-key p50/p90), **Workshop** (weekly INTERVENE heatmap, repeat repairs, issue-category treemap, supplier on-time, overdue parts, backlog ageing), **Ledger & assets** (spend per 1,000 km by powertrain, goodwill, cost vs budget, cost per km, value retained), **Licence** (registration and insurance status, renewal waves, PM, fines, recall curves), **Pipeline & your data** and **Doctrine & SOPs**. A global region filter applies everywhere; light and dark follow the system or a toggle.
 
 Built in TypeScript with Next.js (static export), Tailwind, ECharts, KaTeX and DuckDB-WASM, following the structure of a production browser-tools app: self-hosted WASM assets copied at build time, Vitest for the maths, ESLint and type-checking in CI, deployed to GitHub Pages by [`pages.yml`](.github/workflows/pages.yml). The Python package still ships a local Streamlit view (`fleetkpi serve`) for teams that prefer it.
 
@@ -180,9 +182,9 @@ Built in TypeScript with Next.js (static export), Tailwind, ECharts, KaTeX and D
 
 ## Quality
 
-- **22 SQL data tests** and **34 SQL validation rules** run inside every build, in Python and in the browser alike, including the clock identity on every work order (`t18`) and the metric-network identities on every region-month (`t21`).
-- **20 TypeScript tests** (Vitest): every statistical routine against R / scipy / statsmodels reference values; the network is a DAG; aggregation keeps identities exact; zero lever change returns the baseline; non-significant drivers are never propagated.
-- **16 Python tests** (`pytest`): the demo end to end; a foreign-format fleet (Excel, its own column names, `dd/mm` dates, monthly usage, no optional tables) that must plug in with mapping only; bad data blocked with the right reasons; dependency order and layer rules; the web export runs exactly the package's SQL.
+- **24 SQL data tests** and **41 SQL validation rules** run inside every build, in Python and in the browser alike, including the clock identity on every work order (`t18`) and the metric-network identities on every region-month (`t21`).
+- **38 TypeScript tests** (Vitest): every statistical routine against R / scipy / statsmodels reference values; the metric network's identities and propagation; VIN rules and vPIC mapping; workbook reading (title rows, Excel dates, many sheets) and table / column recognition for common fleet-platform exports; document reading (day-first and Arabic-Indic dates, plates, VINs, weighted document typing).
+- **19 Python tests** (`pytest`): the demo end to end; the fleet register and documents (matched by plate, VIN or id; renewed cards move the expiry); VIN macros against reference VINs; a foreign-format fleet (Excel, its own column names, `dd/mm` dates, monthly usage, no optional tables) that must plug in with mapping only; bad data blocked with the right reasons; dependency order and layer rules; the web export runs exactly the package's SQL.
 - **CI** on Python 3.10 and 3.12, the web app (lint, type-check, tests, build), and a Docker build that runs the demo inside the image.
 
 ## Repository map
@@ -191,6 +193,7 @@ Built in TypeScript with Next.js (static export), Tailwind, ECharts, KaTeX and D
 |---|---|
 | [`fleetkpi/sql/`](fleetkpi/sql) | The warehouse: macros, validation rules, staging → intermediate → marts, data tests, demo generator |
 | [`web/`](web) | The dashboard: Next.js + TypeScript, DuckDB-WASM engine (`src/lib/engine.ts`), statistics (`src/lib/stats.ts`), metric network (`src/lib/metrics.ts`), pages (`src/app/`) |
+| [`docs/FLEET_SOFTWARE.md`](docs/FLEET_SOFTWARE.md) | The owner's path, and what FleetOps takes from Fleetio, Samsara, Motive, Geotab and Verizon Connect |
 | `fleetkpi/webexport.py` | Exports the SQL (models in run order, rules, tests, ingest expressions, settings) and the demo fleet for the browser |
 | [`fleetkpi/app/`](fleetkpi/app) | The local Streamlit view (`fleetkpi serve`) |
 | [`fleetkpi/sops/`](fleetkpi/sops) | Eight SOPs, each with owner, cadence, trigger and checklist |

@@ -4,12 +4,18 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
 import {
-  BookOpenText, Car, ChartPieSlice, CircleNotch, Graph, Moon, ShieldCheck, Smiley, Sun, TreeStructure, Wrench,
+  BookOpenText, Car, ChartPieSlice, CircleNotch, FileArrowUp, Garage, Graph, IdentificationCard, Moon, ShieldCheck, Smiley, Sun,
+  TreeStructure, Wrench,
 } from "@phosphor-icons/react";
 import { useTheme } from "./chart";
 import { useEngine } from "./engine-provider";
 
 const NAV = [
+  { group: "Fleet", items: [
+    { href: "/fleet/", label: "Fleet register", icon: Garage },
+    { href: "/documents/", label: "Documents", icon: IdentificationCard },
+    { href: "/import/", label: "Import", icon: FileArrowUp },
+  ] },
   { group: "Operate", items: [
     { href: "/", label: "Overview", icon: ChartPieSlice },
     { href: "/network/", label: "Metric network", icon: Graph },
@@ -40,7 +46,7 @@ function ThemeToggle() {
 }
 
 function Status() {
-  const { status, message } = useEngine();
+  const { status, message, dataset } = useEngine();
   const color = status === "ready" ? "var(--good)" : status === "failed" ? "var(--bad)" : "var(--warn)";
   return (
     <div className="flex min-w-0 items-center gap-2 text-[12.5px] text-muted" role="status" aria-live="polite">
@@ -49,6 +55,9 @@ function Status() {
       ) : (
         <CircleNotch size={14} className="shrink-0 animate-spin" style={{ color }} />
       )}
+      <span className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium ${dataset === "mine" ? "bg-accent text-white" : "bg-panel-2 text-muted"}`}>
+        {dataset === "mine" ? "My fleet" : "Demo"}
+      </span>
       <span className="truncate">{message}</span>
     </div>
   );

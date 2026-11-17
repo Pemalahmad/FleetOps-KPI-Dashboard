@@ -15,9 +15,13 @@ npm run build      # static site in out/ (set NEXT_PUBLIC_BASE_PATH for a sub-pa
 
 | Path | What it is |
 |---|---|
-| `src/lib/engine.ts` | Runs the exported pipeline in DuckDB-WASM: ingest with column synonyms, settings, macros, 34 rules, 56 models, 22 tests |
+| `src/lib/engine.ts` | Runs the exported pipeline in DuckDB-WASM: ingest with the owner's mappings, registry or operations mode, settings, macros, 41 rules, 59 models, 24 tests |
+| `src/lib/sheets.ts` | Reads Excel / CSV / Parquet / JSON, finds header rows, recognises tables and maps columns |
+| `src/lib/docscan.ts` | Reads registration cards and policies (Tesseract.js OCR in English and Arabic, pdf.js) and extracts vehicle, type, dates, issuer |
+| `src/lib/vin.ts` | VIN format, check digit, model year; optional NHTSA vPIC decode |
+| `src/lib/workspace.ts` | The owner's fleet in IndexedDB: sheets, mappings, documents and their files, VIN decodes |
 | `src/lib/stats.ts` | OLS, multiple OLS, logistic regression (damped IRLS), risk ratio, Welch t, LMDI decomposition, distributions |
 | `src/lib/metrics.ts` | The metric network: nodes, identities, regression models, aggregation, what-if propagation |
 | `src/app/` | One folder per page |
 | `src/components/` | Engine provider, chart wrapper, shell, UI kit |
-| `scripts/` | Build-time copies: DuckDB-WASM assets, doctrine and SOPs |
+| `scripts/` | Build-time copies of self-hosted assets (DuckDB-WASM, Tesseract, pdf.js), the doctrine and SOPs |
