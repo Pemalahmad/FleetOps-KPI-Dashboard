@@ -149,6 +149,17 @@ NORMALISE = {
         WHEN regexp_matches(lower(coalesce({x}, '')), '^paid|settled|closed') THEN 'Paid'
         ELSE 'Unpaid' END""",
     ("work_orders", "repeat_visit"): "coalesce({x}, FALSE)",
+    # identifiers: upper case, no spaces or dashes inside a VIN; plates keep their spacing but are trimmed and upper-cased
+    ("vehicles", "vin"): "nullif(regexp_replace(upper({x}), '[^A-Z0-9]', '', 'g'), '')",
+    ("vehicles", "plate_number"): "nullif(upper(trim(regexp_replace({x}, '\\s+', ' ', 'g'))), '')",
+    ("vehicles", "model_year"): "CASE WHEN {x} BETWEEN 1950 AND 2100 THEN {x} END",
+    ("documents", "document_id"): "coalesce({x}, 'DOC-' || lpad((row_number() OVER ())::VARCHAR, 6, '0'))",
+    ("documents", "doc_type"): """CASE
+        WHEN regexp_matches(lower(coalesce({x}, '')), 'regist|mulkiya|istimara|logbook|v5|licen|title') THEN 'Registration'
+        WHEN regexp_matches(lower(coalesce({x}, '')), 'insur|policy|cover') THEN 'Insurance'
+        WHEN regexp_matches(lower(coalesce({x}, '')), 'inspect|mot\\b|fahes|tasjeel|roadworth|periodic') THEN 'Inspection'
+        WHEN regexp_matches(lower(coalesce({x}, '')), 'permit|rta|ptc|operating|tga') THEN 'Permit'
+        ELSE 'Other' END""",
 }
 
 
@@ -186,10 +197,12 @@ def load_table(con: duckdb.DuckDBPyConnection, cfg: Config, t: Table) -> TableLo
             src = wanted if wanted in src_cols else by_norm.get(_norm(wanted))
         if src is None and c.name not in user_map:
             for candidate in (c.name, *c.synonyms):
-                if _norm(candidate) in by_norm:
-                    src = by_norm[_norm(candidate)]
+                hit = by_norm.get(_norm(candidate))
+                # one source column feeds one contract column, except identifiers (a plate or VIN that is also the id)
+                if hit is not None and (c.shared or hit not in res.mapped.values()):
+                    src = hit
                     break
-        if src is not None and src in res.mapped.values():
+        elif src is not None and src in res.mapped.values() and not c.shared:
             src = None  # never map one source column to two contract columns
         if src is None:
             (res.missing_required if c.required else res.missing_optional).append(c.name)

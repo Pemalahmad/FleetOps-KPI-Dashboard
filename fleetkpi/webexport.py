@@ -77,7 +77,8 @@ def manifest(cfg: config.Config) -> dict:
             if norm:
                 mapped, empty = norm.replace("{x}", f"({mapped})"), norm.replace("{x}", f"({empty})")
             cols.append({"name": c.name, "type": c.type, "required": c.required, "description": c.description,
-                         "synonyms": [c.name, *c.synonyms], "expr": mapped, "empty_expr": empty})
+                         "synonyms": [c.name, *c.synonyms], "expr": mapped, "empty_expr": empty,
+                         "shared": c.shared, "example": c.example})
         tables.append({"name": t.name, "required": t.required, "description": t.description, "columns": cols})
     models = sqlrunner.plan()
     return {

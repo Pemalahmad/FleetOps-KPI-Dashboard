@@ -26,7 +26,14 @@ def test_demo_pipeline_all_stages_pass(demo_build):
     assert demo_build.ok
     assert [s.stage for s in demo_build.stages] == [
         "Ingest", "Standardise", "Validate", "Staging", "Intermediate", "Marts", "Test", "Publish"]
-    assert all(s.status == "ok" for s in demo_build.stages), [(s.stage, s.status, s.detail) for s in demo_build.stages]
+    assert all(s.status == "ok" for s in demo_build.stages if s.stage != "Validate"), \
+        [(s.stage, s.status, s.detail) for s in demo_build.stages]
+    # The demo register carries deliberate dirt (malformed VINs, one duplicate VIN): warnings, never errors.
+    assert not [i for i in demo_build.issues if i.severity == "error"]
+    assert {i.check for i in demo_build.issues if i.severity == "warning"} == {
+        "VIN is not 17 characters of A-Z / 0-9 (I, O and Q are never used)", "The same VIN on more than one vehicle",
+        # the copied VIN does not carry its car's real model year, so the year check flags it too
+        "Model year differs from the year encoded in the VIN (10th character); check which is right"}
 
 
 def test_demo_covers_every_powertrain(demo_build):
@@ -233,7 +240,7 @@ def test_init_creates_templates_and_contract(tmp_path):
     assert main(["init", str(tmp_path)]) == 0
     assert (tmp_path / "fleet.yml").exists()
     assert (tmp_path / "DATA_CONTRACT.md").read_text().startswith("# fleetkpi data contract")
-    assert len(list((tmp_path / "templates").glob("*.csv"))) == 11
+    assert len(list((tmp_path / "templates").glob("*.csv"))) == 12
 
 
 def test_web_export_manifest(tmp_path):
@@ -253,3 +260,46 @@ def test_web_export_manifest(tmp_path):
     assert all(c["expr"] and c["empty_expr"] for t in m["tables"] for c in t["columns"])
     names = {x["name"] for x in m["models"]}
     assert {"mart_metric_panel", "mart_job_outcomes"} <= names
+
+
+def test_demo_fleet_register_and_documents(demo_build):
+    """Documents match by plate, VIN or id; renewed cards move the expiry; every vehicle has one register row."""
+    con = duckdb.connect(str(demo_build.database), read_only=True)
+    matched = dict(con.execute("SELECT matched_by, count(*) FROM stg_documents GROUP BY 1").fetchall())
+    assert {"plate", "vin", "vehicle_id"} <= set(matched) and None not in matched
+    renewed = con.execute("""SELECT count(*) FROM stg_documents d JOIN vehicles v USING (vehicle_id)
+                             WHERE d.doc_type = 'Registration' AND d.expiry_date > v.registration_expiry""").fetchone()[0]
+    assert renewed > 0                                           # cards newer than the vehicle file exist ...
+    assert con.execute("""SELECT count(*) FROM stg_documents d JOIN stg_vehicles v USING (vehicle_id)
+                          WHERE d.doc_type = 'Registration' AND d.expiry_date > v.registration_expiry""").fetchone()[0] == 0
+    reg = con.execute("SELECT count(*), count(DISTINCT vehicle_id), count(*) FILTER (WHERE model_year IS NOT NULL) FROM mart_fleet_registry").fetchone()
+    assert reg[0] == reg[1] == 6500 and reg[2] == 6500
+    assert con.execute("SELECT count(*) FROM mart_fleet_registry WHERE next_action LIKE 'Ground%'").fetchone()[0] > 0
+
+
+def test_vin_macros():
+    con = duckdb.connect()
+    con.execute((Path(__file__).parent.parent / "fleetkpi" / "sql" / "macros" / "01_vin.sql").read_text())
+    q = lambda v: con.execute("SELECT vin_status(?), vin_model_year(?, DATE '2026-11-17')", [v, v]).fetchone()
+    assert q("1M8GDM9AXKP042788") == ("Valid", 2019)              # check digit X
+    assert q("1HGCM82633A004352") == ("Valid", 2003)
+    assert q("1M8GDM9A1KP042788")[0] == "Check digit mismatch"
+    assert q("WVWZZZ1KZ6W61234O")[0] == "Invalid format"          # letter O is never used
+    assert q(None)[0] == "Missing"
+    assert con.execute("SELECT make FROM ref_wmi WHERE wmi = '5YJ'").fetchone()[0] == "Tesla"
+
+
+def test_vehicle_list_with_plate_and_vin_maps_both(tmp_path):
+    """A register with Plate and VIN columns but no id: the plate becomes the id and both identifiers are kept."""
+    from fleetkpi.contract import TABLES
+    from fleetkpi.ingest import load_table
+    pd.DataFrame({"Plate": ["D 48213", "K 11"], "VIN": ["1HGCM82633A004352", "1M8GDM9AXKP042788"], "Fuel": ["Electric", "Petrol"],
+                  "Depot": ["WS01", "WS01"], "In Service": ["01/02/2025", "15/03/2025"], "Trim": ["Long Range", "Base"]}
+                 ).to_csv(tmp_path / "vehicles.csv", index=False)
+    cfg_text = "fleet:\n  name: T\ndata:\n  input_dir: .\n"
+    (tmp_path / "fleet.yml").write_text(cfg_text)
+    con = duckdb.connect()
+    res = load_table(con, config.load(tmp_path / "fleet.yml"), TABLES["vehicles"])
+    assert res.mapped["vehicle_id"] == "Plate" and res.mapped["plate_number"] == "Plate" and res.mapped["vin"] == "VIN"
+    assert res.mapped["trim"] == "Trim"
+    assert con.execute("SELECT vehicle_id, vin, powertrain FROM vehicles ORDER BY 1").fetchall()[0] == ("D 48213", "1HGCM82633A004352", "BEV")

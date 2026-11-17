@@ -102,6 +102,78 @@ SELECT
         CASE WHEN region = 'Türkiye' THEN 4 ELSE 1 + CAST(floor(rnd(vehicle_id || 'ins') * 3) AS INTEGER) END] AS insurer
 FROM typed;
 
+-- ---------------------------------------------------------- vehicle identity: VIN, plate, year, trim, configuration
+CREATE OR REPLACE TEMP TABLE d_ident AS
+SELECT vehicle_id,
+       -- SHR = Sahra (fictional WMI) · line · powertrain · 3 chars · check '0' · model-year code · plant · serial
+       'SHR' || substr(model, 1, 1) || CASE powertrain WHEN 'BEV' THEN 'E' WHEN 'PHEV' THEN 'P' WHEN 'HEV' THEN 'H'
+                                        ELSE CASE WHEN fuel_type = 'diesel' THEN 'D' ELSE 'G' END END
+           || substr('ABCDEFGHJKLMNPRSTUVWXYZ0123456789', 1 + CAST(floor(rnd(vehicle_id || 'v1') * 33) AS INTEGER), 1)
+           || substr('ABCDEFGHJKLMNPRSTUVWXYZ0123456789', 1 + CAST(floor(rnd(vehicle_id || 'v2') * 33) AS INTEGER), 1)
+           || substr('ABCDEFGHJKLMNPRSTUVWXYZ0123456789', 1 + CAST(floor(rnd(vehicle_id || 'v3') * 33) AS INTEGER), 1)
+           || '0'
+           || substr('ABCDEFGHJKLMNPRSTVWXY123456789',
+                     1 + (year(in_service_date) + CASE WHEN rnd(vehicle_id || 'my') < 0.3 THEN 1 ELSE 0 END - 1980) % 30, 1)
+           || CASE region WHEN 'Türkiye' THEN 'T' WHEN 'KSA' THEN 'K' ELSE 'U' END
+           || lpad(CAST(100000 + CAST(floor(rnd(vehicle_id || 'sn') * 899999) AS INTEGER) AS VARCHAR), 6, '0') AS vin,
+       CASE region
+           WHEN 'UAE' THEN chr(65 + CAST(floor(rnd(vehicle_id || 'pl') * 20) AS INTEGER)) || ' ' || lpad(CAST(floor(rnd(vehicle_id || 'pn') * 99999) AS INTEGER)::VARCHAR, 5, '0')
+           WHEN 'KSA' THEN lpad(CAST(floor(rnd(vehicle_id || 'pn') * 9999) AS INTEGER)::VARCHAR, 4, '0') || ' ' || ['ABD', 'RSA', 'KHD', 'NJM'][1 + CAST(floor(rnd(vehicle_id || 'pl') * 4) AS INTEGER)]
+           WHEN 'Türkiye' THEN '34 ' || ['FT', 'KL', 'MR', 'AB'][1 + CAST(floor(rnd(vehicle_id || 'pl') * 4) AS INTEGER)] || ' ' || lpad(CAST(floor(rnd(vehicle_id || 'pn') * 999) AS INTEGER)::VARCHAR, 3, '0')
+           ELSE upper(substr(region, 1, 2)) || ' ' || lpad(CAST(floor(rnd(vehicle_id || 'pn') * 99999) AS INTEGER)::VARCHAR, 5, '0') END AS plate_number,
+       year(in_service_date) + CASE WHEN rnd(vehicle_id || 'my') < 0.3 THEN 1 ELSE 0 END AS model_year,
+       CASE WHEN model LIKE '%EV' THEN ['Standard Range', 'Long Range', 'Performance'][1 + CAST(floor(pow(rnd(vehicle_id || 'tr'), 1.6) * 3) AS INTEGER)]
+            WHEN model LIKE '%PHEV' THEN ['Plug-in Comfort', 'Plug-in Premium'][1 + CAST(floor(rnd(vehicle_id || 'tr') * 2) AS INTEGER)]
+            WHEN model LIKE '%Hybrid' THEN ['Hybrid', 'Hybrid Comfort'][1 + CAST(floor(rnd(vehicle_id || 'tr') * 2) AS INTEGER)]
+            WHEN model LIKE 'V3%' THEN ['Panel Van', 'Crew Van'][1 + CAST(floor(rnd(vehicle_id || 'tr') * 2) AS INTEGER)]
+            ELSE ['Base', 'Comfort'][1 + CAST(floor(rnd(vehicle_id || 'tr') * 2) AS INTEGER)] END AS trim,
+       powertrain, model, fuel_type, region
+FROM vehicles;
+
+CREATE OR REPLACE TEMP TABLE d_ident2 AS
+SELECT i.*,
+       CASE WHEN i.model = 'S1 Sedan EV' THEN CASE i.trim WHEN 'Standard Range' THEN '60 kWh · RWD · 5 seats' WHEN 'Long Range' THEN '82 kWh · RWD · 5 seats' ELSE '82 kWh · AWD · 5 seats' END
+            WHEN i.model = 'X2 SUV EV' THEN CASE i.trim WHEN 'Standard Range' THEN '75 kWh · FWD · 7 seats' WHEN 'Long Range' THEN '95 kWh · AWD · 7 seats' ELSE '95 kWh · AWD · 7 seats · tow pack' END
+            WHEN i.powertrain = 'PHEV' THEN '18 kWh + 1.5T · AWD · 7 seats'
+            WHEN i.powertrain = 'HEV' THEN '1.8L hybrid · FWD · 5 seats'
+            WHEN i.fuel_type = 'diesel' THEN '2.0L diesel · RWD · 3.5 t'
+            ELSE '1.6L petrol · FWD · 5 seats' END AS configuration,
+       ['White', 'White', 'White', 'Silver', 'Black', 'Grey', 'Blue'][1 + CAST(floor(rnd(i.vehicle_id || 'col') * 7) AS INTEGER)] AS color
+FROM d_ident i;
+
+CREATE OR REPLACE TABLE vehicles AS
+SELECT v.*,
+       -- a little dirt, as real registers have: 0.3% VINs typed with a letter O, and one VIN on two vehicles
+       CASE WHEN rnd(v.vehicle_id || 'vbad') < 0.003 THEN overlay(i.vin PLACING 'O' FROM 12 FOR 1)
+            WHEN v.vehicle_id = (SELECT max(vehicle_id) FROM vehicles) THEN (SELECT i2.vin FROM d_ident2 i2 ORDER BY i2.vehicle_id LIMIT 1)
+            ELSE i.vin END AS vin,
+       i.plate_number, i.model_year, i.trim, i.configuration, i.color
+FROM vehicles v JOIN d_ident2 i USING (vehicle_id);
+
+-- ------------------------------------------------------------- documents: registration cards and insurance policies
+CREATE OR REPLACE TABLE documents AS
+WITH reg AS (
+    SELECT v.vehicle_id, v.vin, v.plate_number, v.registration_expiry AS expiry,
+           -- 4% of cards were renewed and scanned, but the vehicle file was never updated
+           CASE WHEN rnd(v.vehicle_id || 'drn') < 0.04 AND v.registration_expiry < DATE '2026-12-01'
+                THEN v.registration_expiry + INTERVAL 1 YEAR ELSE v.registration_expiry END::DATE AS doc_expiry,
+           CASE v.region WHEN 'UAE' THEN 'RTA' WHEN 'KSA' THEN 'Muroor' WHEN 'Türkiye' THEN 'Emniyet' ELSE 'Traffic Department' END AS issuer
+    FROM vehicles v WHERE rnd(v.vehicle_id || 'dreg') < 0.9
+)
+SELECT 'REG-' || vehicle_id AS document_id,
+       CASE WHEN rnd(vehicle_id || 'dref') < 0.6 THEN plate_number WHEN rnd(vehicle_id || 'dref') < 0.9 THEN vin ELSE vehicle_id END AS vehicle_ref,
+       'Registration card' AS doc_type,
+       lpad(CAST(floor(rnd(vehicle_id || 'dno') * 999999999) AS BIGINT)::VARCHAR, 9, '0') AS document_number,
+       (doc_expiry - INTERVAL 1 YEAR + INTERVAL 1 DAY)::DATE AS issue_date, doc_expiry AS expiry_date, issuer,
+       'mulkiya-' || replace(plate_number, ' ', '') || '.jpg' AS file_name
+FROM reg
+UNION ALL
+SELECT 'INS-' || v.vehicle_id, v.plate_number, 'Insurance policy',
+       'POL-' || lpad(CAST(floor(rnd(v.vehicle_id || 'pol') * 9999999) AS INTEGER)::VARCHAR, 7, '0'),
+       (v.insurance_expiry - INTERVAL 1 YEAR + INTERVAL 1 DAY)::DATE, v.insurance_expiry, v.insurer,
+       'policy-' || v.vehicle_id || '.pdf'
+FROM vehicles v WHERE rnd(v.vehicle_id || 'dins') < 0.8;
+
 -- ------------------------------------------------------ vehicle-months (helper)
 CREATE OR REPLACE TEMP TABLE d_vm AS
 WITH months AS (

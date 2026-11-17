@@ -17,6 +17,7 @@ class Column:
     description: str
     synonyms: tuple[str, ...] = ()
     example: str = ""
+    shared: bool = False           # may reuse a source column already mapped (a plate or VIN that is also the id)
 
 
 @dataclass(frozen=True)
@@ -44,12 +45,17 @@ TABLES: dict[str, Table] = {t.name: t for t in [
     ), key=("site_id",)),
 
     Table("vehicles", True, "One row per vehicle in the fleet: electric, hybrid or combustion.", (
-        C("vehicle_id", "VARCHAR", True, "Unique vehicle id (plate, VIN or asset number)", ("vehicle", "plate", "plate_no", "plate_number", "registration", "reg_no", "vin", "asset_id", "unit_id"), "V0100001"),
+        C("vehicle_id", "VARCHAR", True, "Unique vehicle id (fleet / unit number, plate or VIN)",
+          ("vehicle", "vehicle_number", "vehicle_no", "unit_number", "unit_no", "unit_id", "unit", "asset_id", "asset_name",
+           "asset_number", "fleet_number", "fleet_no", "vehicle_label", "vehicle_name", "name", "plate", "plate_no",
+           "plate_number", "license_plate", "licence_plate", "registration", "reg_no", "vin", "vin_sn", "chassis_no"), "V0100001"),
         C("powertrain", "VARCHAR", True, "BEV | PHEV | HEV | ICE. Also accepts 'electric', 'plug-in hybrid', 'hybrid', 'petrol', 'diesel'...", ("fuel", "fuel_type_group", "drivetrain", "propulsion", "engine_type", "vehicle_type", "energy"), "BEV"),
         C("fuel_type", "VARCHAR", False, "petrol | diesel for ICE/HEV/PHEV (default petrol)", ("fuel_kind", "fuel_grade"), "petrol"),
         C("make", "VARCHAR", False, "Manufacturer", ("brand", "manufacturer", "oem"), "Sahra"),
         C("model", "VARCHAR", False, "Model name", ("model_name", "vehicle_model"), "S1 Sedan EV"),
-        C("home_site_id", "VARCHAR", True, "Site the vehicle is based at / serviced by", ("site_id", "home_site", "depot_id", "base", "home_depot", "workshop_id"), "WS01"),
+        C("home_site_id", "VARCHAR", True, "Site the vehicle is based at / serviced by",
+          ("site_id", "home_site", "depot_id", "base", "home_depot", "workshop_id", "branch", "home_branch", "location", "depot",
+           "group", "vehicle_group"), "WS01"),
         C("region", "VARCHAR", False, "Defaults to the home site's region", ("market", "country"), "UAE"),
         C("in_service_date", "DATE", True, "Date the vehicle entered service", ("in_service", "start_date", "commission_date", "delivery_date", "registration_date", "acquired_date"), "2025-02-14"),
         C("out_of_service_date", "DATE", False, "Date it left the fleet (blank if active)", ("disposal_date", "end_date", "defleet_date", "sold_date"), ""),
@@ -58,6 +64,21 @@ TABLES: dict[str, Table] = {t.name: t for t in [
         C("registration_expiry", "DATE", False, "Registration / licence (mulkiya, MOT, tax disc) expiry date", ("registration_expiry_date", "reg_expiry", "mulkiya_expiry", "licence_expiry", "license_expiry", "registration_valid_until"), "2027-02-13"),
         C("insurance_expiry", "DATE", False, "Insurance policy expiry date", ("insurance_expiry_date", "policy_expiry", "insurance_valid_until", "policy_end"), "2026-12-31"),
         C("insurer", "VARCHAR", False, "Insurance company", ("insurance_company", "insurance_provider", "policy_provider"), "Gulf Insurance"),
+        C("vin", "VARCHAR", False, "17-character Vehicle Identification Number (chassis number)",
+          ("vin", "vin_number", "vin_no", "vin_sn", "chassis", "chassis_no", "chassis_number", "frame_number", "serial_number"),
+          "LSHR1AE90T0012345", shared=True),
+        C("plate_number", "VARCHAR", False, "Registration plate as printed on the registration card",
+          ("plate", "plate_no", "plate_number", "license_plate", "licence_plate", "registration_number", "reg_no",
+           "traffic_plate", "number_plate"), "D 48213", shared=True),
+        C("model_year", "INTEGER", False, "Model year (decoded from the VIN when missing)",
+          ("year", "model_year", "my", "year_of_manufacture", "manufacture_year", "production_year", "year_model"), "2025"),
+        C("trim", "VARCHAR", False, "Trim, grade or variant", ("trim", "trim_level", "grade", "variant", "version", "edition", "series"),
+          "Long Range"),
+        C("configuration", "VARCHAR", False, "Configuration: battery or engine, drive, body, seats, options",
+          ("configuration", "config", "specification", "specifications", "spec", "specs", "options", "package", "body_type", "body",
+           "body_class"),
+          "75 kWh · AWD · 5 seats"),
+        C("color", "VARCHAR", False, "Exterior colour", ("color", "colour", "exterior_color", "exterior_colour"), "White"),
     ), key=("vehicle_id",)),
 
     Table("work_orders", True, "Every workshop visit: preventive maintenance, repairs, warranty, collisions, tyres, recalls.", (
@@ -139,6 +160,22 @@ TABLES: dict[str, Table] = {t.name: t for t in [
         C("authority", "VARCHAR", False, "Issuing authority", ("issuer", "issued_by"), "Dubai Police"),
     ), key=("fine_id",)),
 
+    Table("documents", False, "Registration cards, insurance policies, inspections and permits, one row per document. "
+          "The dashboard's document vault reads them from photos or PDFs; the latest expiry per vehicle feeds compliance.", (
+        C("document_id", "VARCHAR", False, "Unique document id (numbered automatically when absent)", ("doc_id", "id", "reference"), "DOC-000123"),
+        C("vehicle_ref", "VARCHAR", True, "The vehicle: its id, plate or VIN (any of the three is matched)",
+          ("vehicle_id", "vehicle", "plate", "plate_number", "plate_no", "vin", "chassis_no", "chassis_number", "unit_number"),
+          "D 48213"),
+        C("doc_type", "VARCHAR", True, "Registration | Insurance | Inspection | Permit | Other",
+          ("document_type", "type", "category", "kind"), "Registration"),
+        C("document_number", "VARCHAR", False, "Number printed on the document (registration or policy number)",
+          ("number", "doc_number", "policy_number", "policy_no", "registration_no", "certificate_number"), "123456789"),
+        C("issue_date", "DATE", False, "Issue or start date", ("issued", "issue", "start_date", "valid_from", "policy_start"), "2026-03-01"),
+        C("expiry_date", "DATE", False, "Expiry date", ("expiry", "expires", "valid_until", "valid_to", "end_date", "policy_end"),
+          "2027-02-28"),
+        C("issuer", "VARCHAR", False, "Authority or insurer", ("authority", "insurer", "issued_by", "provider"), "RTA"),
+        C("file_name", "VARCHAR", False, "Scanned file the details came from", ("file", "attachment", "scan"), "mulkiya-D48213.jpg"),
+    ), key=("document_id",)),
     Table("budgets", False, "Fleet-paid maintenance budget per region and month. If absent, fleet.yml rates are used.", (
         C("region", "VARCHAR", True, "Region", ("market", "country"), "UAE"),
         C("month", "DATE", True, "First day of the month", ("period", "date"), "2026-03-01"),
@@ -146,7 +183,7 @@ TABLES: dict[str, Table] = {t.name: t for t in [
     ), key=("region", "month")),
 ]}
 
-LOAD_ORDER = ["sites", "vehicles", "work_orders", "usage", "energy", "feedback", "parts_orders", "fines",
+LOAD_ORDER = ["sites", "vehicles", "work_orders", "usage", "energy", "feedback", "parts_orders", "fines", "documents",
               "recalls", "recall_vehicles", "budgets"]
 
 

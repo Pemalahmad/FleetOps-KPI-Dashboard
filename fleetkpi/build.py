@@ -118,6 +118,12 @@ def run(cfg: Config, force: bool = False, validate_only: bool = False) -> BuildR
                 {"mapped": mapped, "renamed": renamed, "ignored": unused})
     stage("Standardise", do_standardise)
 
+    # Settings and macros are published before validation: some rules use them (e.g. vin_status()).
+    if not halted:
+        snapshot, start = _resolve_dates(con, cfg)
+        config_mod.publish(con, cfg, snapshot, start)
+        sqlrunner.run_macros(con)
+
     # 3. Validate: contract checks in Python, row rules in SQL
     def do_validate():
         nonlocal issues
@@ -136,9 +142,6 @@ def run(cfg: Config, force: bool = False, validate_only: bool = False) -> BuildR
     # 4-6. Model layers, in dependency order
     plan: list = []
     if not halted:
-        snapshot, start = _resolve_dates(con, cfg)
-        config_mod.publish(con, cfg, snapshot, start)
-        sqlrunner.run_macros(con)
         try:
             plan = sqlrunner.plan()
         except ValueError as exc:

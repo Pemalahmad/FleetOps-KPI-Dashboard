@@ -21,7 +21,7 @@ One row per vehicle in the fleet: electric, hybrid or combustion.
 
 | Column | Type | Required | Description | Also recognised as |
 |---|---|---|---|---|
-| `vehicle_id` | VARCHAR | yes | Unique vehicle id (plate, VIN or asset number) | vehicle, plate, plate_no, plate_number, registration |
+| `vehicle_id` | VARCHAR | yes | Unique vehicle id (fleet / unit number, plate or VIN) | vehicle, vehicle_number, vehicle_no, unit_number, unit_no |
 | `powertrain` | VARCHAR | yes | BEV | PHEV | HEV | ICE. Also accepts 'electric', 'plug-in hybrid', 'hybrid', 'petrol', 'diesel'... | fuel, fuel_type_group, drivetrain, propulsion, engine_type |
 | `fuel_type` | VARCHAR |  | petrol | diesel for ICE/HEV/PHEV (default petrol) | fuel_kind, fuel_grade |
 | `make` | VARCHAR |  | Manufacturer | brand, manufacturer, oem |
@@ -35,6 +35,12 @@ One row per vehicle in the fleet: electric, hybrid or combustion.
 | `registration_expiry` | DATE |  | Registration / licence (mulkiya, MOT, tax disc) expiry date | registration_expiry_date, reg_expiry, mulkiya_expiry, licence_expiry, license_expiry |
 | `insurance_expiry` | DATE |  | Insurance policy expiry date | insurance_expiry_date, policy_expiry, insurance_valid_until, policy_end |
 | `insurer` | VARCHAR |  | Insurance company | insurance_company, insurance_provider, policy_provider |
+| `vin` | VARCHAR |  | 17-character Vehicle Identification Number (chassis number) | vin, vin_number, vin_no, vin_sn, chassis |
+| `plate_number` | VARCHAR |  | Registration plate as printed on the registration card | plate, plate_no, plate_number, license_plate, licence_plate |
+| `model_year` | INTEGER |  | Model year (decoded from the VIN when missing) | year, model_year, my, year_of_manufacture, manufacture_year |
+| `trim` | VARCHAR |  | Trim, grade or variant | trim, trim_level, grade, variant, version |
+| `configuration` | VARCHAR |  | Configuration: battery or engine, drive, body, seats, options | configuration, config, specification, specifications, spec |
+| `color` | VARCHAR |  | Exterior colour | color, colour, exterior_color, exterior_colour |
 
 ## `work_orders`
 
@@ -127,6 +133,21 @@ Traffic and regulatory fines registered against a vehicle.
 | `amount` | DOUBLE | yes | Fine amount | fine_amount, value, penalty |
 | `status` | VARCHAR |  | Paid | Unpaid | Disputed (default Unpaid) | payment_status, state |
 | `authority` | VARCHAR |  | Issuing authority | issuer, issued_by |
+
+## `documents` (optional)
+
+Registration cards, insurance policies, inspections and permits, one row per document. The dashboard's document vault reads them from photos or PDFs; the latest expiry per vehicle feeds compliance.
+
+| Column | Type | Required | Description | Also recognised as |
+|---|---|---|---|---|
+| `document_id` | VARCHAR |  | Unique document id (numbered automatically when absent) | doc_id, id, reference |
+| `vehicle_ref` | VARCHAR | yes | The vehicle: its id, plate or VIN (any of the three is matched) | vehicle_id, vehicle, plate, plate_number, plate_no |
+| `doc_type` | VARCHAR | yes | Registration | Insurance | Inspection | Permit | Other | document_type, type, category, kind |
+| `document_number` | VARCHAR |  | Number printed on the document (registration or policy number) | number, doc_number, policy_number, policy_no, registration_no |
+| `issue_date` | DATE |  | Issue or start date | issued, issue, start_date, valid_from, policy_start |
+| `expiry_date` | DATE |  | Expiry date | expiry, expires, valid_until, valid_to, end_date |
+| `issuer` | VARCHAR |  | Authority or insurer | authority, insurer, issued_by, provider |
+| `file_name` | VARCHAR |  | Scanned file the details came from | file, attachment, scan |
 
 ## `recalls` (optional)
 
