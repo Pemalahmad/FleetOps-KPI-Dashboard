@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "fleetkpi"
-version = "0.2.0"
+version = "0.4.0"
 description = "Plug-and-play fleet KPI warehouse and gamified dashboard for electric, hybrid and combustion fleets."
 readme = "README.md"
 license = { text = "MIT" }

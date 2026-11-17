@@ -3,6 +3,7 @@
   fleetkpi init [DIR]       create fleet.yml, data/input/, CSV templates and the data contract
   fleetkpi demo [DIR]       generate the demo fleet (BEV / PHEV / HEV / ICE) and build it
   fleetkpi contract         print the data contract
+  fleetkpi docs             generate the SQL catalog and data contract into docs/
   fleetkpi validate         check your files against the contract; build nothing
   fleetkpi build [--force]  run the full pipeline into data/fleet.duckdb
   fleetkpi serve            open the dashboard
@@ -64,6 +65,17 @@ def cmd_contract(args) -> int:
     return 0
 
 
+def cmd_docs(args) -> int:
+    from . import sqlrunner
+    out = Path(args.out)
+    out.mkdir(parents=True, exist_ok=True)
+    (out / "SQL_CATALOG.md").write_text(sqlrunner.catalog_markdown())
+    (out / "DATA_CONTRACT.md").write_text(contract_markdown())
+    (out / "DOCTRINE.md").write_text((Path(__file__).parent / "DOCTRINE.md").read_text())
+    print(f"Wrote {out / 'SQL_CATALOG.md'}, {out / 'DATA_CONTRACT.md'} and {out / 'DOCTRINE.md'}")
+    return 0
+
+
 def cmd_validate(args) -> int:
     result = build_mod.run(config_mod.load(args.config), validate_only=True)
     print(build_mod.summary(result))
@@ -113,6 +125,10 @@ def main(argv: list[str] | None = None) -> int:
 
     s = sub.add_parser("contract", help="print the data contract")
     s.set_defaults(fn=cmd_contract)
+
+    s = sub.add_parser("docs", help="generate docs/SQL_CATALOG.md and docs/DATA_CONTRACT.md from the code")
+    s.add_argument("--out", default="docs")
+    s.set_defaults(fn=cmd_docs)
 
     for name, fn, helptext in [("validate", cmd_validate, "check your data; build nothing"),
                                ("build", cmd_build, "run the full pipeline")]:
