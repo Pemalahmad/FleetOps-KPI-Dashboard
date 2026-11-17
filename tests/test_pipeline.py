@@ -331,3 +331,24 @@ def test_licence_keys_sign_and_reject_tampering(tmp_path):
         verifier.verify(dec(s), forged.encode())
     with pytest.raises(ValueError):
         lic.issue("ACME", "platinum", "2027-12-31", path=keyfile)
+
+
+def test_visual_garage_uses_raw_repair_milestones_and_all_open_jobs(demo_build):
+    import json
+    import re
+    import pandas as pd
+
+    source = (Path(__file__).resolve().parents[1] / 'web/src/lib/garage-query.ts').read_text()
+    sql = json.loads(re.search(r'export const GARAGE_SQL = (.*);', source).group(1))
+    con = _db(demo_build)
+    rows = con.execute(sql).fetchdf()
+    assert len(rows) == 6500
+    assert rows['ready_jobs'].sum() == 12
+    assert (rows['collision_jobs'] > 0).any()
+    assert (rows['unfinished_jobs'] + rows['ready_jobs'] == rows['open_jobs']).all()
+    originals = dict(con.execute('SELECT work_order_id, ready_at FROM work_orders').fetchall())
+    for record in rows.itertuples():
+        if not pd.isna(record.work_order_id):
+            actual = None if pd.isna(record.ready_at) else record.ready_at.to_pydatetime()
+            assert actual == originals[record.work_order_id]
+    con.close()

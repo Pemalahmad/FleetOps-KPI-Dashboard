@@ -429,6 +429,15 @@ FROM timed;
 
 CREATE OR REPLACE TABLE work_orders AS SELECT * EXCLUDE (jk) FROM d_wo;
 
+-- A small, deterministic repair-ready queue for the visual garage: the physical work is done,
+-- but collection and administrative closure are still pending. These are fictional demo records.
+UPDATE work_orders SET ready_at = TIMESTAMP '2026-09-30 18:00:00'
+WHERE work_order_id IN (
+    SELECT work_order_id FROM work_orders
+    WHERE closed_at IS NULL AND opened_at < TIMESTAMP '2026-09-30 12:00:00'
+    ORDER BY work_order_id LIMIT 12
+);
+
 -- --------------------------------------------------------------- feedback
 -- ~35% of customers answer the post-visit survey. Stars fall with long key-to-key time and repeat visits,
 -- so service problems show up in satisfaction too.

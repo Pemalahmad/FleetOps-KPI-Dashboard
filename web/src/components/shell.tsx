@@ -20,7 +20,8 @@ const NAV = [
     { href: "/plan/", label: "Plan & offline", icon: WifiSlash },
   ] },
   { group: "Operate", items: [
-    { href: "/", label: "Overview", icon: ChartPieSlice },
+    { href: "/", label: "My garage", icon: Garage },
+    { href: "/overview/", label: "Analytics", icon: ChartPieSlice },
     { href: "/network/", label: "Metric network", icon: Graph },
     { href: "/customer/", label: "Customer clock", icon: Smiley },
     { href: "/workshop/", label: "Workshop", icon: Wrench },
@@ -137,4 +138,5 @@ export function Shell({ children }: { children: ReactNode }) {
     </div>
   );
 }
+
 

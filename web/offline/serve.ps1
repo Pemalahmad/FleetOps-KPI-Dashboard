@@ -10,8 +10,8 @@ $types = @{ ".html"="text/html; charset=utf-8"; ".js"="text/javascript"; ".mjs"=
 $listener = New-Object System.Net.HttpListener
 $listener.Prefixes.Add($prefix)
 $listener.Start()
-Start-Process "${prefix}fleet/"
-Write-Host "FleetOps is running at ${prefix}fleet/  (close this window to stop)"
+Start-Process "${prefix}"
+Write-Host "FleetOps is running at ${prefix}  (close this window to stop)"
 $rootFull = [System.IO.Path]::GetFullPath($root).TrimEnd([char]92) + [char]92
 while ($listener.IsListening) {
   $ctx = $listener.GetContext()

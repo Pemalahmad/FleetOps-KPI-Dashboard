@@ -7,6 +7,7 @@
 | You provide | Where it goes | How long it stays |
 |---|---|---|
 | Spreadsheets (vehicle lists, work orders…) | Read and processed in your browser; saved in your browser's IndexedDB for this site | Until you click "Delete my fleet data" (Import page) or clear the site's data |
+| Garage incidents, review notes, checklists and handovers | Saved with the device-local Workspace, under the same optional passphrase encryption; demo actions stay in tab memory | Until fleet data is deleted; demo progress resets on reload |
 | Photos and PDFs of documents | Read in your browser (OCR); the file and the text read are saved in IndexedDB | Same as above; "Discard" or the bin icon removes one |
 | Licence key | Checked on your device; saved in local storage | Until you clear the site's data |
 | VINs, **only if you click "Decode VINs online"** | Sent to NHTSA's public vPIC service (U.S. Department of Transportation) to look up make, model and trim. Nothing else is sent: no plates, names, dates or files | Subject to NHTSA's own policy |
@@ -35,3 +36,4 @@ VIN decode above.
 
 Paid plans would use a licence key checked on your device. A key identifies a customer and a plan; it does not
 carry, and the app does not send, any of your fleet's data.
+

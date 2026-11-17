@@ -4,6 +4,11 @@ What changed in each version of FleetOps KPI. Dates are release dates; the newes
 
 ## Unreleased
 
+- Visual garage home with six status zones, vehicle cards, recorded repair milestones and a full searchable queue.
+- Accident reporting and staged recovery; registration/insurance renewal tasks; source-gated dispatch checklists with review owner, target date, history and handover evidence.
+- Paged in-app alerts, recovery missions and handover XP, isolated demo practice, optional encrypted operational storage, and an Analytics route for the previous KPI dashboard.
+- Vehicle-level usage coverage, source-generation checks and archived release evidence protect against stale or lost operational reviews.
+
 - Security: restrict document previews, escape procedure Markdown, render tooltips on canvas, isolate offline caches, harden calendar and spreadsheet exports, and audit dependencies in CI.
 - Reliability: serialise browser pipeline builds, wait for committed local writes, tolerate integer overflow during ingestion, and handle missing or degenerate metric evidence.
 - Operations: live SOP queue with scoped checklists, owners, deadlines, evidence notes and downloadable handoffs. Metric search, keyboard selection, focused connections and bounded simulations.
@@ -72,4 +77,5 @@ What changed in each version of FleetOps KPI. Dates are release dates; the newes
 ## 0.1.0: first version (2026-11-17)
 
 - Fleet and service operations KPIs on a SQL warehouse with checks and a local dashboard.
+
 

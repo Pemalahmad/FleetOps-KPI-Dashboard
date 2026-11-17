@@ -3,6 +3,7 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import { Engine, type IngestInput, type PipelineLog, type Row } from "@/lib/engine";
 import { createTaskQueue } from "@/lib/task-queue";
+import { assertGarageGeneration, emptyGarage, type GarageState } from "@/lib/garage";
 import { documentsCsv, hasFleet, loadWorkspace, persistStorage, saveWorkspace, unlockVault, vaultStatus, vehiclesFromDocuments, type VaultStatus, type Workspace } from "@/lib/workspace";
 
 export const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
@@ -25,6 +26,7 @@ interface EngineState {
   workspace: Workspace | null;
   /** Save a changed workspace and rebuild the warehouse from it. */
   commit: (ws: Workspace, opts?: { rebuild?: boolean }) => Promise<void>;
+  updateGarage: (update: (state: GarageState) => GarageState) => Promise<void>;
   runMine: () => Promise<void>;
   /** Passphrase protection of the saved fleet: none, locked (sealed, key not entered) or unlocked. */
   vault: VaultStatus;
@@ -49,6 +51,9 @@ export function EngineProvider({ children }: { children: ReactNode }) {
   const started = useRef(false);
   const [dataset, setDataset] = useState<Dataset>("demo");
   const [workspace, setWorkspace] = useState<Workspace | null>(null);
+  const workspaceRef = useRef<Workspace | null>(null);
+  const saveQueue = useRef(createTaskQueue()).current;
+  const warehouseGeneration = useRef(0);
   const [vault, setVault] = useState<VaultStatus>("none");
 
   const finish = useCallback(async (e: Engine, l: PipelineLog) => {
@@ -68,6 +73,7 @@ export function EngineProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const runDemo = useCallback(() => queueRun(async () => {
+    warehouseGeneration.current += 1;
     setDataset("demo");
     setStatus("running");
     try {
@@ -83,6 +89,7 @@ export function EngineProvider({ children }: { children: ReactNode }) {
 
   const runWorkspace = useCallback(
     (ws: Workspace) => queueRun(async () => {
+      warehouseGeneration.current += 1;
       setStatus("running");
       try {
         const e = await getEngine();
@@ -104,14 +111,28 @@ export function EngineProvider({ children }: { children: ReactNode }) {
   );
 
   const commit = useCallback(
-    async (ws: Workspace, opts: { rebuild?: boolean } = {}) => {
-      await saveWorkspace(ws);
-      setWorkspace(ws);
+    (ws: Workspace, opts: { rebuild?: boolean } = {}) => saveQueue(async () => {
+      const next = { ...ws, garage: workspaceRef.current?.garage ?? ws.garage };
+      await saveWorkspace(next);
+      workspaceRef.current = next;
+      setWorkspace(next);
       persistStorage();
-      if ((opts.rebuild ?? true) && hasFleet(ws)) await runWorkspace(ws);
-    },
-    [runWorkspace],
+      if ((opts.rebuild ?? true) && hasFleet(next)) await runWorkspace(next);
+    }),
+    [runWorkspace, saveQueue],
   );
+  const updateGarage = useCallback((update: (state: GarageState) => GarageState) => {
+    const expected = warehouseGeneration.current;
+    return saveQueue(async () => {
+    assertGarageGeneration(expected, warehouseGeneration.current);
+    const current = workspaceRef.current;
+    if (!current) throw new Error("Load and unlock your fleet before saving garage actions.");
+    const next = { ...current, garage: update(current.garage ?? emptyGarage()) };
+    await saveWorkspace(next);
+    workspaceRef.current = next;
+    setWorkspace(next);
+    });
+  }, [saveQueue]);
 
   const runMine = useCallback(async () => {
     const ws = workspace ?? (await loadWorkspace());
@@ -130,6 +151,7 @@ export function EngineProvider({ children }: { children: ReactNode }) {
       setVault(v);
       if (v === "locked") return runDemo();   // sealed fleet: show the demo until the passphrase is entered
       const ws = await loadWorkspace();
+      workspaceRef.current = ws;
       setWorkspace(ws);
       if (hasFleet(ws)) await runWorkspace(ws!);
       else await runDemo();
@@ -143,6 +165,7 @@ export function EngineProvider({ children }: { children: ReactNode }) {
     if (!(await unlockVault(passphrase))) return false;
     setVault(await vaultStatus());
     const ws = await loadWorkspace();
+    workspaceRef.current = ws;
     setWorkspace(ws);
     if (hasFleet(ws)) await runWorkspace(ws!);
     return true;
@@ -151,7 +174,7 @@ export function EngineProvider({ children }: { children: ReactNode }) {
   const refreshVault = useCallback(async () => setVault(await vaultStatus()), []);
 
   return (
-    <Ctx.Provider value={{ status, message, log, runId, engine, region, setRegion, regions, runDemo: demo, dataset, workspace, commit, runMine, vault, unlock, refreshVault }}>
+    <Ctx.Provider value={{ status, message, log, runId, engine, region, setRegion, regions, runDemo: demo, dataset, workspace, commit, updateGarage, runMine, vault, unlock, refreshVault }}>
       {children}
     </Ctx.Provider>
   );
@@ -186,4 +209,5 @@ export function useSql<T = Row>(sql: string | null) {
 export function regionWhere(region: string | null, prefix: "WHERE" | "AND" = "WHERE", col = "region") {
   return region ? ` ${prefix} ${col} = '${region.replace(/'/g, "''")}'` : "";
 }
+
 

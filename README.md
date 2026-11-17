@@ -1,6 +1,6 @@
 # FleetOps KPI: fleet operations as one system of equations
 
-**Every fleet KPI connected in one network: exact identities that hold to the decimal, and measured drivers with standard errors, p-values and confidence intervals. The tested SQL pipeline runs in your browser, on the demo fleet or on your own files.**
+**A visual fleet garage, with every KPI connected in one network: exact identities that hold to the decimal, and measured drivers with standard errors, p-values and confidence intervals. The tested SQL pipeline runs in your browser, on the demo fleet or on your own files.**
 
 [![CI](https://github.com/Pemalahmad/FleetOps-KPI-Dashboard/actions/workflows/ci.yml/badge.svg)](https://github.com/Pemalahmad/FleetOps-KPI-Dashboard/actions/workflows/ci.yml)
 [![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/Pemalahmad/FleetOps-KPI-Dashboard/badge)](https://securityscorecards.dev/viewer/?uri=github.com/Pemalahmad/FleetOps-KPI-Dashboard)
@@ -27,6 +27,14 @@ card renews the expired one.
 ![Import a vehicle list, read the register, scan a registration card and watch the vehicle come back into service](docs/demo.gif)
 
 ![Overview](docs/web-overview.jpg)
+
+## The visual garage
+
+The home dashboard groups vehicles into Road ready, Repair bays, Renewal desk, Accident intake, Dispatch review and Safety checks. Open a car for recorded repair milestones, registration and insurance stages, source blockers, a release checklist, a named owner and a target return date.
+
+Report an accident to hold the vehicle and track assessment, repair, quality checks and dispatch review. The alert inbox includes paging, type filters and read status. Recovery missions and handover XP reward completed work; points cannot bypass an expired document, unresolved repair or evidence gap. The existing KPI dashboard is available under **Analytics**.
+
+Garage actions for your fleet use the same device-local Workspace and optional passphrase encryption. Demo actions are isolated practice in tab memory. Notifications update from imported evidence and in-app incident reports; there is no automatic accident detection or external alert service. Current handovers recheck document dates, source freshness, vehicle-level usage coverage and all release requirements. See [garage workflow](docs/GARAGE.md).
 
 ## The metric network
 
@@ -176,7 +184,7 @@ docker build -t fleetkpi . && docker run -p 8501:8501 -v "$PWD/my-fleet:/fleet" 
 
 ## The dashboard
 
-Thirteen pages. **Plan & offline** (install, offline package, licence), **Fleet register** (identity, licence and next action for every vehicle, with a vehicle drawer), **Documents** (scan, review, vault), **Import** (workbooks, mapping, templates), **Overview** (north star, KPI tiles with sparklines, region × KPI scorecard, site league), **Metric network** (metric search, keyboard selection, focused connections and links to procedures), **Customer clock** (the three clocks by region, CSAT, rating mix, key-to-key p50/p90), **Workshop** (weekly INTERVENE heatmap, repeat repairs, issue-category treemap, supplier on-time, overdue parts, backlog ageing), **Ledger & assets** (spend per 1,000 km by powertrain, goodwill, cost vs budget, cost per km, value retained), **Licence** (registration and insurance status, renewal waves, PM, fines, recall curves), **Pipeline & your data** and **Doctrine & SOPs**. A global region filter applies everywhere; light and dark follow the system or a toggle.
+The workspace includes **My garage** (vehicle bays, accident recovery, renewal stages, road checklists, alerts and recovery missions), **Plan & offline** (install, offline package, licence), **Fleet register** (identity, licence and next action for every vehicle, with a vehicle drawer), **Documents** (scan, review, vault), **Import** (workbooks, mapping, templates), **Analytics** (north star, KPI tiles with sparklines, region × KPI scorecard, site league), **Metric network** (metric search, keyboard selection, focused connections and links to procedures), **Customer clock** (the three clocks by region, CSAT, rating mix, key-to-key p50/p90), **Workshop** (weekly INTERVENE heatmap, repeat repairs, issue-category treemap, supplier on-time, overdue parts, backlog ageing), **Ledger & assets** (spend per 1,000 km by powertrain, goodwill, cost vs budget, cost per km, value retained), **Licence** (registration and insurance status, renewal waves, PM, fines, recall curves), **Pipeline & your data** and **Doctrine & SOPs**. A global region filter applies everywhere; light and dark follow the system or a toggle.
 
 Built in TypeScript with Next.js (static export), Tailwind, ECharts, KaTeX and DuckDB-WASM, following the structure of a production browser-tools app: self-hosted WASM assets copied at build time, Vitest for the maths, ESLint and type-checking in CI, deployed to GitHub Pages by [`pages.yml`](.github/workflows/pages.yml). The Python package still ships a local Streamlit view (`fleetkpi serve`) for teams that prefer it.
 
@@ -193,8 +201,8 @@ Built in TypeScript with Next.js (static export), Tailwind, ECharts, KaTeX and D
 ## Quality
 
 - **24 SQL data tests** and **41 SQL validation rules** run inside every build, in Python and in the browser alike, including the clock identity on every work order (`t18`) and the metric-network identities on every region-month (`t21`).
-- **5 security end-to-end tests** (Playwright, production build in a real browser): strict CSP with no violations on every page, an injected script refused, a hostile workbook (XSS and SQL injection) rendered as text, encryption at rest with wrong and right passphrases, and the document reader under the policy, with every request staying on the app's own site.
-- **75 TypeScript tests** (Vitest): encryption at rest (round trip, wrong passphrase, tamper detection, fresh IVs); licence keys signed in Python and verified in the browser (forged and expired keys rejected); calendar and Excel exports (formula injection neutralised); every statistical routine against R / scipy / statsmodels reference values; the metric network's identities and propagation; VIN rules and vPIC mapping; workbook reading (title rows, Excel dates, many sheets) and table / column recognition for common fleet-platform exports; document reading (day-first and Arabic-Indic dates, plates, VINs, weighted document typing).
+- **Security and garage end-to-end tests** (Playwright, production build in a real browser): strict CSP with no violations on every page, an injected script refused, a hostile workbook (XSS and SQL injection) rendered as text, encryption at rest with wrong and right passphrases, and the document reader under the policy, with every request staying on the app's own site.
+- **88 TypeScript tests** (Vitest): encryption at rest (round trip, wrong passphrase, tamper detection, fresh IVs); licence keys signed in Python and verified in the browser (forged and expired keys rejected); calendar and Excel exports (formula injection neutralised); every statistical routine against R / scipy / statsmodels reference values; the metric network's identities and propagation; VIN rules and vPIC mapping; workbook reading (title rows, Excel dates, many sheets) and table / column recognition for common fleet-platform exports; document reading (day-first and Arabic-Indic dates, plates, VINs, weighted document typing).
 - **20 Python tests** (`pytest`): licence signing; the demo end to end; the fleet register and documents (matched by plate, VIN or id; renewed cards move the expiry); VIN macros against reference VINs; a foreign-format fleet (Excel, its own column names, `dd/mm` dates, monthly usage, no optional tables) that must plug in with mapping only; bad data blocked with the right reasons; dependency order and layer rules; the web export runs exactly the package's SQL.
 - **CI** on Python 3.11 and 3.13, the web app (lint, type-check, tests, build), and a Docker build that runs the demo inside the image.
 
@@ -225,4 +233,5 @@ released under MIT and stay MIT.
 ---
 
 Built by [Mohammad Alahmad](https://linkedin.com/in/pemalahmad). The structure mirrors how I ran operations analytics for a multi-market EV network; the demo company and its data are invented.
+
 

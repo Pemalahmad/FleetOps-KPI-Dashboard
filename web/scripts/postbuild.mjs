@@ -71,7 +71,7 @@ writeFileSync(join(out, "precache.json"), JSON.stringify({ version, core, ocr })
 writeFileSync(join(out, "manifest.webmanifest"), JSON.stringify({
   name: "FleetOps KPI", short_name: "FleetOps",
   description: "Fleet register, documents and operations KPIs. Runs in your browser; your data stays on your device.",
-  start_url: `${base}/fleet/`, scope: `${base}/`, display: "standalone",
+  start_url: `${base}/`, scope: `${base}/`, display: "standalone",
   background_color: "#0a0c14", theme_color: "#6366f1",
   icons: [
     { src: `${base}/icons/icon-192.png`, sizes: "192x192", type: "image/png" },
@@ -80,4 +80,5 @@ writeFileSync(join(out, "manifest.webmanifest"), JSON.stringify({
   ],
 }, null, 1));
 console.log(`Offline: ${core.length} core files, ${ocr.length} document-reader files, version ${version}`);
+
 

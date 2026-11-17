@@ -3,7 +3,7 @@
 # Your fleet data is kept by your browser for this address; use the same browser and keep the same port.
 cd "$(dirname "$0")/app" || exit 1
 PORT=8765
-URL="http://127.0.0.1:$PORT/fleet/"
+URL="http://127.0.0.1:$PORT/"
 if command -v python3 >/dev/null 2>&1; then python3 -m http.server "$PORT" --bind 127.0.0.1 >/dev/null 2>&1 &
 elif command -v ruby >/dev/null 2>&1; then ruby -run -e httpd . -b 127.0.0.1 -p "$PORT" >/dev/null 2>&1 &
 elif command -v php >/dev/null 2>&1; then php -S "127.0.0.1:$PORT" >/dev/null 2>&1 &

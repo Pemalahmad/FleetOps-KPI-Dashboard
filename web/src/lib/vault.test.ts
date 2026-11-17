@@ -36,6 +36,15 @@ describe("vault: encryption at rest", () => {
     expect([...a.iv]).not.toEqual([...b.iv]);
     expect(new Uint8Array(a.ct)).not.toEqual(new Uint8Array(b.ct));
   });
+  it("protects garage incidents, reviewer notes and handover history with the workspace", async () => {
+    const { key } = await vault;
+    const workspace = { name: "Fleet", garage: { incidents: [{ summary: "Private incident reference" }], reviews: { V1: { owner: "Private reviewer", notes: "Private repair evidence" } }, handovers: [] } };
+    const stored = await sealJson(key, workspace);
+    const raw = new TextDecoder().decode(stored.ct);
+    expect(raw).not.toContain("Private incident");
+    expect(raw).not.toContain("Private reviewer");
+    expect(await unsealJson(key, stored)).toEqual(workspace);
+  });
 
   it("detects tampering (GCM tag)", async () => {
     const { key } = await vault;
@@ -53,3 +62,4 @@ describe("vault: encryption at rest", () => {
     expect(passphraseProblem("blue lorry midnight", "blue lorry midnight")).toBeNull();
   });
 });
+

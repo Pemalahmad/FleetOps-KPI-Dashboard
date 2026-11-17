@@ -13,7 +13,7 @@ import { expect, test, type Page } from "@playwright/test";
 import path from "node:path";
 import * as XLSX from "xlsx";
 
-const PAGES = ["/", "/fleet/", "/documents/", "/import/", "/plan/", "/network/", "/customer/", "/workshop/", "/ledger/",
+const PAGES = ["/", "/overview/", "/fleet/", "/documents/", "/import/", "/plan/", "/network/", "/customer/", "/workshop/", "/ledger/",
   "/licence/", "/pipeline/", "/doctrine/"];
 const SAMPLE = path.resolve(__dirname, "../../samples/fleet-vehicles.xlsx");
 
@@ -157,3 +157,4 @@ test("the document reader works under the strict CSP and stays on this site", as
   expect(seen.errors).toEqual([]);
   expect([...seen.origins]).toEqual([new URL(baseURL!).origin]);
 });
+

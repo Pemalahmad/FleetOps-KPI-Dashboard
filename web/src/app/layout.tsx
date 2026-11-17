@@ -7,9 +7,9 @@ import { Shell } from "@/components/shell";
 
 
 export const metadata: Metadata = {
-  title: "FleetOps KPI · Three Clocks",
+  title: "FleetOps KPI · Garage & Operations",
   description:
-    "Fleet operations KPIs connected as one network of exact identities and measured drivers. The tested SQL pipeline runs in your browser.",
+    "A visual fleet garage for repair stages, registration, insurance, accident recovery and road-readiness checks, connected to tested fleet analytics.",
 };
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
@@ -40,4 +40,5 @@ export default function RootLayout({ children }: { children: ReactNode }) {
     </html>
   );
 }
+
 

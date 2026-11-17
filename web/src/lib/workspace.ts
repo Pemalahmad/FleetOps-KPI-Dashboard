@@ -4,6 +4,7 @@
  * and the pipeline rebuilds from them on every visit.
  */
 import type { VinSpec } from "./vin";
+import type { GarageState } from "./garage";
 import { isSealed, newVault, openVault, seal, sealJson, unseal, unsealJson, type Sealed, type VaultHeader } from "./vault";
 
 export interface SavedInput {
@@ -43,6 +44,8 @@ export interface Workspace {
   documents: SavedDocument[];
   vinSpecs: Record<string, VinSpec>;
   updated: string;
+  /** Operational reviews share the workspace's existing encrypted storage boundary. */
+  garage?: GarageState;
 }
 
 const DB = "fleetops-workspace";
@@ -232,4 +235,5 @@ export function vehiclesFromDocuments(docs: SavedDocument[]): string | null {
 export const hasFleet = (ws: Workspace | null) => !!ws && (ws.inputs.length > 0 || ws.documents.some((d) => d.confirmed && d.create_vehicle));
 
 export const uid = (prefix: string) => `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`;
+
 
