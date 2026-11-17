@@ -41,3 +41,7 @@ theft, server-side injection, data breaches of a central store) and leaves the b
 Automated checks and source review reduce risk; they do not prove the absence of vulnerabilities or bugs. Audit results are time-dependent. Check the latest dependency-security and CodeQL runs before a release.
 
 Fleet inputs, documents and SOP review notes are stored on the device without application-level encryption. Treat a shared browser profile as shared access. The delete-fleet-data action also removes SOP notes; exported reviews must be managed separately.
+
+## Current upstream finding (2026-11-17)
+
+GHSA-fc5q-39xc-vjpf / CVE-2026-112366 affects picomatch in the development tooling. No patched version is listed upstream. The full dependency audit remains failing intentionally; production dependencies are audited separately. Imported fleet files are not interpreted as glob patterns. See [review details](docs/SECURITY_REVIEW_2026-11-17.md#upstream-dependency-finding).

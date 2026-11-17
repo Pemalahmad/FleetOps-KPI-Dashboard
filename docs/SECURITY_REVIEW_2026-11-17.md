@@ -35,3 +35,11 @@ Local verification includes Python pipeline/regression tests, TypeScript regress
 The execution host cannot reach npm/PyPI audit endpoints. Dependency audit results must be confirmed in the dependency-security workflow; no clean dependency claim is made here. Docker, PowerShell launchers and a full Git history secret scan were not executed locally. Browser data is device-local and unencrypted at the application level. Shared profiles share access.
 
 The review preserves the repository's incoming licence/version, documentation and sample-file changes.
+
+## Upstream dependency finding
+
+The first GitHub audit reported GHSA-fc5q-39xc-vjpf (CVE-2026-112366), a high-severity repeated-extglob denial of service in picomatch through 4.0.7. The advisory lists no patched version as of this review. The 16 npm findings are the affected package and its transitive development-tooling dependants, not 16 independent defects. The lockfile marks all affected picomatch copies as development dependencies.
+
+Fleet file imports do not accept or evaluate glob patterns. Lint and test globs are repository-controlled. This limits the current exposure but does not remove the vulnerable dependency. The workflow runs production and full audits separately and deliberately keeps the full audit failing until an upstream fix or a verified replacement is available. Do not treat this review as a clean full-dependency audit.
+
+Advisory: https://github.com/advisories/GHSA-fc5q-39xc-vjpf
