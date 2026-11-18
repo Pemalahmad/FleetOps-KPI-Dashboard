@@ -120,3 +120,6 @@ button:disabled { cursor: not-allowed; }
 @media (min-width: 768px) { .kpi-wall { columns: 2; } }
 @media (min-width: 1280px) { .kpi-wall { columns: 3; } }
 .kpi-wall > .kpi-panel { break-inside: avoid; margin-bottom: 12px; }
+.car-shape { display: grid; grid-template-columns: 92px minmax(0, 1fr); grid-template-rows: auto auto; align-items: center; gap: 6px 10px; padding: 10px; border: 1px solid var(--border); border-radius: 10px; background: var(--panel); }
+.car-shape-art { grid-row: span 2; width: 92px; height: 46px; }
+.car-shape-select { min-height: 32px; padding: .3rem .5rem; font-size: 12.5px; }

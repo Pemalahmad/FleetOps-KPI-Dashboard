@@ -3,6 +3,7 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import { Engine, type IngestInput, type PipelineLog, type Row } from "@/lib/engine";
 import { createTaskQueue } from "@/lib/task-queue";
+import { isBodyStyle, type BodyStyle } from "@/lib/car-styles";
 import { assertGarageGeneration, emptyGarage, type GarageState } from "@/lib/garage";
 import { clearLegacySopNotes, documentsCsv, hasFleet, loadWorkspace, persistStorage, saveWorkspace, takeLegacySopNotes, unlockVault, vaultStatus, vehiclesFromDocuments, type SopProgress, type VaultStatus, type Workspace } from "@/lib/workspace";
 
@@ -29,6 +30,7 @@ interface EngineState {
   updateGarage: (update: (state: GarageState) => GarageState) => Promise<void>;
   /** Save one procedure's review progress into the (encrypted) workspace. */
   updateSop: (key: string, progress: SopProgress) => Promise<void>;
+  updateCarStyle: (key: string, style: BodyStyle | null) => Promise<void>;
   runMine: () => Promise<void>;
   /** Passphrase protection of the saved fleet: none, locked (sealed, key not entered) or unlocked. */
   vault: VaultStatus;
@@ -42,8 +44,10 @@ let shared: Promise<Engine> | null = null;
 const queueRun = createTaskQueue();
 /** Load the saved workspace and fold in procedure notes that older versions left in plain localStorage. */
 async function loadAndMigrate(): Promise<Workspace | null> {
-  const ws = await loadWorkspace();
-  if (!ws) return ws;
+  const loaded = await loadWorkspace();
+  if (!loaded) return loaded;
+  // keep only recognised car shapes; anything else in stored data is ignored
+  const ws = { ...loaded, carStyles: Object.fromEntries(Object.entries(loaded.carStyles ?? {}).filter(([k, v]) => typeof k === "string" && isBodyStyle(v))) as Record<string, BodyStyle> };
   const legacy = takeLegacySopNotes();
   if (!Object.keys(legacy).length) { clearLegacySopNotes(); return ws; }
   const next = { ...ws, sops: { ...legacy, ...ws.sops } };
@@ -125,7 +129,7 @@ export function EngineProvider({ children }: { children: ReactNode }) {
 
   const commit = useCallback(
     (ws: Workspace, opts: { rebuild?: boolean } = {}) => saveQueue(async () => {
-      const next = { ...ws, garage: workspaceRef.current?.garage ?? ws.garage, sops: workspaceRef.current?.sops ?? ws.sops };
+      const next = { ...ws, garage: workspaceRef.current?.garage ?? ws.garage, sops: workspaceRef.current?.sops ?? ws.sops, carStyles: workspaceRef.current?.carStyles ?? ws.carStyles };
       await saveWorkspace(next);
       workspaceRef.current = next;
       setWorkspace(next);
@@ -150,6 +154,17 @@ export function EngineProvider({ children }: { children: ReactNode }) {
     const current = workspaceRef.current;
     if (!current) throw new Error("Load and unlock your fleet before saving procedure notes.");
     const next = { ...current, sops: { ...current.sops, [key]: progress } };
+    await saveWorkspace(next);
+    workspaceRef.current = next;
+    setWorkspace(next);
+  }), [saveQueue]);
+
+  const updateCarStyle = useCallback((key: string, style: BodyStyle | null) => saveQueue(async () => {
+    const current = workspaceRef.current;
+    if (!current) throw new Error("Load and unlock your fleet before saving car shapes.");
+    const carStyles = { ...current.carStyles };
+    if (style && isBodyStyle(style)) carStyles[key] = style; else delete carStyles[key];
+    const next = { ...current, carStyles };
     await saveWorkspace(next);
     workspaceRef.current = next;
     setWorkspace(next);
@@ -195,7 +210,7 @@ export function EngineProvider({ children }: { children: ReactNode }) {
   const refreshVault = useCallback(async () => setVault(await vaultStatus()), []);
 
   return (
-    <Ctx.Provider value={{ status, message, log, runId, engine, region, setRegion, regions, runDemo: demo, dataset, workspace, commit, updateGarage, updateSop, runMine, vault, unlock, refreshVault }}>
+    <Ctx.Provider value={{ status, message, log, runId, engine, region, setRegion, regions, runDemo: demo, dataset, workspace, commit, updateGarage, updateSop, updateCarStyle, runMine, vault, unlock, refreshVault }}>
       {children}
     </Ctx.Provider>
   );

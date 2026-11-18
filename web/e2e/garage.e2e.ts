@@ -72,3 +72,15 @@ test("alerts remain accessible beyond the first fifty and can be filtered", asyn
   await inbox.getByRole("button", { name: "Mark shown as read", exact: true }).click();
   await expect(inbox.getByRole("button", { name: "Next alerts", exact: true })).toBeEnabled();
 });
+test("the owner can choose a car shape per model and the garage keeps it", async ({ page }) => {
+  await ready(page);
+  await page.getByRole("link", { name: /Fleet register/ }).first().click();
+  const picker = page.getByRole("combobox", { name: /Car shape for/ }).first();
+  await expect(picker).toHaveValue("auto");
+  await picker.selectOption("pickup");
+  await expect(picker).toHaveValue("pickup");
+  await page.getByRole("link", { name: /My garage/ }).first().click();
+  await expect(page.getByRole("region", { name: "Visual fleet garage" })).toBeVisible();
+  await page.getByRole("link", { name: "Match car shapes" }).click();
+  await expect(page.getByRole("combobox", { name: /Car shape for/ }).first()).toHaveValue("pickup");
+});

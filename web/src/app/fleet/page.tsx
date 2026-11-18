@@ -10,6 +10,7 @@ import { Card, PageHeader, SectionTitle, Skeleton, StatStrip } from "@/component
 import { decodeVins } from "@/lib/vin";
 import { renewalsIcs, safeRows } from "@/lib/exporters";
 import { cleanName, withoutPrefix } from "@/lib/names";
+import { CarShapes } from "@/components/garage/car-shapes";
 
 export interface RegistryRow {
   vehicle_id: string; vin: string | null; vin_status: string; plate_number: string | null; make: string | null; model: string | null;
@@ -140,6 +141,11 @@ export default function FleetPage() {
           }} /> : <Skeleton height={280} />}
         </Card>
       </div>
+
+      <div id="car-shapes" className="scroll-mt-28">
+        <SectionTitle sub="The 3D garage draws each model in this shape and in its registered colour. Change any that look wrong.">Car shapes in the garage</SectionTitle>
+      </div>
+      <Card>{reg.data ? <CarShapes rows={rows} /> : <Skeleton height={160} />}</Card>
 
       <SectionTitle sub="One action per vehicle, most urgent first. Law 6: an expired vehicle is grounded until renewed.">Next actions</SectionTitle>
       <div className="mb-3 flex flex-wrap gap-2">

@@ -3,6 +3,7 @@
  * column mappings, the scanned documents (with their image or PDF) and any VIN decodes stay on this device,
  * and the pipeline rebuilds from them on every visit.
  */
+import type { BodyStyle } from "./car-styles";
 import type { VinSpec } from "./vin";
 import type { GarageState } from "./garage";
 import { isSealed, newVault, openVault, seal, sealJson, unseal, unsealJson, type Sealed, type VaultHeader } from "./vault";
@@ -48,6 +49,8 @@ export interface Workspace {
   garage?: GarageState;
   /** SOP review progress (checked steps, owner, due date, notes), keyed by sopProgressKey; sealed with the workspace. */
   sops?: Record<string, SopProgress>;
+  /** Car body style per make and model (modelKey), chosen by the owner for the 3D garage; sealed with the workspace. */
+  carStyles?: Record<string, BodyStyle>;
 }
 
 export interface SopProgress { checked: number[]; owner: string; due: string; notes: string }

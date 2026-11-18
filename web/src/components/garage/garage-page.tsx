@@ -10,6 +10,7 @@ import { buildAlerts, deriveVehicle, LANES, localDate, vehicleLabel, type Garage
 import { GARAGE_SQL } from "@/lib/garage-query";
 import { GarageCar } from "./car";
 import { Garage3D } from "./garage-3d";
+import { useCarStyles } from "./use-car-styles";
 import { IncidentDialog } from "./incident-dialog";
 import { VehicleDialog } from "./vehicle-dialog";
 import { useGarageOperations } from "./use-garage";
@@ -20,7 +21,7 @@ const PAGE_SIZE = 24;
 const PRIORITY: Record<GarageLane, number> = { incident: 0, renewal: 1, repair: 2, dispatch: 3, verify: 4, road: 5 };
 
 export function GaragePage() {
-  const engine = useEngine(), operations = useGarageOperations();
+  const engine = useEngine(), operations = useGarageOperations(), carStyles = useCarStyles();
   const source = useSql<GarageRow>(GARAGE_SQL);
   const [selectedId, setSelectedId] = useState<string | null>(null), [incidentFor, setIncidentFor] = useState<string | null | undefined>(undefined);
   const [notifications, setNotifications] = useState(false), [search, setSearch] = useState(""), [filter, setFilter] = useState<GarageLane | "all">("all"), [page, setPage] = useState(0);
@@ -104,8 +105,8 @@ export function GaragePage() {
 
       <section className="garage-floor" aria-label="Visual fleet garage">
         <div className="garage-floor-header"><div><h2 className="text-lg font-semibold">The garage floor</h2><p className="mt-1 text-xs text-muted">{NUM.format(vehicles.length)} vehicles across six work zones. Accident holds flash; repair bays lift the car.</p></div>
-          <span className="garage-report-badge">Live from the loaded report</span></div>
-        <Garage3D groups={groups} onOpen={openVehicle} />
+          <div className="flex items-center gap-2"><Link href="/fleet/#car-shapes" className="garage-report-badge hover:text-accent">Match car shapes</Link><span className="garage-report-badge">Live from the loaded report</span></div></div>
+        <Garage3D groups={groups} onOpen={openVehicle} styleFor={carStyles.styleFor} />
         <div className="garage-zones">{LANES.map((lane) => <section key={lane.id} className="garage-zone" aria-label={lane.label + " queue"}>
           <header className="flex items-baseline justify-between gap-2"><h3 className="flex items-center gap-2 text-[13px] font-semibold"><span className="h-2 w-2 rounded-full" style={{ background: lane.color }} />{lane.label}</h3>
             <span className="tnum text-lg font-semibold" style={{ color: lane.color }}>{NUM.format(groups[lane.id].length)}</span></header>

@@ -8,7 +8,8 @@
  */
 import { useEffect, useRef, useState } from "react";
 import { useTheme } from "../chart";
-import { LANES, vehicleLabel, type GarageLane, type GarageVehicle } from "@/lib/garage";
+import { LANES, vehicleLabel, type GarageLane, type GarageRow, type GarageVehicle } from "@/lib/garage";
+import { carProfile, paintColor, type BodyStyle, type CarProfile } from "@/lib/car-styles";
 
 const PER_ZONE = 8;
 const ZONE_W = 10.4, ZONE_D = 8.2, GAP = 1.2;
@@ -22,13 +23,14 @@ function cssColor(name: string, fallback: string) {
   return v || fallback;
 }
 
-export function Garage3D({ groups, onOpen }: { groups: Record<GarageLane, GarageVehicle[]>; onOpen: (id: string) => void }) {
+export function Garage3D({ groups, onOpen, styleFor }: { groups: Record<GarageLane, GarageVehicle[]>; onOpen: (id: string) => void; styleFor: (row: GarageRow) => BodyStyle }) {
   const host = useRef<HTMLDivElement>(null);
   const dark = useTheme();
   const [hover, setHover] = useState<Hover | null>(null);
   const [failed, setFailed] = useState(false);
   const [resetKey, setResetKey] = useState(0);
   const open = useRef(onOpen);
+  const zoomBy = useRef<(f: number) => void>(() => {});
   useEffect(() => { open.current = onOpen; }, [onOpen]);
 
   useEffect(() => {
@@ -36,7 +38,7 @@ export function Garage3D({ groups, onOpen }: { groups: Record<GarageLane, Garage
     if (!el) return;
     let disposed = false;
     let cleanup = () => {};
-    void import("three").then((THREE) => {
+    void Promise.all([import("three"), import("three/examples/jsm/environments/RoomEnvironment.js")]).then(([THREE, { RoomEnvironment }]) => {
       if (disposed) return;
       let renderer: InstanceType<typeof THREE.WebGLRenderer>;
       try {
@@ -63,8 +65,14 @@ export function Garage3D({ groups, onOpen }: { groups: Record<GarageLane, Garage
       const floorTone = dark ? "#252a3b" : "#e7e9f0", slabTone = dark ? "#181c2a" : "#f4f5f9", lineTone = dark ? "#3a4159" : "#c3c8d6";
 
       const scene = new THREE.Scene();
+      // soft studio reflections for paint and glass, generated on the device (no image is loaded)
+      const pmrem = new THREE.PMREMGenerator(renderer);
+      const envMap = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+      scene.environment = envMap;
+      scene.environmentIntensity = dark ? 0.55 : 0.5;
+      pmrem.dispose();
       const camera = new THREE.PerspectiveCamera(32, 1, 0.5, 200);
-      scene.add(new THREE.HemisphereLight(dark ? "#b4bce0" : "#ffffff", dark ? "#1a1d2b" : "#b9bdcc", dark ? 1.7 : 1.5));
+      scene.add(new THREE.HemisphereLight(dark ? "#b4bce0" : "#ffffff", dark ? "#1a1d2b" : "#b9bdcc", dark ? 1.7 : 1.15));
       const sun = new THREE.DirectionalLight("#ffffff", dark ? 2.2 : 2.0);
       sun.position.set(-14, 26, 16);
       sun.castShadow = true;
@@ -95,31 +103,67 @@ export function Garage3D({ groups, onOpen }: { groups: Record<GarageLane, Garage
       const dash = box(1.4, 0.03, 0.14), dashM = mat(dark ? "#5d6480" : "#ffffff");
       for (let x = -totalW / 2; x < totalW / 2; x += 2.6) scene.add(mesh(dash, dashM, x + 0.7, 0.03, laneZ, false));
 
-      // shared car parts
-      const wheelG = keep(new THREE.CylinderGeometry(0.34, 0.34, 0.26, 18)).rotateZ(Math.PI / 2);
-      const hubG = keep(new THREE.CylinderGeometry(0.16, 0.16, 0.28, 12)).rotateZ(Math.PI / 2);
-      const bodyG = box(1.56, 0.5, 3.1), noseG = box(1.5, 0.22, 0.7), cabinG = box(1.34, 0.46, 1.62), roofG = box(1.28, 0.06, 1.34);
-      const lampG = box(0.34, 0.1, 0.04), beaconG = keep(new THREE.CylinderGeometry(0.11, 0.13, 0.2, 14));
-      const coneG = keep(new THREE.ConeGeometry(0.2, 0.55, 14));
-      const tyreM = mat("#16181f", { rough: 0.9 }), hubM = mat("#9aa0b4", { metal: 0.6, rough: 0.35 });
-      const glassM = mat(dark ? "#0b0e18" : "#26304a", { rough: 0.15, metal: 0.4 });
-      const headM = mat("#ffffff", { emissive: "#fff6db", ei: 0.9 }), tailM = mat("#e11d48", { emissive: "#e11d48", ei: 0.6 });
-      const coneM = mat("#f97316", { rough: 0.6 });
+      // car parts: one body per style, extruded from the same side profile the register's preview draws
+      const tyreG = keep(new THREE.CylinderGeometry(1, 1, 0.24, 22)).rotateZ(Math.PI / 2);
+      const rimG = keep(new THREE.CylinderGeometry(0.62, 0.62, 0.26, 16)).rotateZ(Math.PI / 2);
+      const lampG = box(0.36, 0.1, 0.05), mirrorG = box(0.16, 0.12, 0.2), beaconG = keep(new THREE.CylinderGeometry(0.16, 0.18, 0.28, 14));
+      const coneG = keep(new THREE.ConeGeometry(0.17, 0.48, 14)), padG = keep(new THREE.PlaneGeometry(1, 1)).rotateX(-Math.PI / 2);
+      const tyreM = mat("#14161c", { rough: 0.92 }), rimM = mat("#c3c7cf", { metal: 0.8, rough: 0.28 });
+      const glassM = keep(new THREE.MeshPhysicalMaterial({ color: "#0b111c", roughness: 0.12, metalness: 0.1, clearcoat: 1, clearcoatRoughness: 0.04, envMapIntensity: 0.35 }));
+      const headM = mat("#ffffff", { emissive: "#fff6db", ei: 1.1 }), tailM = mat("#c81e3a", { emissive: "#e11d48", ei: 0.7 });
+      const coneM = mat("#f97316", { rough: 0.6 }), bedM = mat("#25282f", { rough: 0.9 }), cargoM = mat(dark ? "#d5d8de" : "#eceef2", { rough: 0.55 });
+      const BEV = 0.08, GBEV = BEV + 0.014;
+      const geo = new Map<BodyStyle, { body: InstanceType<typeof THREE.ExtrudeGeometry>; glass: InstanceType<typeof THREE.ExtrudeGeometry>; p: CarProfile }>();
+      const geoFor = (style: BodyStyle) => {
+        const hit = geo.get(style);
+        if (hit) return hit;
+        const p = carProfile(style);
+        const shape = (pts: [number, number][]) => new THREE.Shape(pts.map(([z, y]) => new THREE.Vector2(z, y)));
+        const inner = p.width - 2 * BEV;
+        const body = keep(new THREE.ExtrudeGeometry(shape(p.outline), { depth: inner, bevelEnabled: true, bevelThickness: BEV, bevelSize: BEV, bevelSegments: 4, curveSegments: 8 }));
+        body.translate(0, 0, -inner / 2).rotateY(-Math.PI / 2);
+        // same depth, slightly larger bevel: the glass sits just proud of the painted body on every face
+        const glass = keep(new THREE.ExtrudeGeometry(shape(p.glass), { depth: inner, bevelEnabled: true, bevelThickness: GBEV, bevelSize: GBEV, bevelSegments: 3 }));
+        glass.translate(0, 0, -inner / 2).rotateY(-Math.PI / 2);
+        const out = { body, glass, p };
+        geo.set(style, out);
+        return out;
+      };
 
-      const cars: { body: InstanceType<typeof THREE.Group>; paint: InstanceType<typeof THREE.MeshStandardMaterial>; v: GarageVehicle; baseY: number }[] = [];
+      const cars: { body: InstanceType<typeof THREE.Group>; paint: InstanceType<typeof THREE.MeshPhysicalMaterial>; v: GarageVehicle; baseY: number }[] = [];
       const beacons: InstanceType<typeof THREE.MeshStandardMaterial>[] = [];
 
-      function car(color: string, v: GarageVehicle) {
+      /** A car in its registered paint and body style, scaled to fit a bay, nose towards the drive lane. */
+      function car(v: GarageVehicle) {
+        const { body, glass, p } = geoFor(styleFor(v.row));
         const g = new THREE.Group();
-        const paint = mat(color, { rough: 0.38, metal: 0.25 });
-        g.add(mesh(bodyG, paint, 0, 0.55, 0), mesh(noseG, paint, 0, 0.36, 1.25));
-        g.add(mesh(cabinG, glassM, 0, 1.03, -0.18), mesh(roofG, paint, 0, 1.28, -0.2));
-        for (const [x, z] of [[-0.72, 0.98], [0.72, 0.98], [-0.72, -1.0], [0.72, -1.0]] as const)
-          g.add(mesh(wheelG, tyreM, x, 0.34, z), mesh(hubG, hubM, x, 0.34, z, false));
-        g.add(mesh(lampG, headM, -0.48, 0.62, 1.56, false), mesh(lampG, headM, 0.48, 0.62, 1.56, false));
-        g.add(mesh(lampG, tailM, -0.5, 0.64, -1.56, false), mesh(lampG, tailM, 0.5, 0.64, -1.56, false));
-        cars.push({ body: g, paint, v, baseY: 0 });
+        const paint = keep(new THREE.MeshPhysicalMaterial({ color: paintColor(v.row.color), roughness: 0.38, metalness: 0.45, clearcoat: 1, clearcoatRoughness: 0.08 }));
+        g.add(mesh(body, paint), mesh(glass, glassM, 0, 0, 0, false));
+        const hx = p.width / 2 - 0.14;
+        for (const z of p.wheels) for (const x of [-hx, hx]) {
+          const t = mesh(tyreG, tyreM, x, p.wheelR, z); t.scale.set(1, p.wheelR, p.wheelR);
+          const r = mesh(rimG, rimM, x * 1.01, p.wheelR, z, false); r.scale.set(1, p.wheelR, p.wheelR);
+          g.add(t, r);
+        }
+        // door mirrors at the base of the windscreen
+        const mz = p.glass[3][0] - 0.05, my = p.belt + 0.12;
+        for (const sx of [-1, 1]) g.add(mesh(mirrorG, paint, sx * (p.width / 2 + 0.1), my, mz, false));
+        const nose = p.outline.reduce((m, [z, y]) => (z > p.length / 2 - 0.01 ? Math.max(m, y) : m), 0);
+        const tail = p.outline.reduce((m, [z, y]) => (z < -p.length / 2 + 0.01 ? Math.max(m, y) : m), 0);
+        for (const x of [-(p.width / 2 - 0.3), p.width / 2 - 0.3]) {
+          g.add(mesh(lampG, headM, x, nose - 0.2, p.length / 2 + BEV, false));
+          g.add(mesh(lampG, tailM, x, tail - 0.16, -p.length / 2 - BEV, false));
+        }
+        if (p.bed) g.add(mesh(box(p.width - 0.26, 0.03, p.bed[1] - p.bed[0]), bedM, 0, p.bed[3] + BEV + 0.005, (p.bed[0] + p.bed[1]) / 2, false));
+        if (p.cargo) {
+          const [r0, r1, y0, y1] = p.cargo;
+          g.add(mesh(box(p.width + 0.06, y1 - y0, r1 - r0), cargoM, 0, (y0 + y1) / 2, (r0 + r1) / 2));
+        }
+        const scale = Math.min(0.62, 3.45 / p.length);
+        g.scale.setScalar(scale);
         g.userData.vehicle = v.row.vehicle_id;
+        g.userData.size = [p.width * scale, p.length * scale, (p.cargo ? p.cargo[3] : p.height) * scale];
+        cars.push({ body: g, paint, v, baseY: 0 });
         return g;
       }
 
@@ -176,19 +220,23 @@ export function Garage3D({ groups, onOpen }: { groups: Record<GarageLane, Garage
           }
         }
 
+        const padM = mat(color, { emissive: color, ei: dark ? 0.45 : 0.15, opacity: dark ? 0.32 : 0.28 });
         list.slice(0, PER_ZONE).forEach((v, i) => {
           const r = Math.floor(i / 4), b = i % 4;
-          const g = car(color, v);
+          const x = -ZONE_W / 2 + 0.6 + 1.15 + b * 2.3, z = -1.6 + r * 3.9;
+          const g = car(v);
+          const [w, l, h] = g.userData.size as number[];
           const lifted = lane === "repair" && r === 0 && b < 2;
           const y = lifted ? 1.0 : 0.06;
-          g.position.set(-ZONE_W / 2 + 0.6 + 1.15 + b * 2.3, y, -1.6 + r * 3.9);
+          g.position.set(x, y, z);
           cars[cars.length - 1].baseY = y;
+          const pad = mesh(padG, padM, x, 0.066, z, false); pad.scale.set(w + 0.4, 1, l + 0.35);
+          zone.add(pad);
           if (lane === "incident") {
             const bm = mat("#ef4444", { emissive: "#ff2d2d", ei: 1.2 });
             beacons.push(bm);
-            g.add(mesh(beaconG, bm, 0, 1.42, -0.2, false));
-            const cone = mesh(coneG, coneM, 1.05, 0.3, 1.5);
-            g.add(cone);
+            g.add(mesh(beaconG, bm, 0, h / g.scale.x + 0.14, 0, false));
+            zone.add(mesh(coneG, coneM, x + w / 2 + 0.25, 0.3, z + l / 2 - 0.1));
           }
           zone.add(g);
         });
@@ -202,16 +250,18 @@ export function Garage3D({ groups, onOpen }: { groups: Record<GarageLane, Garage
         camera.position.set(target.x + dist * Math.sin(yaw) * Math.cos(pitch), target.y + dist * Math.sin(pitch), target.z + dist * Math.cos(yaw) * Math.cos(pitch));
         camera.lookAt(target);
       };
+      let zoom = 1;
       const resize = () => {
         const w = el.clientWidth, h = el.clientHeight;
         renderer.setSize(w, h, false);
         camera.aspect = w / h;
-        dist = w < 640 ? 62 : w < 1000 ? 48 : 39;
+        dist = (w < 640 ? 62 : w < 1000 ? 48 : 39) * zoom;
         camera.updateProjectionMatrix();
         place();
         dirty = true;
       };
       let dirty = true;
+      zoomBy.current = (f: number) => { zoom = Math.max(0.35, Math.min(1.3, zoom * f)); resize(); };
       const ro = new ResizeObserver(resize);
       ro.observe(el);
 
@@ -297,19 +347,24 @@ export function Garage3D({ groups, onOpen }: { groups: Record<GarageLane, Garage
         cv.removeEventListener("pointerdown", down); cv.removeEventListener("pointermove", move);
         cv.removeEventListener("pointerup", up); cv.removeEventListener("pointerleave", leave);
         disposables.forEach((d) => d.dispose());
+        envMap.dispose();
         renderer.dispose();
         cv.remove();
       };
     }).catch(() => setFailed(true));
     return () => { disposed = true; cleanup(); };
-  }, [groups, dark, resetKey]);
+  }, [groups, dark, resetKey, styleFor]);
 
   if (failed) return null;
   const lane = hover ? LANES.find((l) => l.id === hover.v.lane) : null;
   return (
     <div ref={host} className="garage-3d">
-      <div className="garage-3d-hint">Drag to turn the floor · click a car to open it</div>
-      <button className="garage-3d-reset" onClick={() => setResetKey((k) => k + 1)}>Reset view</button>
+      <div className="garage-3d-hint">Drag to turn · + to look closer · click a car to open it</div>
+      <div className="garage-3d-controls">
+        <button aria-label="Zoom in" onClick={() => zoomBy.current(0.75)}>+</button>
+        <button aria-label="Zoom out" onClick={() => zoomBy.current(1 / 0.75)}>−</button>
+        <button onClick={() => setResetKey((k) => k + 1)}>Reset view</button>
+      </div>
       {hover && lane && (
         <div className="garage-3d-tip" style={{ left: hover.x, top: hover.y }}>
           <b>{vehicleLabel(hover.v.row)}</b>

@@ -5,6 +5,12 @@ What changed in each version of FleetOps KPI. Dates are release dates; the newes
 ## Unreleased
 
 ### Garage, register and analytics design (2026-11-18)
+- Garage cars now look like real vehicles: sedan, hatchback, SUV, pickup (open bed), van, minibus and box truck
+  bodies with rounded panels, glass, wheels, mirrors and lights, painted in each vehicle's registered colour; the
+  stage shows as a coloured pad under the car. Zoom buttons for a closer look.
+- Fleet register: "Car shapes in the garage" lists every make and model with a side-view preview. The shape is picked
+  from the model name (Hilux → pickup, Hiace → van, Land Cruiser → SUV…) and the owner can change it; choices are
+  saved in the encrypted workspace.
 - The garage floor is now a 3D scene: six work zones on one slab, cars coloured by queue, flashing beacons and cones on
   accident holds, lifts in the repair bays. Drag to turn it, click a car to open it. Built with three.js, bundled and
   loaded on demand; the zone list below stays the keyboard and screen-reader route.
