@@ -42,7 +42,7 @@ Report an accident to hold the vehicle and track assessment, repair, quality che
 
 ![The fleet register: headline numbers, models split by trim, and a car shape per model](docs/web-register.gif)
 
-**Analytics** opens with the north star (off-road hours per vehicle per month) and eight headline KPIs, then 37 indicators in six groups (fleet and uptime, compliance, maintenance and health, workshop, customer clock, cost), each with its target, trend and change on last month, and a scorecard of every region against every target. A value turns amber or red only when it is off target.
+**Analytics** opens with the north star (off-road hours per vehicle per month) and eight headline KPIs, then 43 indicators in seven groups (fleet and uptime, compliance, maintenance and health, drivers and trips, workshop, customer clock, cost), each with its target, trend and change on last month, and a scorecard of every region against every target. A value turns amber or red only when it is off target.
 
 ![Analytics: north star, headline KPIs, every KPI and the region scorecard](docs/web-overview.gif)
 
@@ -87,6 +87,8 @@ The statistics are written from first principles in [`web/src/lib/stats.ts`](web
 
 Import a drivers sheet (licence class and expiry, assigned vehicle) and a trips export from your telematics provider (Geotab, Webfleet, Samsara, Motive: one row per trip, or per vehicle and day or week). FleetOps scores every driver 0-100 from speeding, harsh driving, idling and zone exits, and runs an **alert rules engine** in SQL: speeding or harsh driving over a limit per 100 km, idling over a share of engine-on time, leaving the permitted zone, driving on an expired licence, a licence about to expire. The limits sit in `fleet.yml` under `alerts:`; the **Drivers & trips** page lists every alert and every driver, lowest score first, and Analytics adds a Drivers & trips group.
 
+![Drivers & trips: headline numbers, alert rules by type, score bands and the driver register](docs/web-drivers.gif)
+
 ## Architecture: the classic fleet system, local-first
 
 A textbook fleet management system ([for example](https://medium.com/@ahmadlamber/how-to-design-a-fleet-management-system-7ca790dffccf)) streams GPS from in-vehicle devices through Kafka or MQTT into backend services, a relational and a time-series database, a rules engine and a live dashboard. FleetOps covers the same functional ground without a server: the owner's files are the event stream, the browser is the backend.
@@ -110,7 +112,7 @@ flowchart LR
 | Fuel consumption monitoring | Fuel L/100 km, electricity kWh/100 km, unusual fuel months |
 | Maintenance scheduling | PM intervals by powertrain, overdue and due-soon vehicles, planned maintenance share |
 | Alerts (speeding, geofencing, idle time) | SQL rules engine over trips and licences, limits in `fleet.yml` |
-| Reporting and analytics | 37+ KPIs, region scorecard, metric network, Excel and calendar exports |
+| Reporting and analytics | 43 KPIs, region scorecard, metric network, Excel and calendar exports |
 | Availability, scalability | A static site and an offline package: nothing to keep up, 6,500 vehicles built in about 2 s |
 | Data durability | IndexedDB in the browser; the owner's own files remain the source |
 | Security: authentication, TLS, audit logs | No accounts or server to attack; strict CSP, encryption at rest, a sealed activity log of every change |
@@ -250,8 +252,8 @@ Built in TypeScript with Next.js (static export), Tailwind, ECharts, KaTeX and D
 
 - **24 SQL data tests** and **41 SQL validation rules** run inside every build, in Python and in the browser alike, including the clock identity on every work order (`t18`) and the metric-network identities on every region-month (`t21`).
 - **Security and garage end-to-end tests** (Playwright, production build in a real browser): strict CSP with no violations on every page, an injected script refused, a hostile workbook (XSS and SQL injection) rendered as text, a clickjacking guard, encryption at rest (fleet data and SOP notes) with wrong and right passphrases, and the document reader under the policy, with every request staying on the app's own site.
-- **109 TypeScript tests** (Vitest), including **property-based fuzzing** (fast-check) of every parser that reads untrusted input: encryption at rest (round trip, wrong passphrase, tamper detection, fresh IVs); licence keys signed in Python and verified in the browser (forged and expired keys rejected); calendar and Excel exports (formula injection neutralised); every statistical routine against R / scipy / statsmodels reference values; the metric network's identities and propagation; VIN rules and vPIC mapping; workbook reading (title rows, Excel dates, many sheets) and table / column recognition for common fleet-platform exports; document reading (day-first and Arabic-Indic dates, plates, VINs, weighted document typing); vehicle-name cleaning, car-shape guessing and the 3D car bodies (finite, inside the footprint, glass on every style).
-- **20 Python tests** (`pytest`): licence signing; the demo end to end; the fleet register and documents (matched by plate, VIN or id; renewed cards move the expiry); VIN macros against reference VINs; a foreign-format fleet (Excel, its own column names, `dd/mm` dates, monthly usage, no optional tables) that must plug in with mapping only; bad data blocked with the right reasons; dependency order and layer rules; the web export runs exactly the package's SQL.
+- **113 TypeScript tests** (Vitest), including **property-based fuzzing** (fast-check) of every parser that reads untrusted input: encryption at rest (round trip, wrong passphrase, tamper detection, fresh IVs); licence keys signed in Python and verified in the browser (forged and expired keys rejected); calendar and Excel exports (formula injection neutralised); every statistical routine against R / scipy / statsmodels reference values; the metric network's identities and propagation; VIN rules and vPIC mapping; workbook reading (title rows, Excel dates, many sheets) and table / column recognition for common fleet-platform exports; document reading (day-first and Arabic-Indic dates, plates, VINs, weighted document typing); vehicle-name cleaning, car-shape guessing and the 3D car bodies (finite, inside the footprint, glass on every style).
+- **26 Python tests** (`pytest`): licence signing; the demo end to end; the fleet register and documents (matched by plate, VIN or id; renewed cards move the expiry); VIN macros against reference VINs; a foreign-format fleet (Excel, its own column names, `dd/mm` dates, monthly usage, no optional tables) that must plug in with mapping only; bad data blocked with the right reasons; dependency order and layer rules; the web export runs exactly the package's SQL.
 - **CI** on Python 3.11 and 3.13, the web app (lint, type-check, tests, build), and a Docker build that runs the demo inside the image.
 
 ## Repository map
