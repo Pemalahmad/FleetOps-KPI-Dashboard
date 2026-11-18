@@ -55,6 +55,13 @@ maintenance:
     BEV:  {km: 25000, months: 12}
   pm_tolerance_pct: 10                    # grace before a vehicle counts as overdue
 
+alerts:                                   # rules run on imported trips (telematics exports); a vehicle or driver over a limit raises an alert
+  speeding_per_100km: 2.0                 # speeding events per 100 km
+  harsh_per_100km: 3.0                    # harsh braking / acceleration / cornering per 100 km
+  idle_pct: 20                            # idle minutes as % of engine-on time
+  geofence_exits: 1                       # any exit from the permitted zone
+  window_days: 90                         # look-back for driver scores and alerts
+
 compliance:
   expiring_window_days: 30                # registration / insurance shown as "Expiring" inside this window
 

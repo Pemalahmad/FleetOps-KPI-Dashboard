@@ -4,6 +4,13 @@ What changed in each version of FleetOps KPI. Dates are release dates; the newes
 
 ## Unreleased
 
+### Drivers, trips, alert rules and an activity log (2026-11-18)
+- New optional tables in the data contract: `drivers` (licence class and expiry, assigned vehicle) and `trips` (telematics trip or period summaries).
+- New SQL models `stg_drivers`, `stg_trips`, `mart_driver_scores` (0-100 safety score) and `mart_alerts` (rules engine: speeding, harsh driving, idling, zone exits, expired or expiring licences), with tests t25-t26 and rules v43-v44; limits under `alerts:` in fleet.yml.
+- New Drivers & trips page and a Drivers & trips group in Analytics; the demo fleet has a driver per vehicle and 13 weeks of trips.
+- Activity log: every change the owner makes is recorded, sealed with the workspace, and shown on Plan & offline.
+- README: the architecture of a classic fleet system mapped to FleetOps' local-first design.
+
 ### Garage, register and analytics design (2026-11-18)
 - Seven more KPIs in Analytics (37 in all): fleet health score, planned maintenance share, days between unplanned visits, under-used vehicles, fuel litres per 100 km, electricity kWh per 100 km and unusual fuel months.
 - Heavy vehicles in the garage: cab-over box trucks and tractor units (fifth wheel, exhaust stacks, fuel tanks, tandem rear axle); Actros, FH, Scania R and TGX models are recognised as tractors.

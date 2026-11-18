@@ -11,7 +11,8 @@ import { NODE } from "@/lib/metrics";
 
 type Extra = { utilization: number | null; first_time_fix: number | null; pm: number | null; backlog: number | null; aged7: number | null;
   reg_valid: number | null; ins_valid: number | null; tco_km: number | null; co2_km: number | null;
-  planned: number | null; mdbf: number | null; fuel_l100: number | null; kwh_100: number | null; fuel_flags: number | null; underused: number | null; health: number | null };
+  planned: number | null; mdbf: number | null; fuel_l100: number | null; kwh_100: number | null; fuel_flags: number | null; underused: number | null; health: number | null;
+  safety: number | null; speeding: number | null; harsh: number | null; idle: number | null; geo: number | null; lic_expired: number | null };
 
 /** Network (or region) values for KPIs that are not in the monthly panel, weighted the same way as the scorecard. */
 const UNPLANNED = "'Repair', 'Collision', 'Tyres', 'Warranty'";
@@ -53,7 +54,14 @@ const extraSql = (region: string | null) => {
    SELECT avg(greatest(0, 100 - CASE WHEN u.open_now THEN 20 ELSE 0 END - CASE WHEN p.pm_state = 'Overdue' THEN 20 ELSE 0 END
        - CASE WHEN u.rep THEN 15 ELSE 0 END - least(25, 5 * coalesce(u.n, 0)) - CASE WHEN v.age_months > 60 THEN 10 ELSE 0 END
        - CASE WHEN v.registration_status = 'Expired' OR v.insurance_status = 'Expired' THEN 10 ELSE 0 END))
-   FROM stg_vehicles v LEFT JOIN u USING (vehicle_id) LEFT JOIN int_pm_status p USING (vehicle_id) WHERE v.is_active${w("v.region")}) AS health`;
+   FROM stg_vehicles v LEFT JOIN u USING (vehicle_id) LEFT JOIN int_pm_status p USING (vehicle_id) WHERE v.is_active${w("v.region")}) AS health,
+  (SELECT avg(safety_score) FROM mart_driver_scores WHERE km > 0${w()}) AS safety,
+  (SELECT 100.0 * sum(speeding_per_100km * km / 100) / nullif(sum(km), 0) FROM mart_driver_scores WHERE km > 0${w()}) AS speeding,
+  (SELECT 100.0 * sum(harsh_per_100km * km / 100) / nullif(sum(km), 0) FROM mart_driver_scores WHERE km > 0${w()}) AS harsh,
+  (SELECT 100.0 * sum(idle_minutes) / nullif(sum(idle_minutes + driving_minutes), 0) FROM stg_trips
+     WHERE start_ts >= snapshot_ts() - to_days(CAST(cfg_num('alert_window_days') AS INTEGER))${w()}) AS idle,
+  (SELECT count(*) FROM mart_alerts WHERE rule = 'geofence'${w()}) AS geo,
+  (SELECT count(*) FROM mart_driver_scores WHERE is_active AND licence_status = 'Expired'${w()}) AS lic_expired`;
 };
 
 type WallItem = { node: string } | { label: string; key: keyof Extra; unit: string; decimals: number; better: "higher" | "lower"; target?: string; hint: string };
@@ -69,6 +77,14 @@ const WALL: { title: string; sub: string; items: WallItem[] }[] = [
     { label: "Planned maintenance share", key: "planned", unit: "%", decimals: 1, better: "higher", hint: "Preventive-maintenance jobs as a share of all non-recall jobs closed this month" },
     { label: "Days between unplanned visits", key: "mdbf", unit: "days", decimals: 0, better: "higher", hint: "Vehicle-days in service over the last 12 months divided by repair, collision, tyre and warranty visits" },
     { label: "Under-used vehicles", key: "underused", unit: "", decimals: 0, better: "lower", hint: "Vehicles that drove under a quarter of the median distance for their powertrain over the last three months: candidates to redeploy or retire" },
+  ] },
+  { title: "Drivers & trips", sub: "From telematics exports", items: [
+    { label: "Driver safety score", key: "safety", unit: "", decimals: 0, better: "higher", hint: "Average 0-100 score of drivers with trips in the alert window (speeding, harsh driving, idling and zone exits against the fleet.yml limits)" },
+    { label: "Speeding", key: "speeding", unit: "/100 km", decimals: 2, better: "lower", hint: "Speeding events per 100 km driven, alert window" },
+    { label: "Harsh driving", key: "harsh", unit: "/100 km", decimals: 2, better: "lower", hint: "Harsh braking, acceleration and cornering per 100 km, alert window" },
+    { label: "Idle time", key: "idle", unit: "%", decimals: 1, better: "lower", hint: "Idle minutes as a share of engine-on time, alert window" },
+    { label: "Vehicles that left their zone", key: "geo", unit: "", decimals: 0, better: "lower", hint: "Vehicles with at least the configured number of geofence exits, alert window" },
+    { label: "Drivers with an expired licence", key: "lic_expired", unit: "", decimals: 0, better: "lower", hint: "Active drivers whose licence expiry date has passed" },
   ] },
   { title: "Compliance", sub: "Licence to operate", items: [
     { label: "Registration valid", key: "reg_valid", unit: "%", decimals: 1, better: "higher", target: "registration_valid_pct", hint: "Active vehicles with a valid or expiring (not expired) registration" },

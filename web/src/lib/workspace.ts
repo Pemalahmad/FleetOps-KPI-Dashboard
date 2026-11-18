@@ -51,6 +51,22 @@ export interface Workspace {
   sops?: Record<string, SopProgress>;
   /** Car body style per make and model (modelKey), chosen by the owner for the 3D garage; sealed with the workspace. */
   carStyles?: Record<string, BodyStyle>;
+  /** The owner's own actions (imports, garage records, procedures, settings), newest last; sealed with the workspace. */
+  activity?: ActivityEntry[];
+}
+
+export const isActivityEntry = (v: unknown): v is ActivityEntry => {
+  const e = v as ActivityEntry;
+  return !!e && typeof e === "object" && typeof e.at === "string" && typeof e.detail === "string" && ["data", "garage", "procedure", "settings"].includes(e.kind);
+};
+export interface ActivityEntry { at: string; kind: "data" | "garage" | "procedure" | "settings"; detail: string }
+const ACTIVITY_CAP = 400;
+/** Append one entry to the activity log, keeping the newest ACTIVITY_CAP. */
+export function withActivity(ws: Workspace, kind: ActivityEntry["kind"], detail: string, at = new Date().toISOString()): Workspace {
+  const prev = ws.activity ?? [], last = prev.at(-1);
+  const same = last && last.kind === kind && last.detail.split(" (")[0] === detail.split(" (")[0] && Date.parse(at) - Date.parse(last.at) < 10 * 60_000;
+  const log = [...(same ? prev.slice(0, -1) : prev), { at, kind, detail }];
+  return { ...ws, activity: log.slice(-ACTIVITY_CAP) };
 }
 
 export interface SopProgress { checked: number[]; owner: string; due: string; notes: string }

@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { CheckCircle, DownloadSimple, Key, LockSimpleOpen, ShieldCheck, WifiSlash } from "@phosphor-icons/react";
 import { cacheDocumentReader, useInstallPrompt } from "@/components/offline";
 import { ProtectCard } from "@/components/vault";
+import { useEngine } from "@/components/engine-provider";
 import { Card, PageHeader, SectionTitle } from "@/components/ui";
 import { currentEntitlement, PLAN_FEATURES, saveKey, type Entitlement } from "@/lib/license";
 
@@ -67,6 +68,9 @@ export default function PlanPage() {
         </Card>
       </div>
 
+      <SectionTitle sub="Everything you change in this browser, newest first: imports, accident reports, handovers, procedure notes and settings. Kept with your fleet data, encrypted when a passphrase is set.">Activity log</SectionTitle>
+      <ActivityLog />
+
       <SectionTitle sub="Three ways to run FleetOps without depending on a connection.">Offline</SectionTitle>
       <div className="grid gap-4 lg:grid-cols-3">
         <Card title="Install as an app" sub="Chrome, Edge or Safari: the app opens in its own window and works offline after the first visit.">
@@ -105,5 +109,31 @@ export default function PlanPage() {
         </div>
       </Card>
     </>
+  );
+}
+
+const KIND_LABEL = { data: "Data", garage: "Garage", procedure: "Procedure", settings: "Settings" } as const;
+
+function ActivityLog() {
+  const { workspace, dataset } = useEngine();
+  const [all, setAll] = useState(false);
+  const entries = [...(workspace?.activity ?? [])].reverse();
+  if (!workspace || dataset === "demo") {
+    return <Card><p className="text-[13px] text-muted">The demo keeps no log. Once you import your own fleet, every change you make is recorded here with its time, on this device only.</p></Card>;
+  }
+  if (!entries.length) return <Card><p className="text-[13px] text-muted">Nothing recorded yet. Changes appear here as you make them.</p></Card>;
+  return (
+    <Card className="!p-0">
+      <ul className="divide-y divide-border">
+        {(all ? entries : entries.slice(0, 15)).map((e, i) => (
+          <li key={e.at + i} className="grid grid-cols-[150px_86px_minmax(0,1fr)] items-baseline gap-3 px-4 py-2 text-[12.5px]">
+            <span className="tnum text-faint">{new Date(e.at).toLocaleString("en-GB", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}</span>
+            <span className="mono-label !text-[10px] !text-muted">{KIND_LABEL[e.kind]}</span>
+            <span className="min-w-0 truncate">{e.detail}</span>
+          </li>
+        ))}
+      </ul>
+      {entries.length > 15 && <button onClick={() => setAll(!all)} className="w-full border-t border-border px-4 py-2 text-left text-[12px] font-medium text-accent">{all ? "Show fewer" : `Show all ${entries.length}`}</button>}
+    </Card>
   );
 }

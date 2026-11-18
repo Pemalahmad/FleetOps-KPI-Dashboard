@@ -3,6 +3,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from fleetkpi.contract import LOAD_ORDER
+
 import duckdb
 import pandas as pd
 import pytest
@@ -240,7 +242,7 @@ def test_init_creates_templates_and_contract(tmp_path):
     assert main(["init", str(tmp_path)]) == 0
     assert (tmp_path / "fleet.yml").exists()
     assert (tmp_path / "DATA_CONTRACT.md").read_text().startswith("# fleetkpi data contract")
-    assert len(list((tmp_path / "templates").glob("*.csv"))) == 12
+    assert len(list((tmp_path / "templates").glob("*.csv"))) == len(LOAD_ORDER)
 
 
 def test_web_export_manifest(tmp_path):

@@ -5,7 +5,7 @@ import { Engine, type IngestInput, type PipelineLog, type Row } from "@/lib/engi
 import { createTaskQueue } from "@/lib/task-queue";
 import { isBodyStyle, type BodyStyle } from "@/lib/car-styles";
 import { assertGarageGeneration, emptyGarage, type GarageState } from "@/lib/garage";
-import { clearLegacySopNotes, documentsCsv, hasFleet, loadWorkspace, persistStorage, saveWorkspace, takeLegacySopNotes, unlockVault, vaultStatus, vehiclesFromDocuments, type SopProgress, type VaultStatus, type Workspace } from "@/lib/workspace";
+import { isActivityEntry, withActivity, clearLegacySopNotes, documentsCsv, hasFleet, loadWorkspace, persistStorage, saveWorkspace, takeLegacySopNotes, unlockVault, vaultStatus, vehiclesFromDocuments, type SopProgress, type VaultStatus, type Workspace } from "@/lib/workspace";
 
 export const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
 
@@ -47,7 +47,7 @@ async function loadAndMigrate(): Promise<Workspace | null> {
   const loaded = await loadWorkspace();
   if (!loaded) return loaded;
   // keep only recognised car shapes; anything else in stored data is ignored
-  const ws = { ...loaded, carStyles: Object.fromEntries(Object.entries(loaded.carStyles ?? {}).filter(([k, v]) => typeof k === "string" && isBodyStyle(v))) as Record<string, BodyStyle> };
+  const ws = { ...loaded, activity: Array.isArray(loaded.activity) ? loaded.activity.filter(isActivityEntry).slice(-400) : [], carStyles: Object.fromEntries(Object.entries(loaded.carStyles ?? {}).filter(([k, v]) => typeof k === "string" && isBodyStyle(v))) as Record<string, BodyStyle> };
   const legacy = takeLegacySopNotes();
   if (!Object.keys(legacy).length) { clearLegacySopNotes(); return ws; }
   const next = { ...ws, sops: { ...legacy, ...ws.sops } };
@@ -129,7 +129,10 @@ export function EngineProvider({ children }: { children: ReactNode }) {
 
   const commit = useCallback(
     (ws: Workspace, opts: { rebuild?: boolean } = {}) => saveQueue(async () => {
-      const next = { ...ws, garage: workspaceRef.current?.garage ?? ws.garage, sops: workspaceRef.current?.sops ?? ws.sops, carStyles: workspaceRef.current?.carStyles ?? ws.carStyles };
+      const prev = workspaceRef.current;
+      const base = { ...ws, garage: prev?.garage ?? ws.garage, sops: prev?.sops ?? ws.sops, carStyles: prev?.carStyles ?? ws.carStyles, activity: prev?.activity ?? ws.activity };
+      const files = ws.inputs.length, docs = ws.documents.length;
+      const next = withActivity(base, "data", `Fleet data saved: ${files} sheet${files === 1 ? "" : "s"}, ${docs} document${docs === 1 ? "" : "s"}`);
       await saveWorkspace(next);
       workspaceRef.current = next;
       setWorkspace(next);
@@ -144,7 +147,12 @@ export function EngineProvider({ children }: { children: ReactNode }) {
     assertGarageGeneration(expected, warehouseGeneration.current);
     const current = workspaceRef.current;
     if (!current) throw new Error("Load and unlock your fleet before saving garage actions.");
-    const next = { ...current, garage: update(current.garage ?? emptyGarage()) };
+    const before = current.garage ?? emptyGarage(), after = update(before);
+    const detail = after.handovers.length > before.handovers.length ? `Handover recorded for ${after.handovers.at(-1)!.vehicleId}`
+      : after.incidents.length > before.incidents.length ? `Accident reported for ${after.incidents.at(-1)!.vehicleId}`
+      : after.acknowledged.length > before.acknowledged.length ? `${after.acknowledged.length - before.acknowledged.length} alert(s) marked read`
+      : "Garage review updated";
+    const next = withActivity({ ...current, garage: after }, "garage", detail);
     await saveWorkspace(next);
     workspaceRef.current = next;
     setWorkspace(next);
@@ -153,7 +161,7 @@ export function EngineProvider({ children }: { children: ReactNode }) {
   const updateSop = useCallback((key: string, progress: SopProgress) => saveQueue(async () => {
     const current = workspaceRef.current;
     if (!current) throw new Error("Load and unlock your fleet before saving procedure notes.");
-    const next = { ...current, sops: { ...current.sops, [key]: progress } };
+    const next = withActivity({ ...current, sops: { ...current.sops, [key]: progress } }, "procedure", `Procedure ${key.split(":").at(-1)} updated (${progress.checked.length} steps checked)`);
     await saveWorkspace(next);
     workspaceRef.current = next;
     setWorkspace(next);
@@ -164,7 +172,7 @@ export function EngineProvider({ children }: { children: ReactNode }) {
     if (!current) throw new Error("Load and unlock your fleet before saving car shapes.");
     const carStyles = { ...current.carStyles };
     if (style && isBodyStyle(style)) carStyles[key] = style; else delete carStyles[key];
-    const next = { ...current, carStyles };
+    const next = withActivity({ ...current, carStyles }, "settings", `Car shape for ${key.replace("|", " ").trim() || "a model"} set to ${style ?? "auto"}`);
     await saveWorkspace(next);
     workspaceRef.current = next;
     setWorkspace(next);

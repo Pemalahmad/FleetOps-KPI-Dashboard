@@ -75,6 +75,9 @@ def publish(con: duckdb.DuckDBPyConnection, cfg: Config, snapshot_ts: str, analy
         "intervene_ratio": s["intervene_ratio"], "watch_ratio": s["watch_ratio"],
         "intervene_min_gap_h": s["intervene_min_gap_h"],
         "min_weekly_jobs": s["min_weekly_jobs"],
+        "alert_speeding_per_100km": cfg["alerts"]["speeding_per_100km"], "alert_harsh_per_100km": cfg["alerts"]["harsh_per_100km"],
+        "alert_idle_pct": cfg["alerts"]["idle_pct"], "alert_geofence_exits": cfg["alerts"]["geofence_exits"],
+        "alert_window_days": cfg["alerts"]["window_days"],
     }
     con.execute("CREATE OR REPLACE TABLE cfg_settings (key VARCHAR, value VARCHAR)")
     con.executemany("INSERT INTO cfg_settings VALUES (?, ?)", [(k, str(v)) for k, v in settings.items()])

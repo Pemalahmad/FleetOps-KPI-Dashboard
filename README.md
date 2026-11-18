@@ -6,14 +6,14 @@
 [![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/Pemalahmad/FleetOps-KPI-Dashboard/badge)](https://securityscorecards.dev/viewer/?uri=github.com/Pemalahmad/FleetOps-KPI-Dashboard)
 ![TypeScript](https://img.shields.io/badge/TypeScript-Next.js-3178C6?logo=typescript&logoColor=white)
 ![SQL](https://img.shields.io/badge/SQL-DuckDB_(WASM)-FFF000?logo=duckdb&logoColor=black)
-![Models](https://img.shields.io/badge/SQL_models-59-6366F1)
-![Tests](https://img.shields.io/badge/SQL_tests-24-10B981)
-![Rules](https://img.shields.io/badge/validation_rules-41-F59E0B)
+![Models](https://img.shields.io/badge/SQL_models-63-6366F1)
+![Tests](https://img.shields.io/badge/SQL_tests-26-10B981)
+![Rules](https://img.shields.io/badge/validation_rules-44-F59E0B)
 [![License](https://img.shields.io/badge/license-FSL--1.1--MIT-blue)](LICENSE.md)
 
 ### ▶ [Open the live dashboard](https://pemalahmad.github.io/FleetOps-KPI-Dashboard/)
 
-No install, no server, no upload: DuckDB-WASM runs the 59 SQL models and 24 tests on a 6,500-vehicle demo fleet in about 2 seconds, in the page.
+No install, no server, no upload: DuckDB-WASM runs the 63 SQL models and 26 tests on a 6,500-vehicle demo fleet in about 2 seconds, in the page.
 
 **For fleet owners.** Import your vehicle list from Excel (VINs, plates, trims, configurations; exports from Fleetio, Samsara, Motive, Geotab or Verizon Connect are recognised), photograph your registration cards and insurance policies, and get a fleet register with one next action per vehicle. VINs are validated and decoded, documents are read in English and Arabic and matched by VIN or plate, and their expiries drive compliance. Your data stays in your browser. See [FleetOps as fleet software](docs/FLEET_SOFTWARE.md).
 
@@ -82,6 +82,38 @@ Click any metric to see its definition, its identity with the live numbers subst
 | Late parts move the workshop clock | OLS | Ŵ = 12.0 + 1.115 × parts-wait hours, r = 0.96, n = 49,655 |
 
 The statistics are written from first principles in [`web/src/lib/stats.ts`](web/src/lib/stats.ts) (Lanczos log-gamma, Lentz continued fraction for the incomplete beta, Student-t, Acklam normal quantile, Gauss-Jordan inversion, IRLS) and unit-tested against R and scipy reference values.
+
+## Drivers, trips and alert rules
+
+Import a drivers sheet (licence class and expiry, assigned vehicle) and a trips export from your telematics provider (Geotab, Webfleet, Samsara, Motive: one row per trip, or per vehicle and day or week). FleetOps scores every driver 0-100 from speeding, harsh driving, idling and zone exits, and runs an **alert rules engine** in SQL: speeding or harsh driving over a limit per 100 km, idling over a share of engine-on time, leaving the permitted zone, driving on an expired licence, a licence about to expire. The limits sit in `fleet.yml` under `alerts:`; the **Drivers & trips** page lists every alert and every driver, lowest score first, and Analytics adds a Drivers & trips group.
+
+## Architecture: the classic fleet system, local-first
+
+A textbook fleet management system ([for example](https://medium.com/@ahmadlamber/how-to-design-a-fleet-management-system-7ca790dffccf)) streams GPS from in-vehicle devices through Kafka or MQTT into backend services, a relational and a time-series database, a rules engine and a live dashboard. FleetOps covers the same functional ground without a server: the owner's files are the event stream, the browser is the backend.
+
+```mermaid
+flowchart LR
+    T["Telematics exports<br/>trips · idle · speeding"] --> I
+    X["Excel / CSV / Parquet<br/>vehicles · work orders · fuel"] --> I
+    P["Photos & PDFs<br/>registration · insurance"] --> O["OCR in the browser"] --> I
+    I["Ingest + 44 rules"] --> D[("DuckDB-WASM<br/>63 SQL models")]
+    D --> R["Alert rules<br/>mart_alerts"] --> G["Garage · Drivers · Register"]
+    D --> K["KPIs · metric network"] --> A["Analytics"]
+    D -. sealed .-> V[("IndexedDB<br/>AES-256 when protected")]
+```
+
+| Classic requirement | In FleetOps |
+|---|---|
+| Vehicle registration and management | Fleet register: VIN validation and decoding, documents read by OCR, one next action per vehicle |
+| Driver management | Drivers sheet: licence class and expiry, assigned vehicle, safety score |
+| Real-time GPS, trip and route tracking | Trip summaries imported from the telematics provider; no device or server of our own |
+| Fuel consumption monitoring | Fuel L/100 km, electricity kWh/100 km, unusual fuel months |
+| Maintenance scheduling | PM intervals by powertrain, overdue and due-soon vehicles, planned maintenance share |
+| Alerts (speeding, geofencing, idle time) | SQL rules engine over trips and licences, limits in `fleet.yml` |
+| Reporting and analytics | 37+ KPIs, region scorecard, metric network, Excel and calendar exports |
+| Availability, scalability | A static site and an offline package: nothing to keep up, 6,500 vehicles built in about 2 s |
+| Data durability | IndexedDB in the browser; the owner's own files remain the source |
+| Security: authentication, TLS, audit logs | No accounts or server to attack; strict CSP, encryption at rest, a sealed activity log of every change |
 
 ## Run it yourself
 

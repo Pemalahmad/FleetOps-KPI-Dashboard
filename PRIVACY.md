@@ -19,6 +19,8 @@ send us (for example a bug report or a support question).
 |---|---|---|
 | Spreadsheets (vehicle lists, work orders…) | Read and processed in your browser; saved in your browser's IndexedDB for this site | Until you click "Delete my fleet data" (Import page) or clear the site's data |
 | Garage incidents, review notes, checklists and handovers | Saved with the device-local workspace, under the same optional passphrase encryption; demo actions stay in tab memory | Until fleet data is deleted; demo progress resets on reload |
+| Activity log of your own changes (imports, garage records, procedures, settings) | Saved with the device-local workspace, under the same optional passphrase encryption; never sent anywhere; the demo keeps none | Until fleet data is deleted; the newest 400 entries are kept |
+| Drivers and trips you import (names, licence numbers and expiry, telematics summaries) | Read and processed in your browser; saved in IndexedDB like your other sheets | Until you delete your fleet data |
 | Car shape chosen for each model (3D garage) | Saved with the device-local workspace, under the same optional passphrase encryption; demo choices stay in tab memory | Until fleet data is deleted |
 | Procedure (SOP) review notes, owners and due dates | Saved with the device-local workspace, under the same optional passphrase encryption; demo notes stay in tab memory | Until fleet data is deleted |
 | Photos and PDFs of documents | Read in your browser (OCR); the file and the text read are saved in IndexedDB | Same as above; "Discard" or the bin icon removes one |

@@ -540,3 +540,41 @@ CREATE OR REPLACE TABLE budgets AS
 SELECT d.region, d.month_start AS month, round(sum(d.days / 30.0) * any_value(r.budget_pvm), 0) AS budget
 FROM d_vm d JOIN d_regions r USING (region)
 GROUP BY ALL;
+
+-- ---------------------------------------------------------------- drivers
+-- One named driver per vehicle (invented names), a few with expired or expiring licences.
+CREATE OR REPLACE TABLE drivers AS
+WITH fl AS (SELECT ['Omar', 'Ahmed', 'Yousef', 'Khalid', 'Faisal', 'Hassan', 'Mehmet', 'Emre', 'Ali', 'Salem', 'Rashid',
+                    'Tariq', 'Ibrahim', 'Murat', 'Can', 'Nasser', 'Ravi', 'Arjun', 'Joseph', 'Samir'] AS f),
+     ll AS (SELECT ['Haddad', 'Al Mansoori', 'Yilmaz', 'Kaya', 'Al Harthy', 'Rahman', 'Demir', 'Saleh', 'Qureshi', 'Nair',
+                    'Al Kuwari', 'Al Shamsi', 'Celik', 'Farouk', 'Menon', 'Aziz'] AS l),
+     v AS (SELECT vehicle_id, home_site_id, row_number() OVER (ORDER BY vehicle_id) AS k FROM vehicles)
+SELECT 'D' || lpad(k::VARCHAR, 6, '0') AS driver_id,
+       f[1 + CAST(floor(rnd(vehicle_id || 'fn') * len(f)) AS INTEGER)] || ' ' || l[1 + CAST(floor(rnd(vehicle_id || 'ln') * len(l)) AS INTEGER)] AS driver_name,
+       (1000000 + CAST(floor(rnd(vehicle_id || 'dl') * 8999999) AS BIGINT))::VARCHAR AS licence_number,
+       'B' AS licence_class,
+       CASE WHEN rnd(vehicle_id || 'dle') < 0.008 THEN DATE '2026-10-01' - to_days(CAST(1 + floor(rnd(vehicle_id || 'dld') * 60) AS INTEGER))
+            ELSE DATE '2026-10-01' + to_days(CAST(1 + floor(rnd(vehicle_id || 'dld') * 1400) AS INTEGER)) END::DATE AS licence_expiry,
+       home_site_id, vehicle_id, 'Active' AS status
+FROM v, fl, ll;
+
+-- ------------------------------------------------------------------ trips
+-- Weekly telematics summaries for the last 13 weeks. About 8% of drivers speed and brake hard far more often;
+-- Riyadh North vehicles idle more (the same site's parts-and-staffing story).
+CREATE OR REPLACE TABLE trips AS
+WITH weeks AS (SELECT unnest(generate_series(DATE '2026-07-02', DATE '2026-09-24', INTERVAL 7 DAY))::DATE AS wk),
+base AS (
+    SELECT d.driver_id, d.vehicle_id, v.home_site_id, w.wk, d.driver_id || '|' || w.wk AS tk,
+           CASE WHEN rnd(d.driver_id || 'risk') < 0.08 THEN 1 ELSE 0 END AS risky
+    FROM drivers d JOIN vehicles v USING (vehicle_id) JOIN weeks w ON v.in_service_date <= w.wk
+),
+m AS (SELECT *, round(7 * (140 + 120 * rnd(tk || 'km')), 1) AS km FROM base)
+SELECT 'TR' || lpad((row_number() OVER (ORDER BY wk, vehicle_id))::VARCHAR, 7, '0') AS trip_id,
+       vehicle_id, driver_id, wk::TIMESTAMP AS start_ts, (wk + 7)::TIMESTAMP AS end_ts, km,
+       round(km / 32 * 60, 0) AS driving_minutes,
+       round(km / 32 * 60 * (CASE WHEN home_site_id = 'WS04' THEN 0.24 ELSE 0.08 END + 0.12 * rnd(tk || 'idle')), 0) AS idle_minutes,
+       round(95 + 40 * rnd(tk || 'vmax') + 15 * risky, 0) AS max_speed_kmh,
+       CAST(round(km / 100 * CASE WHEN risky = 1 THEN 4.5 ELSE 0.5 END * (0.4 + 1.2 * rnd(tk || 'sp'))) AS INTEGER) AS speeding_events,
+       CAST(round(km / 100 * CASE WHEN risky = 1 THEN 4.0 ELSE 0.7 END * (0.4 + 1.2 * rnd(tk || 'h'))) AS INTEGER) AS harsh_events,
+       CASE WHEN rnd(tk || 'geo') < 0.0018 THEN 1 ELSE 0 END AS geofence_exits
+FROM m;

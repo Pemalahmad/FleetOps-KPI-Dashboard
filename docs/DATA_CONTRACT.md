@@ -177,3 +177,37 @@ Fleet-paid maintenance budget per region and month. If absent, fleet.yml rates a
 | `region` | VARCHAR | yes | Region | market, country |
 | `month` | DATE | yes | First day of the month | period, date |
 | `budget` | DOUBLE | yes | Budget amount | amount, budget_amount |
+
+## `drivers` (optional)
+
+Drivers and their licences, optionally with the vehicle each one usually drives.
+
+| Column | Type | Required | Description | Also recognised as |
+|---|---|---|---|---|
+| `driver_id` | VARCHAR | yes | Unique driver id (employee or badge number) | driver, employee_id, employee_no, staff_id, badge |
+| `driver_name` | VARCHAR |  | Name as shown to managers | name, full_name, driver_full_name, employee_name |
+| `licence_number` | VARCHAR |  | Driving licence number | license_number, licence_no, license_no, dl_number |
+| `licence_class` | VARCHAR |  | Licence category (B light vehicle, C truck, D bus...) | license_class, licence_category, license_category, licence_type, license_type |
+| `licence_expiry` | DATE |  | Licence expiry date | license_expiry, licence_expiry_date, license_expiry_date, dl_expiry, expiry |
+| `home_site_id` | VARCHAR |  | Depot or site the driver works from | site_id, depot_id, base, branch, home_site |
+| `vehicle_id` | VARCHAR |  | Vehicle usually assigned | assigned_vehicle, vehicle, plate, plate_no, unit_number |
+| `status` | VARCHAR |  | Active | Inactive (default Active) | driver_status, state, employment_status |
+
+## `trips` (optional)
+
+Trips or period summaries exported from telematics (Geotab, Webfleet, Samsara, Motive...): one row per trip, or per vehicle and day or week. Drives the driving-behaviour KPIs and the alert rules.
+
+| Column | Type | Required | Description | Also recognised as |
+|---|---|---|---|---|
+| `trip_id` | VARCHAR |  | Trip or summary id (numbered automatically when absent) | id, trip, journey_id, trip_number |
+| `vehicle_id` | VARCHAR | yes | Vehicle | vehicle, unit, unit_number, asset, plate |
+| `driver_id` | VARCHAR |  | Driver, if identified | driver, driver_name, employee_id, badge |
+| `start_ts` | TIMESTAMP | yes | Trip (or period) start | start, start_time, trip_start, from, date |
+| `end_ts` | TIMESTAMP |  | Trip (or period) end | end, end_time, trip_end, to, end_date |
+| `km` | DOUBLE | yes | Distance driven | distance, distance_km, kilometres, kilometers, mileage |
+| `driving_minutes` | DOUBLE |  | Time moving | drive_minutes, driving_time, drive_time, moving_minutes |
+| `idle_minutes` | DOUBLE |  | Engine on, not moving | idle, idle_time, idling_minutes, idle_duration |
+| `max_speed_kmh` | DOUBLE |  | Top speed | max_speed, top_speed, maximum_speed |
+| `speeding_events` | INTEGER |  | Times over the speed limit | speeding, overspeed, over_speed_events, speeding_count |
+| `harsh_events` | INTEGER |  | Harsh braking, acceleration and cornering | harsh, harsh_driving, harsh_braking, events |
+| `geofence_exits` | INTEGER |  | Times the vehicle left its permitted zone | geofence, zone_exits, geofence_violations |

@@ -154,6 +154,11 @@ NORMALISE = {
     ("vehicles", "plate_number"): "nullif(upper(trim(regexp_replace({x}, '\\s+', ' ', 'g'))), '')",
     ("vehicles", "model_year"): "CASE WHEN {x} BETWEEN 1950 AND 2100 THEN {x} END",
     ("documents", "document_id"): "coalesce({x}, 'DOC-' || lpad((row_number() OVER ())::VARCHAR, 6, '0'))",
+    ("trips", "trip_id"): "coalesce({x}, 'TR-' || lpad((row_number() OVER ())::VARCHAR, 7, '0'))",
+    ("trips", "speeding_events"): "coalesce({x}, 0)",
+    ("trips", "harsh_events"): "coalesce({x}, 0)",
+    ("trips", "geofence_exits"): "coalesce({x}, 0)",
+    ("drivers", "status"): "CASE WHEN regexp_matches(lower(coalesce({x}, 'active')), 'inactive|left|terminated|suspend') THEN 'Inactive' ELSE 'Active' END",
     ("documents", "doc_type"): """CASE
         WHEN regexp_matches(lower(coalesce({x}, '')), 'regist|mulkiya|istimara|logbook|v5|licen|title') THEN 'Registration'
         WHEN regexp_matches(lower(coalesce({x}, '')), 'insur|policy|cover') THEN 'Insurance'

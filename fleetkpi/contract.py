@@ -176,6 +176,35 @@ TABLES: dict[str, Table] = {t.name: t for t in [
         C("issuer", "VARCHAR", False, "Authority or insurer", ("authority", "insurer", "issued_by", "provider"), "RTA"),
         C("file_name", "VARCHAR", False, "Scanned file the details came from", ("file", "attachment", "scan"), "mulkiya-D48213.jpg"),
     ), key=("document_id",)),
+    Table("drivers", False, "Drivers and their licences, optionally with the vehicle each one usually drives.", (
+        C("driver_id", "VARCHAR", True, "Unique driver id (employee or badge number)",
+          ("driver", "employee_id", "employee_no", "staff_id", "badge", "badge_no", "driver_number", "driver_no", "id"), "D000123"),
+        C("driver_name", "VARCHAR", False, "Name as shown to managers", ("name", "full_name", "driver_full_name", "employee_name"), "Omar Haddad"),
+        C("licence_number", "VARCHAR", False, "Driving licence number", ("license_number", "licence_no", "license_no", "dl_number"), "1234567"),
+        C("licence_class", "VARCHAR", False, "Licence category (B light vehicle, C truck, D bus...)",
+          ("license_class", "licence_category", "license_category", "licence_type", "license_type", "category"), "B"),
+        C("licence_expiry", "DATE", False, "Licence expiry date", ("license_expiry", "licence_expiry_date", "license_expiry_date", "dl_expiry", "expiry"), "2027-05-31"),
+        C("home_site_id", "VARCHAR", False, "Depot or site the driver works from", ("site_id", "depot_id", "base", "branch", "home_site"), "WS01"),
+        C("vehicle_id", "VARCHAR", False, "Vehicle usually assigned", ("assigned_vehicle", "vehicle", "plate", "plate_no", "unit_number"), "V0100001"),
+        C("status", "VARCHAR", False, "Active | Inactive (default Active)", ("driver_status", "state", "employment_status"), "Active"),
+    ), key=("driver_id",)),
+
+    Table("trips", False, "Trips or period summaries exported from telematics (Geotab, Webfleet, Samsara, Motive...): one row per "
+          "trip, or per vehicle and day or week. Drives the driving-behaviour KPIs and the alert rules.", (
+        C("trip_id", "VARCHAR", False, "Trip or summary id (numbered automatically when absent)", ("id", "trip", "journey_id", "trip_number"), "TR0000001"),
+        C("vehicle_id", "VARCHAR", True, "Vehicle", ("vehicle", "unit", "unit_number", "asset", "plate", "plate_no", "vin"), "V0100001"),
+        C("driver_id", "VARCHAR", False, "Driver, if identified", ("driver", "driver_name", "employee_id", "badge"), "D000123"),
+        C("start_ts", "TIMESTAMP", True, "Trip (or period) start", ("start", "start_time", "trip_start", "from", "date", "start_date"), "2026-09-07 08:00"),
+        C("end_ts", "TIMESTAMP", False, "Trip (or period) end", ("end", "end_time", "trip_end", "to", "end_date"), "2026-09-07 17:30"),
+        C("km", "DOUBLE", True, "Distance driven", ("distance", "distance_km", "kilometres", "kilometers", "mileage"), "214.5"),
+        C("driving_minutes", "DOUBLE", False, "Time moving", ("drive_minutes", "driving_time", "drive_time", "moving_minutes"), "320"),
+        C("idle_minutes", "DOUBLE", False, "Engine on, not moving", ("idle", "idle_time", "idling_minutes", "idle_duration"), "45"),
+        C("max_speed_kmh", "DOUBLE", False, "Top speed", ("max_speed", "top_speed", "maximum_speed"), "118"),
+        C("speeding_events", "INTEGER", False, "Times over the speed limit", ("speeding", "overspeed", "over_speed_events", "speeding_count"), "2"),
+        C("harsh_events", "INTEGER", False, "Harsh braking, acceleration and cornering", ("harsh", "harsh_driving", "harsh_braking", "events"), "1"),
+        C("geofence_exits", "INTEGER", False, "Times the vehicle left its permitted zone", ("geofence", "zone_exits", "geofence_violations"), "0"),
+    ), key=("trip_id",)),
+
     Table("budgets", False, "Fleet-paid maintenance budget per region and month. If absent, fleet.yml rates are used.", (
         C("region", "VARCHAR", True, "Region", ("market", "country"), "UAE"),
         C("month", "DATE", True, "First day of the month", ("period", "date"), "2026-03-01"),
@@ -184,7 +213,7 @@ TABLES: dict[str, Table] = {t.name: t for t in [
 ]}
 
 LOAD_ORDER = ["sites", "vehicles", "work_orders", "usage", "energy", "feedback", "parts_orders", "fines", "documents",
-              "recalls", "recall_vehicles", "budgets"]
+              "recalls", "recall_vehicles", "budgets", "drivers", "trips"]
 
 
 def contract_markdown() -> str:

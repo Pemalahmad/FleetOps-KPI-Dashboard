@@ -6,6 +6,7 @@ import type { ReactNode } from "react";
 import {
   BookOpenText, Car, ChartPieSlice, CircleNotch, FileArrowUp, Garage, Graph, IdentificationCard, Moon, ShieldCheck, Smiley, Sun,
   TreeStructure, WifiSlash, Wrench,
+  SteeringWheel,
 } from "@phosphor-icons/react";
 import { useTheme } from "./chart";
 import { useEngine } from "./engine-provider";
@@ -15,7 +16,8 @@ import { UnlockBanner } from "./vault";
 const NAV = [
   { group: "Fleet", items: [
     { href: "/fleet/", label: "Fleet register", icon: Garage },
-    { href: "/documents/", label: "Documents", icon: IdentificationCard },
+    { href: "/drivers/", label: "Drivers & trips", icon: SteeringWheel },
+  { href: "/documents/", label: "Documents", icon: IdentificationCard },
     { href: "/import/", label: "Import", icon: FileArrowUp },
     { href: "/plan/", label: "Plan & offline", icon: WifiSlash },
   ] },
