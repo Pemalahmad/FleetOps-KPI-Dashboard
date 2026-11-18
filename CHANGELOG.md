@@ -4,6 +4,11 @@ What changed in each version of FleetOps KPI. Dates are release dates; the newes
 
 ## Unreleased
 
+### Driver KPIs and charts (2026-11-18)
+- Drivers page: 25 KPIs in four groups (compliance, safety, fines and tickets, activity) with weekly trend lines and change on the week before.
+- New charts: driving behaviour by week, tickets on and by drivers by month, compliance by region, licence expiries over the next 12 months, fines on drivers by type, driver safety by site.
+- Demo trips now tell a story: a coaching drive lowers speeding and harsh driving over the quarter, and Riyadh North's idling improves week by week.
+
 ### React Bits effects (2026-11-18)
 - Interactive dot field behind the garage, analytics, drivers and pipeline headers; a pointer spotlight on every card; click sparks in the garage. Three components from React Bits (MIT + Commons Clause), kept in `web/src/components/bits/` with their licence, listed in the third-party notices and the EULA; no new npm packages.
 

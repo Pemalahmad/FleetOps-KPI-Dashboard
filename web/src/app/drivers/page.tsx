@@ -6,7 +6,7 @@ import * as Dialog from "@radix-ui/react-dialog";
 import { MagnifyingGlass, Warning, WarningCircle, Info, X } from "@phosphor-icons/react";
 import { Chart, PALETTE, STATUS } from "@/components/chart";
 import { regionWhere, useEngine, useSql } from "@/components/engine-provider";
-import { attention, Card, PageHeader, SectionTitle, Skeleton, StatStrip, type Rag } from "@/components/ui";
+import { attention, Card, KpiRow, PageHeader, SectionTitle, Skeleton, StatStrip, type Rag } from "@/components/ui";
 
 interface DriverRow {
   driver_id: string; driver_name: string; region: string | null; site_name: string | null; plate: string | null; vehicle_id: string | null;
@@ -44,6 +44,34 @@ export default function DriversPage() {
     LEFT JOIN stg_vehicles v ON v.vehicle_id = a.vehicle_id${regionWhere(region, "WHERE", "a.region")}`);
   const limits = useSql<{ key: string; value: string }>("SELECT key, value FROM cfg_settings WHERE key LIKE 'alert_%'");
   const lim = Object.fromEntries((limits.data ?? []).map((r) => [r.key, Number(r.value)]));
+  const rw = (col = "region") => regionWhere(region, "AND", col);
+  const weekly = useSql<{ wk: string; km: number; sp: number | null; ha: number | null; idle: number | null; geo: number; drivers: number }>(
+    `SELECT date_trunc('week', start_ts)::DATE::VARCHAR AS wk, sum(km) AS km, 100.0 * sum(speeding_events) / nullif(sum(km), 0) AS sp,
+       100.0 * sum(harsh_events) / nullif(sum(km), 0) AS ha, 100.0 * sum(idle_minutes) / nullif(sum(idle_minutes + driving_minutes), 0) AS idle,
+       sum(geofence_exits) AS geo, count(DISTINCT driver_id) AS drivers
+     FROM stg_trips WHERE true${rw()} GROUP BY 1 ORDER BY 1`);
+  const ticketsM = useSql<{ m: string; collisions: number; other_on: number; reported: number }>(
+    `SELECT date_trunc('month', key_in_ts)::DATE::VARCHAR AS m,
+       count(*) FILTER (WHERE driver_id IS NOT NULL AND job_type = 'Collision') AS collisions,
+       count(*) FILTER (WHERE driver_id IS NOT NULL AND job_type <> 'Collision') AS other_on,
+       count(*) FILTER (WHERE reported_by IN (SELECT driver_id FROM stg_drivers)) AS reported
+     FROM stg_work_orders WHERE key_in_ts >= snapshot_ts() - INTERVAL 12 MONTH${rw("vehicle_region")} GROUP BY 1 ORDER BY 1`);
+  const byRegion = useSql<{ region: string; status: string; n: number }>(
+    `SELECT coalesce(region, 'Unknown') AS region, compliance_status AS status, count(*) AS n FROM mart_driver_compliance WHERE is_active${rw()} GROUP BY ALL`);
+  const expiries = useSql<{ m: string; n: number }>(
+    `SELECT CASE WHEN licence_expiry < snapshot_date() THEN 'Expired' ELSE strftime(date_trunc('month', licence_expiry), '%Y-%m') END AS m, count(*) AS n
+     FROM mart_driver_compliance WHERE is_active AND licence_expiry < snapshot_date() + INTERVAL 12 MONTH${rw()} GROUP BY 1 ORDER BY (m = 'Expired') DESC, m`);
+  const fineTypes = useSql<{ fine_type: string; n: number; amount: number; unpaid: number }>(
+    `SELECT fine_type, count(*) AS n, sum(amount) AS amount, coalesce(sum(amount) FILTER (WHERE is_unpaid), 0) AS unpaid
+     FROM stg_fines WHERE driver_id IS NOT NULL AND date >= snapshot_date() - 365${rw()} GROUP BY 1 ORDER BY amount`);
+  const sites = useSql<{ site_name: string; score: number; drivers: number }>(
+    `SELECT s.site_name, avg(d.safety_score) AS score, count(*) AS drivers FROM mart_driver_scores d JOIN stg_sites s ON s.site_id = d.home_site_id
+     WHERE d.km > 0${rw("d.region")} GROUP BY 1 ORDER BY score DESC`);
+  const fineSrc = useSql<{ via_trip: number; total: number }>(
+    `SELECT count(*) FILTER (WHERE driver_source = 'driving that day') AS via_trip, count(*) AS total FROM stg_fines WHERE driver_id IS NOT NULL${rw()}`);
+  const wk = weekly.data ?? [];
+  const series = (f: (w: (typeof wk)[number]) => number | null) => wk.map(f);
+  const lastW = wk.at(-1), prevW = wk.at(-2);
   const rows = useMemo(() => drivers.data ?? [], [drivers.data]);
   const driven = rows.filter((r) => r.km > 0);
   const hasTrips = driven.length > 0;
@@ -63,6 +91,18 @@ export default function DriversPage() {
       notCompliant: active.filter((r) => r.compliance_status === "Not compliant").length,
       mismatch: active.filter((r) => r.class_ok === false).length,
       unpaid: active.reduce((n, r) => n + (r.unpaid_amount ?? 0), 0),
+      actionNeeded: active.filter((r) => r.compliance_status === "Action needed").length,
+      expiring90: active.filter((r) => r.licence_days_left !== null && r.licence_days_left >= 0 && r.licence_days_left <= 90).length,
+      noClass: active.filter((r) => !r.licence_class_held).length,
+      bandD: driven.filter((r) => (r.safety_score ?? 100) < 55).length,
+      topSpeed: driven.reduce((m, r) => Math.max(m, r.top_speed ?? 0), 0) || null,
+      fines12: active.length ? active.reduce((n, r) => n + (r.fines_12m ?? 0), 0) / active.length : null,
+      withUnpaid: active.filter((r) => (r.unpaid_amount ?? 0) > 0).length,
+      collisions100: active.length ? (100 * active.reduce((n, r) => n + (r.collisions ?? 0), 0)) / active.length : null,
+      reportedPer: active.length ? active.reduce((n, r) => n + (r.tickets_by ?? 0), 0) / active.length : null,
+      openOn: active.reduce((n, r) => n + (r.open_tickets_on ?? 0), 0),
+      withTrips: active.length ? (100 * driven.length) / active.length : null,
+      kmPerWeek: driven.length ? km / driven.length / 13 : null,
     };
   }, [rows, driven]);
 
@@ -109,6 +149,81 @@ export default function DriversPage() {
         { label: "Speeding", value: k.speeding, unit: "/100 km", decimals: 2, note: `harsh ${k.harsh?.toFixed(2) ?? "–"} · idle ${k.idle?.toFixed(1) ?? "–"}%` },
       ]} />
 
+      <SectionTitle sub="Compliance, safety, fines and tickets, and activity for every active driver. Trends are weekly; the change is against the week before.">Driver KPIs</SectionTitle>
+      <div className="kpi-wall">
+        <section className="kpi-group">
+          <header><h3 className="text-[14px] font-semibold">Compliance</h3><span className="text-[11.5px] text-muted">May they drive?</span></header>
+          <KpiRow label="Compliant" value={k.compliant} unit="%" decimals={1} better="higher" status={k.compliant === null ? null : k.compliant >= 98 ? null : k.compliant >= 90 ? "amber" : "red"} target="Target ≥ 98" />
+          <KpiRow label="Not compliant" value={k.notCompliant} decimals={0} better="lower" status={k.notCompliant ? "red" : null} hint="Expired licence or a class that does not cover the vehicle" />
+          <KpiRow label="Action needed" value={k.actionNeeded} decimals={0} better="lower" status={k.actionNeeded ? "amber" : null} hint="Licence expiring or not recorded, or unpaid fines over the limit" />
+          <KpiRow label="Licences expired" value={k.expired} decimals={0} better="lower" status={k.expired ? "red" : null} />
+          <KpiRow label="Expiring in 30 days" value={k.expiring} decimals={0} better="lower" status={k.expiring ? "amber" : null} />
+          <KpiRow label="Expiring in 90 days" value={k.expiring90} decimals={0} better="lower" />
+          <KpiRow label="Wrong licence class" value={k.mismatch} decimals={0} better="lower" status={k.mismatch ? "red" : null} />
+          <KpiRow label="Licence class not recorded" value={k.noClass} decimals={0} better="lower" status={k.noClass ? "amber" : null} />
+        </section>
+        <section className="kpi-group">
+          <header><h3 className="text-[14px] font-semibold">Safety</h3><span className="text-[11.5px] text-muted">How they drive</span></header>
+          <KpiRow label="Average safety score" value={k.score} decimals={0} better="higher" target="0-100" />
+          <KpiRow label="Drivers in band D" value={k.bandD} decimals={0} better="lower" status={k.bandD ? "amber" : null} hint="Safety score below 55" />
+          <KpiRow label="Speeding" value={lastW?.sp ?? null} prev={prevW?.sp ?? null} unit="/100 km" decimals={2} better="lower" spark={series((w) => w.sp)}
+            status={lastW?.sp != null && lim.alert_speeding_per_100km && lastW.sp > lim.alert_speeding_per_100km ? "red" : null} target={`Limit ${lim.alert_speeding_per_100km ?? "–"}`} />
+          <KpiRow label="Harsh driving" value={lastW?.ha ?? null} prev={prevW?.ha ?? null} unit="/100 km" decimals={2} better="lower" spark={series((w) => w.ha)} target={`Limit ${lim.alert_harsh_per_100km ?? "–"}`} />
+          <KpiRow label="Idle time" value={lastW?.idle ?? null} prev={prevW?.idle ?? null} unit="%" decimals={1} better="lower" spark={series((w) => w.idle)} target={`Limit ${lim.alert_idle_pct ?? "–"}`} />
+          <KpiRow label="Zone exits this week" value={lastW?.geo ?? null} prev={prevW?.geo ?? null} decimals={0} better="lower" spark={series((w) => w.geo)} />
+          <KpiRow label="Highest top speed" value={k.topSpeed} unit="km/h" decimals={0} better="lower" />
+        </section>
+        <section className="kpi-group">
+          <header><h3 className="text-[14px] font-semibold">Fines & tickets</h3><span className="text-[11.5px] text-muted">Last 12 months</span></header>
+          <KpiRow label="Fines per driver" value={k.fines12} decimals={2} better="lower" />
+          <KpiRow label="Unpaid fines" value={k.unpaid} decimals={0} better="lower" status={k.unpaid ? "amber" : null} />
+          <KpiRow label="Drivers with unpaid fines" value={k.withUnpaid} decimals={0} better="lower" />
+          <KpiRow label="Fines matched by trips" value={fineSrc.data?.[0]?.total ? (100 * fineSrc.data[0].via_trip) / fineSrc.data[0].total : null} unit="%" decimals={1} better="higher"
+            hint="Share of fines tied to the driver on a trip that day, rather than the vehicle's assigned driver" />
+          <KpiRow label="Collisions per 100 drivers" value={k.collisions100} decimals={1} better="lower" hint="All collision tickets on file where the driver was at the wheel" />
+          <KpiRow label="Tickets reported per driver" value={k.reportedPer} decimals={2} better="higher" hint="Defects and repairs the driver reported themselves: a sign of good vehicle care" />
+          <KpiRow label="Open tickets on drivers" value={k.openOn} decimals={0} better="lower" />
+        </section>
+        <section className="kpi-group">
+          <header><h3 className="text-[14px] font-semibold">Activity</h3><span className="text-[11.5px] text-muted">From telematics</span></header>
+          <KpiRow label="Drivers with trips" value={k.withTrips} unit="%" decimals={1} better="higher" />
+          <KpiRow label="Distance per driver per week" value={k.kmPerWeek} unit="km" decimals={0} better="higher" />
+          <KpiRow label="Distance this week" value={lastW?.km ?? null} prev={prevW?.km ?? null} unit="km" decimals={0} better="higher" spark={series((w) => w.km)} />
+          <KpiRow label="Drivers on the road this week" value={lastW?.drivers ?? null} prev={prevW?.drivers ?? null} decimals={0} better="higher" spark={series((w) => w.drivers)} />
+        </section>
+      </div>
+
+      {wk.length > 1 && (
+        <>
+          <SectionTitle sub="Weekly rates across the fleet, and the tickets opened on or by drivers each month.">Trends</SectionTitle>
+          <div className="grid gap-3 lg:grid-cols-2">
+            <Card title="Driving behaviour by week" sub="Events per 100 km (left) and idle share of engine-on time (right)">
+              <Chart height={260} option={(dark) => ({
+                tooltip: { trigger: "axis" }, legend: {},
+                xAxis: { type: "category", data: wk.map((w) => w.wk.slice(5)) },
+                yAxis: [{ type: "value", name: "per 100 km" }, { type: "value", name: "idle %", splitLine: { show: false } }],
+                series: [
+                  { name: "Speeding", type: "line", symbol: "none", lineStyle: { width: 2, color: dark ? "#818cf8" : "#6366f1" }, itemStyle: { color: dark ? "#818cf8" : "#6366f1" }, data: series((w) => w.sp) },
+                  { name: "Harsh", type: "line", symbol: "none", lineStyle: { width: 2, color: PALETTE[1] }, itemStyle: { color: PALETTE[1] }, data: series((w) => w.ha) },
+                  { name: "Idle %", type: "line", symbol: "none", yAxisIndex: 1, lineStyle: { width: 1.5, type: "dashed", color: STATUS.warn }, itemStyle: { color: STATUS.warn }, data: series((w) => w.idle) },
+                ],
+              })} />
+            </Card>
+            <Card title="Tickets on and by drivers, by month" sub="Collisions and other jobs with the driver at the wheel, and jobs drivers reported">
+              {ticketsM.data ? <Chart height={260} option={() => ({
+                tooltip: { trigger: "axis", axisPointer: { type: "shadow" } }, legend: {},
+                xAxis: { type: "category", data: ticketsM.data!.map((t) => t.m.slice(0, 7)) }, yAxis: { type: "value" },
+                series: [
+                  { name: "Collisions", type: "bar", stack: "on", itemStyle: { color: STATUS.bad }, data: ticketsM.data!.map((t) => t.collisions) },
+                  { name: "Other jobs on drivers", type: "bar", stack: "on", itemStyle: { color: PALETTE[1] }, data: ticketsM.data!.map((t) => t.other_on) },
+                  { name: "Reported by drivers", type: "line", symbol: "none", lineStyle: { width: 2, color: PALETTE[0] }, itemStyle: { color: PALETTE[0] }, data: ticketsM.data!.map((t) => t.reported) },
+                ],
+              })} /> : <Skeleton height={260} />}
+            </Card>
+          </div>
+        </>
+      )}
+
       <SectionTitle sub={`Rules run on every build: speeding over ${lim.alert_speeding_per_100km ?? "–"} and harsh driving over ${lim.alert_harsh_per_100km ?? "–"} events per 100 km, idling over ${lim.alert_idle_pct ?? "–"}% of engine-on time, any exit from the permitted zone, and licences expired or expiring. The limits live in the alerts section of fleet.yml.`}>Alert rules</SectionTitle>
       <div className="mb-3 flex flex-wrap gap-1.5">
         <button className={"ops-chip " + (!rule ? "ops-chip-active" : "")} onClick={() => setRule(null)}>All alerts<span className="tnum ml-1.5 text-faint">{(alerts.data?.length ?? 0).toLocaleString()}</span></button>
@@ -142,6 +257,50 @@ export default function DriversPage() {
           ) : <p className="p-5 text-[13px] text-muted">No alerts in the window. Every driver and vehicle is inside the limits.</p>
         ) : <div className="p-4"><Skeleton height={240} /></div>}
       </Card>
+
+      <SectionTitle sub="Where drivers stand by region, when licences fall due, which fines drivers collect, and how each site's drivers score.">Compliance, fines and sites</SectionTitle>
+      <div className="grid gap-3 lg:grid-cols-2">
+        <Card title="Compliance by region" sub="Active drivers">
+          {byRegion.data ? <Chart height={260} option={() => {
+            const regs = [...new Set(byRegion.data!.map((r) => r.region))].sort();
+            const st = ["Compliant", "Action needed", "Not compliant"], col = [PALETTE[7], STATUS.warn, STATUS.bad];
+            return {
+              tooltip: { trigger: "axis", axisPointer: { type: "shadow" } }, legend: {},
+              grid: { left: 4, right: 16, top: 30, bottom: 4, containLabel: true },
+              xAxis: { type: "value" }, yAxis: { type: "category", data: regs },
+              series: st.map((name, i) => ({ name, type: "bar" as const, stack: "c", barWidth: 14, itemStyle: { color: col[i] },
+                data: regs.map((g) => byRegion.data!.find((r) => r.region === g && r.status === name)?.n ?? 0) })),
+            };
+          }} /> : <Skeleton height={260} />}
+        </Card>
+        <Card title="Licence expiries, next 12 months" sub="Book renewals before the month arrives; the red bar is already expired">
+          {expiries.data ? <Chart height={260} option={() => ({
+            tooltip: { trigger: "axis", axisPointer: { type: "shadow" } },
+            xAxis: { type: "category", data: expiries.data!.map((e) => e.m) }, yAxis: { type: "value" },
+            series: [{ type: "bar", barWidth: "55%", data: expiries.data!.map((e) => ({ value: e.n, itemStyle: { borderRadius: [3, 3, 0, 0], color: e.m === "Expired" ? STATUS.bad : PALETTE[0] } })) }],
+          })} /> : <Skeleton height={260} />}
+        </Card>
+        <Card title="Fines on drivers by type" sub="Last 12 months: paid and unpaid amount">
+          {fineTypes.data ? <Chart height={260} option={() => ({
+            tooltip: { trigger: "axis", axisPointer: { type: "shadow" } }, legend: {},
+            grid: { left: 4, right: 16, top: 30, bottom: 4, containLabel: true },
+            xAxis: { type: "value" }, yAxis: { type: "category", data: fineTypes.data!.map((f) => f.fine_type) },
+            series: [
+              { name: "Paid", type: "bar", stack: "f", barWidth: 14, itemStyle: { color: PALETTE[1] }, data: fineTypes.data!.map((f) => Math.round(f.amount - f.unpaid)) },
+              { name: "Unpaid", type: "bar", stack: "f", barWidth: 14, itemStyle: { color: STATUS.warn }, data: fineTypes.data!.map((f) => Math.round(f.unpaid)) },
+            ],
+          })} /> : <Skeleton height={260} />}
+        </Card>
+        <Card title="Driver safety by site" sub="Average score of drivers with trips; red below 85">
+          {sites.data ? <Chart height={Math.max(260, sites.data.length * 22)} option={(dark) => ({
+            tooltip: { trigger: "item", formatter: (x: unknown) => { const d = sites.data![(x as { dataIndex: number }).dataIndex]; return `${d.site_name}\n${d.score.toFixed(1)} · ${d.drivers} drivers`; } },
+            grid: { left: 4, right: 40, top: 4, bottom: 4, containLabel: true },
+            xAxis: { type: "value", min: 60, max: 100 }, yAxis: { type: "category", data: sites.data!.map((r) => r.site_name).reverse() },
+            series: [{ type: "bar", barWidth: 10, label: { show: true, position: "right", fontSize: 10.5, color: dark ? "#9097b0" : "#5b6178", formatter: (x: unknown) => Number((x as { value: number }).value).toFixed(1) },
+              data: [...sites.data!].reverse().map((r) => ({ value: r.score, itemStyle: { borderRadius: [0, 3, 3, 0], color: r.score < 85 ? STATUS.bad : dark ? "#818cf8" : "#6366f1" } })) }],
+          })} /> : <Skeleton height={260} />}
+        </Card>
+      </div>
 
       {hasTrips && (
         <>

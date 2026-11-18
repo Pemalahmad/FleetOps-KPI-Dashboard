@@ -96,6 +96,8 @@ Import a drivers sheet (licence class and expiry, assigned vehicle) and a trips 
 
 Click a driver for the full profile: licence, driving record, the latest fines and every ticket.
 
+The page also carries **25 driver KPIs** in four groups (compliance, safety, fines and tickets, activity) with weekly trends, and charts for driving behaviour by week, tickets on and by drivers by month, compliance by region, licence expiries over the next 12 months, fines on drivers by type (paid and unpaid) and driver safety by site.
+
 ![Drivers & trips: compliance and driving numbers, alert rules by type, score bands, the driver register and a driver profile](docs/web-drivers.gif)
 
 ## Architecture: the classic fleet system, local-first

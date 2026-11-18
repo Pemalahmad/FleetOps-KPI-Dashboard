@@ -560,7 +560,7 @@ FROM v, fl, ll;
 
 -- ------------------------------------------------------------------ trips
 -- Weekly telematics summaries for the last 13 weeks. About 8% of drivers speed and brake hard far more often;
--- Riyadh North vehicles idle more (the same site's parts-and-staffing story).
+-- Riyadh North vehicles idle more but improve week by week, and a coaching drive brings speeding and harsh driving down.
 CREATE OR REPLACE TABLE trips AS
 WITH weeks AS (SELECT unnest(generate_series(DATE '2026-07-02', DATE '2026-09-24', INTERVAL 7 DAY))::DATE AS wk),
 base AS (
@@ -568,14 +568,14 @@ base AS (
            CASE WHEN rnd(d.driver_id || 'risk') < 0.08 THEN 1 ELSE 0 END AS risky
     FROM drivers d JOIN vehicles v USING (vehicle_id) JOIN weeks w ON v.in_service_date <= w.wk
 ),
-m AS (SELECT *, round(7 * (140 + 120 * rnd(tk || 'km')), 1) AS km FROM base)
+m AS (SELECT *, round(7 * (140 + 120 * rnd(tk || 'km')), 1) AS km, date_diff('week', DATE '2026-07-02', wk) AS wi FROM base)
 SELECT 'TR' || lpad((row_number() OVER (ORDER BY wk, vehicle_id))::VARCHAR, 7, '0') AS trip_id,
        vehicle_id, driver_id, wk::TIMESTAMP AS start_ts, (wk + 7)::TIMESTAMP AS end_ts, km,
        round(km / 32 * 60, 0) AS driving_minutes,
-       round(km / 32 * 60 * (CASE WHEN home_site_id = 'WS04' THEN 0.24 ELSE 0.08 END + 0.12 * rnd(tk || 'idle')), 0) AS idle_minutes,
+       round(km / 32 * 60 * (CASE WHEN home_site_id = 'WS04' THEN 0.30 - 0.012 * wi ELSE 0.08 END + 0.12 * rnd(tk || 'idle')), 0) AS idle_minutes,
        round(95 + 40 * rnd(tk || 'vmax') + 15 * risky, 0) AS max_speed_kmh,
-       CAST(round(km / 100 * CASE WHEN risky = 1 THEN 4.5 ELSE 0.5 END * (0.4 + 1.2 * rnd(tk || 'sp'))) AS INTEGER) AS speeding_events,
-       CAST(round(km / 100 * CASE WHEN risky = 1 THEN 4.0 ELSE 0.7 END * (0.4 + 1.2 * rnd(tk || 'h'))) AS INTEGER) AS harsh_events,
+       CAST(round(km / 100 * CASE WHEN risky = 1 THEN 4.5 ELSE 0.5 END * (1.25 - 0.035 * wi) * (0.4 + 1.2 * rnd(tk || 'sp'))) AS INTEGER) AS speeding_events,
+       CAST(round(km / 100 * CASE WHEN risky = 1 THEN 4.0 ELSE 0.7 END * (1.15 - 0.02 * wi) * (0.4 + 1.2 * rnd(tk || 'h'))) AS INTEGER) AS harsh_events,
        CASE WHEN rnd(tk || 'geo') < 0.0018 THEN 1 ELSE 0 END AS geofence_exits
 FROM m;
 
