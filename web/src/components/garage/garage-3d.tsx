@@ -9,7 +9,8 @@
 import { useEffect, useRef, useState } from "react";
 import { useTheme } from "../chart";
 import { LANES, vehicleLabel, type GarageLane, type GarageRow, type GarageVehicle } from "@/lib/garage";
-import { carProfile, paintColor, type BodyStyle, type CarProfile } from "@/lib/car-styles";
+import { paintColor, type BodyStyle } from "@/lib/car-styles";
+import { carMesh, type CarMesh } from "@/lib/car-mesh";
 
 const PER_ZONE = 8;
 const ZONE_W = 10.4, ZONE_D = 8.2, GAP = 1.2;
@@ -109,29 +110,30 @@ export function Garage3D({ groups, onOpen, styleFor }: { groups: Record<GarageLa
       const dash = box(1.4, 0.03, 0.14), dashM = mat(dark ? "#5d6480" : "#ffffff");
       for (let x = -totalW / 2; x < totalW / 2; x += 2.6) scene.add(mesh(dash, dashM, x + 0.7, 0.03, laneZ, false));
 
-      // car parts: one body per style, extruded from the same side profile the register's preview draws
-      const tyreG = keep(new THREE.CylinderGeometry(1, 1, 0.24, 22)).rotateZ(Math.PI / 2);
-      const rimG = keep(new THREE.CylinderGeometry(0.62, 0.62, 0.26, 16)).rotateZ(Math.PI / 2);
-      const lampG = box(0.36, 0.1, 0.05), mirrorG = box(0.16, 0.12, 0.2), beaconG = keep(new THREE.CylinderGeometry(0.16, 0.18, 0.28, 14));
+      // car parts: one lofted body per style (curved sides, tapered nose and tail, glass house, wheel arches)
+      const tyreG = keep(new THREE.CylinderGeometry(1, 1, 0.26, 28)).rotateZ(Math.PI / 2);
+      const rimG = keep(new THREE.CylinderGeometry(0.66, 0.66, 0.27, 24)).rotateZ(Math.PI / 2);
+      const hubG = keep(new THREE.CylinderGeometry(0.16, 0.16, 0.29, 12)).rotateZ(Math.PI / 2);
+      const spokeG = box(0.04, 0.12, 1.15);
+      const mirrorG = box(0.1, 0.1, 0.17), beaconG = keep(new THREE.CylinderGeometry(0.16, 0.18, 0.28, 14));
       const coneG = keep(new THREE.ConeGeometry(0.17, 0.48, 14)), padG = keep(new THREE.PlaneGeometry(1, 1)).rotateX(-Math.PI / 2);
-      const tyreM = mat("#14161c", { rough: 0.92 }), rimM = mat("#c3c7cf", { metal: 0.8, rough: 0.28 });
-      const glassM = keep(new THREE.MeshPhysicalMaterial({ color: "#0b111c", roughness: 0.12, metalness: 0.1, clearcoat: 1, clearcoatRoughness: 0.04, envMapIntensity: 0.35 }));
-      const headM = mat("#ffffff", { emissive: "#fff6db", ei: 1.1 }), tailM = mat("#c81e3a", { emissive: "#e11d48", ei: 0.7 });
+      const tyreM = mat("#121318", { rough: 0.9 }), rimM = mat("#c9ccd3", { metal: 0.85, rough: 0.25 }), hubM = mat("#2a2d35", { metal: 0.5, rough: 0.4 });
+      const glassM = keep(new THREE.MeshPhysicalMaterial({ color: "#0a0f18", roughness: 0.08, metalness: 0.15, clearcoat: 1, clearcoatRoughness: 0.03, envMapIntensity: 0.6, side: THREE.DoubleSide }));
+      const headM = mat("#f4f6fb", { emissive: "#fff8e6", ei: 1.2, rough: 0.2 }), tailM = mat("#b0142f", { emissive: "#e11d48", ei: 0.8, rough: 0.3 });
+      const grilleM = mat("#15171d", { rough: 0.55, metal: 0.3 }), trimM = mat("#1c1e24", { rough: 0.7 });
       const coneM = mat("#f97316", { rough: 0.6 }), bedM = mat("#25282f", { rough: 0.9 }), cargoM = mat(dark ? "#d5d8de" : "#eceef2", { rough: 0.55 });
-      const BEV = 0.08, GBEV = BEV + 0.014;
-      const geo = new Map<BodyStyle, { body: InstanceType<typeof THREE.ExtrudeGeometry>; glass: InstanceType<typeof THREE.ExtrudeGeometry>; p: CarProfile }>();
+      const geo = new Map<BodyStyle, { body: ConstructorParameters<typeof THREE.Mesh>[0]; m: CarMesh }>();
       const geoFor = (style: BodyStyle) => {
         const hit = geo.get(style);
         if (hit) return hit;
-        const p = carProfile(style);
-        const shape = (pts: [number, number][]) => new THREE.Shape(pts.map(([z, y]) => new THREE.Vector2(z, y)));
-        const inner = p.width - 2 * BEV;
-        const body = keep(new THREE.ExtrudeGeometry(shape(p.outline), { depth: inner, bevelEnabled: true, bevelThickness: BEV, bevelSize: BEV, bevelSegments: 3, curveSegments: 6 }));
-        body.translate(0, 0, -inner / 2).rotateY(-Math.PI / 2);
-        // same depth, slightly larger bevel: the glass sits just proud of the painted body on every face
-        const glass = keep(new THREE.ExtrudeGeometry(shape(p.glass), { depth: inner, bevelEnabled: true, bevelThickness: GBEV, bevelSize: GBEV, bevelSegments: 3 }));
-        glass.translate(0, 0, -inner / 2).rotateY(-Math.PI / 2);
-        const out = { body, glass, p };
+        const m = carMesh(style);
+        const body = keep(new THREE.BufferGeometry());
+        body.setAttribute("position", new THREE.BufferAttribute(m.positions, 3));
+        body.setIndex([...m.paint, ...m.glass]);
+        body.addGroup(0, m.paint.length, 0);
+        body.addGroup(m.paint.length, m.glass.length, 1);
+        body.computeVertexNormals();
+        const out = { body, m };
         geo.set(style, out);
         return out;
       };
@@ -141,34 +143,48 @@ export function Garage3D({ groups, onOpen, styleFor }: { groups: Record<GarageLa
 
       /** A car in its registered paint and body style, scaled to fit a bay, nose towards the drive lane. */
       function car(v: GarageVehicle) {
-        const { body, glass, p } = geoFor(styleFor(v.row));
+        const { body, m } = geoFor(styleFor(v.row));
         const g = new THREE.Group();
-        const paint = keep(new THREE.MeshPhysicalMaterial({ color: paintColor(v.row.color), roughness: 0.38, metalness: 0.45, clearcoat: 1, clearcoatRoughness: 0.08 }));
-        g.add(mesh(body, paint), mesh(glass, glassM, 0, 0, 0, false));
-        const hx = p.width / 2 - 0.14;
-        for (const z of p.wheels) for (const x of [-hx, hx]) {
-          const t = mesh(tyreG, tyreM, x, p.wheelR, z); t.scale.set(1, p.wheelR, p.wheelR);
-          const r = mesh(rimG, rimM, x * 1.01, p.wheelR, z, false); r.scale.set(1, p.wheelR, p.wheelR);
-          g.add(t, r);
+        const paint = keep(new THREE.MeshPhysicalMaterial({ color: paintColor(v.row.color), roughness: 0.32, metalness: 0.5, clearcoat: 1, clearcoatRoughness: 0.06 }));
+        const shell = new THREE.Mesh(body, [paint, glassM]);
+        shell.castShadow = true; shell.receiveShadow = true;
+        g.add(shell);
+        const h = m.length / 2;
+        // wheels: tyre, alloy rim with five spokes, dark hub
+        for (const w of m.wheels) {
+          const side = Math.sign(w.x);
+          const t = mesh(tyreG, tyreM, w.x, m.wheelR, w.z); t.scale.set(1, m.wheelR, m.wheelR);
+          const r = mesh(rimG, rimM, w.x + side * 0.005, m.wheelR, w.z, false); r.scale.set(1, m.wheelR, m.wheelR);
+          const hb = mesh(hubG, hubM, w.x + side * 0.01, m.wheelR, w.z, false); hb.scale.set(1, m.wheelR, m.wheelR);
+          g.add(t, r, hb);
+          for (let k = 0; k < 5; k++) {
+            const sp = mesh(spokeG, hubM, w.x + side * 0.14, m.wheelR, w.z, false);
+            sp.scale.set(1, m.wheelR, m.wheelR); sp.rotation.x = (k * Math.PI * 2) / 5;
+            g.add(sp);
+          }
         }
         // door mirrors at the base of the windscreen
-        const mz = p.glass[3][0] - 0.05, my = p.belt + 0.12;
-        for (const sx of [-1, 1]) g.add(mesh(mirrorG, paint, sx * (p.width / 2 + 0.1), my, mz, false));
-        const nose = p.outline.reduce((m, [z, y]) => (z > p.length / 2 - 0.01 ? Math.max(m, y) : m), 0);
-        const tail = p.outline.reduce((m, [z, y]) => (z < -p.length / 2 + 0.01 ? Math.max(m, y) : m), 0);
-        for (const x of [-(p.width / 2 - 0.3), p.width / 2 - 0.3]) {
-          g.add(mesh(lampG, headM, x, nose - 0.2, p.length / 2 + BEV, false));
-          g.add(mesh(lampG, tailM, x, tail - 0.16, -p.length / 2 - BEV, false));
+        for (const sx of [-1, 1]) g.add(mesh(mirrorG, paint, sx * (m.halfAt(m.cowlZ) * 0.93 + 0.05), m.belt + 0.07, m.cowlZ - 0.18, false));
+        // headlights follow the front corners; a grille between them; a full-width tail-light bar
+        const fz = h - 0.16, fw = m.halfAt(fz);
+        for (const sx of [-1, 1]) {
+          const lamp = mesh(box(0.5, 0.08, 0.1), headM, sx * fw * 0.66, m.noseY - 0.1, fz + 0.02, false);
+          lamp.rotation.y = sx * 0.42;
+          g.add(lamp);
         }
-        if (p.bed) g.add(mesh(box(p.width - 0.26, 0.03, p.bed[1] - p.bed[0]), bedM, 0, p.bed[3] + BEV + 0.005, (p.bed[0] + p.bed[1]) / 2, false));
-        if (p.cargo) {
-          const [r0, r1, y0, y1] = p.cargo;
-          g.add(mesh(box(p.width + 0.06, y1 - y0, r1 - r0), cargoM, 0, (y0 + y1) / 2, (r0 + r1) / 2));
+        g.add(mesh(box(fw * 0.85, 0.16, 0.06), grilleM, 0, Math.max(m.noseY - 0.32, 0.3), h - 0.06, false));
+        const rz = -h + 0.1, rw = m.halfAt(rz);
+        g.add(mesh(box(rw * 1.75, 0.07, 0.05), tailM, 0, m.tailY - 0.12, rz - 0.03, false));
+        g.add(mesh(box(rw * 1.6, 0.1, 0.05), trimM, 0, 0.42, rz - 0.02, false));
+        if (m.bed) g.add(mesh(box(m.width - 0.3, 0.03, m.bed[1] - m.bed[0]), bedM, 0, m.bed[3] - 0.01, (m.bed[0] + m.bed[1]) / 2, false));
+        if (m.cargo) {
+          const [r0, r1, y0, y1] = m.cargo;
+          g.add(mesh(box(m.width + 0.06, y1 - y0, r1 - r0), cargoM, 0, (y0 + y1) / 2, (r0 + r1) / 2));
         }
-        const scale = Math.min(0.62, 3.45 / p.length);
+        const scale = Math.min(0.62, 3.45 / m.length);
         g.scale.setScalar(scale);
         g.userData.vehicle = v.row.vehicle_id;
-        g.userData.size = [p.width * scale, p.length * scale, (p.cargo ? p.cargo[3] : p.height) * scale];
+        g.userData.size = [m.width * scale, m.length * scale, (m.cargo ? m.cargo[3] : m.height) * scale];
         cars.push({ body: g, paint, v, baseY: 0 });
         return g;
       }

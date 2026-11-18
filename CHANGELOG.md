@@ -5,6 +5,7 @@ What changed in each version of FleetOps KPI. Dates are release dates; the newes
 ## Unreleased
 
 ### Garage, register and analytics design (2026-11-18)
+- Car bodies are now lofted from cross-sections: curved sides, rounded nose and tail, a cabin that narrows to the roof, real wheel arches, set-in windscreen and side glass, five-spoke alloys, corner headlights, grille and a full-width tail-light bar.
 - Garage cars now look like real vehicles: sedan, hatchback, SUV, pickup (open bed), van, minibus and box truck
   bodies with rounded panels, glass, wheels, mirrors and lights, painted in each vehicle's registered colour; the
   stage shows as a coloured pad under the car. Zoom buttons for a closer look.
