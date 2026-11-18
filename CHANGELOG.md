@@ -4,6 +4,11 @@ What changed in each version of FleetOps KPI. Dates are release dates; the newes
 
 ## Unreleased
 
+### Live dashboards (2026-11-18)
+- LIVE badge in the top bar and live panels on the Garage, Analytics and Drivers pages: ticking numbers, a streaming chart and an incoming event feed; pause and resume.
+- Demo: a simulated feed from the demo fleet (trips, workshop check-ins, ready jobs, handovers, charging and refuelling, fines, alerts), labelled as simulated; 3D garage cars drive out and back on trips and handovers.
+- Your fleet: Follow a file on Import re-imports a changing export with the confirmed mapping and rebuilds the dashboards (File System Access API, Chrome and Edge).
+
 ### More motion (2026-11-18)
 - Four more React Bits components: ShinyText (headline sweep), GlareHover (garage zones, car shapes), LogoLoop (supported exports on Import), Magnet (main buttons).
 - Numbers count up as they scroll into view; charts grow in with a stagger; sparklines and work-tree connectors draw themselves; work-tree nodes appear in sequence; cars drive into their garage bays; pages fade in on navigation; press feedback on buttons and chips. All off with reduced motion.

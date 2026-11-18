@@ -5,6 +5,7 @@ import { useMemo, useState } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 import { MagnifyingGlass, Warning, WarningCircle, Info, X } from "@phosphor-icons/react";
 import { Chart, PALETTE, STATUS } from "@/components/chart";
+import { LivePanel } from "@/components/live";
 import { regionWhere, useEngine, useSql } from "@/components/engine-provider";
 import { attention, Card, KpiRow, PageHeader, SectionTitle, Skeleton, StatStrip, type Rag } from "@/components/ui";
 
@@ -148,6 +149,8 @@ export default function DriversPage() {
         { label: "Average safety score", value: k.score, decimals: 0, status: k.score === null ? null : k.score >= 85 ? "green" : k.score >= 70 ? "amber" : "red", note: `${k.low.toLocaleString()} below 70` },
         { label: "Speeding", value: k.speeding, unit: "/100 km", decimals: 2, note: `harsh ${k.harsh?.toFixed(2) ?? "–"} · idle ${k.idle?.toFixed(1) ?? "–"}%` },
       ]} />
+
+      <div className="mt-4"><LivePanel focus="drivers" /></div>
 
       <SectionTitle sub="Compliance, safety, fines and tickets, and activity for every active driver. Trends are weekly; the change is against the week before.">Driver KPIs</SectionTitle>
       <div className="kpi-wall">

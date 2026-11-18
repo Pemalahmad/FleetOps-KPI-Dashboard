@@ -7,6 +7,7 @@ import { CheckCircle, DownloadSimple, FileXls, Trash, UploadSimple, WarningCircl
 import { useEngine } from "@/components/engine-provider";
 import { Card, PageHeader, SectionTitle } from "@/components/ui";
 import { NameLoop } from "@/components/bits/fleetops-bits";
+import { canFollow, chooseFileToFollow, LivePanel, useLive } from "@/components/live";
 import type { TableSpec } from "@/lib/engine";
 import { guessMapping, guessTable, readFile, toCsv, type Sheet } from "@/lib/sheets";
 import { emptyWorkspace, uid, type SavedInput } from "@/lib/workspace";
@@ -137,6 +138,7 @@ export default function ImportPage() {
           </button>
         </Card>
       </div>
+      <FollowFile />
       <div className="mt-4 rounded-lg border border-border bg-panel px-4 py-3">
         <p className="mono-label mb-2">Reads exports from</p>
         <NameLoop label="Fleet systems and file types FleetOps reads" names={["Fleetio", "Samsara", "Motive", "Geotab", "Verizon Connect", "Webfleet trips", "Excel", "CSV", "Parquet", "Registration cards", "Insurance policies"]} />
@@ -272,5 +274,27 @@ function StagedSheet({ s, tables, registry, onChange, onRemove }: {
         </>
       )}
     </Card>
+  );
+}
+
+/** Follow an export on disk: when it changes, it is re-imported with the mapping you already confirmed and the dashboards rebuild. */
+function FollowFile() {
+  const { workspace } = useEngine();
+  const live = useLive();
+  const [msg, setMsg] = useState<string | null>(null);
+  if (live.source === "file") return <div className="mt-4"><LivePanel /></div>;
+  return (
+    <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-panel px-4 py-3">
+      <p className="max-w-3xl text-[13px] text-muted"><b className="text-text">Live updates from your own files.</b> Follow an export your telematics or fleet system keeps
+        updating (for example a trips or vehicle list saved to a shared folder): FleetOps checks it every few seconds and, when it changes, re-imports it with the
+        mapping you already confirmed and rebuilds every dashboard. The file stays on your computer.{!workspace?.inputs.length && " Import the file once first."}</p>
+      <button className="ops-button" disabled={!workspace?.inputs.length} onClick={async () => {
+        try {
+          if (!canFollow()) { setMsg("This browser cannot follow files. Use Chrome or Edge, or re-import the file when it changes."); return; }
+          await chooseFileToFollow(); setMsg(null);
+        } catch (e) { if ((e as Error).name !== "AbortError") setMsg((e as Error).message); }
+      }}>Follow a file</button>
+      {msg && <p className="w-full text-[12.5px] text-warn">{msg}</p>}
+    </div>
   );
 }

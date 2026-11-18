@@ -24,6 +24,7 @@ send us (for example a bug report or a support question).
 | Car shape chosen for each model (3D garage) | Saved with the device-local workspace, under the same optional passphrase encryption; demo choices stay in tab memory | Until fleet data is deleted |
 | Procedure (SOP) review notes, owners and due dates | Saved with the device-local workspace, under the same optional passphrase encryption; demo notes stay in tab memory | Until fleet data is deleted |
 | Photos and PDFs of documents | Read in your browser (OCR); the file and the text read are saved in IndexedDB | Same as above; "Discard" or the bin icon removes one |
+| A file you choose to follow for live updates | Read from your disk by the browser each few seconds while the tab is open; when it changes it is re-imported like any spreadsheet. Only the file you picked is readable, and only for this session | Until you stop following or close the tab |
 | Licence key | Checked on your device; saved in local storage | Until you clear the site's data |
 | Light/dark theme choice | Saved in local storage | Until you clear the site's data |
 | VINs, **only if you click "Decode VINs online"** | Sent to NHTSA's public vPIC service (U.S. Department of Transportation) to look up make, model and trim. Nothing else is sent: no plates, names, dates or files | Subject to NHTSA's own policy |

@@ -15,6 +15,7 @@ import { useCarStyles } from "./use-car-styles";
 import { IncidentDialog } from "./incident-dialog";
 import { VehicleDialog } from "./vehicle-dialog";
 import { useGarageOperations } from "./use-garage";
+import { LivePanel } from "../live";
 
 const EMPTY: GarageRow[] = [];
 const NUM = new Intl.NumberFormat("en");
@@ -105,6 +106,7 @@ export function GaragePage() {
         <Pulse icon={<CheckCircle size={20} />} value={groups.dispatch.length} label="For dispatch review" color="var(--good)" onClick={() => filterQueue("dispatch")} />
       </section>
 
+      <LivePanel focus="garage" />
       <section className="garage-floor" aria-label="Visual fleet garage">
         <div className="garage-floor-header"><div><h2 className="text-lg font-semibold">The garage floor</h2><p className="mt-1 text-xs text-muted">{NUM.format(vehicles.length)} vehicles across six work zones. Accident holds flash; repair bays lift the car.</p></div>
           <div className="flex items-center gap-2"><Link href="/fleet/#car-shapes" className="garage-report-badge hover:text-accent">Match car shapes</Link><span className="garage-report-badge">Live from the loaded report</span></div></div>

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { ArrowRight } from "@phosphor-icons/react";
 import { Chart } from "@/components/chart";
+import { LivePanel } from "@/components/live";
 import type { EChartsOption } from "echarts";
 import { regionWhere, useEngine, useSql } from "@/components/engine-provider";
 import { attention, Card, Delta, KpiRow, Metric, PageHeader, rag, SectionTitle, Skeleton, type Rag } from "@/components/ui";
@@ -158,6 +159,7 @@ export default function Overview() {
         </Card>
       )}
 
+      <LivePanel focus="fleet" />
       <section className="ov-hero" aria-label="Headline indicators">
         <div className="ov-north">
           <p className="text-[13px] text-muted">North star · off-road hours per vehicle per month</p>

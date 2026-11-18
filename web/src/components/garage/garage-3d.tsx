@@ -11,6 +11,7 @@ import { useTheme } from "../chart";
 import { LANES, vehicleLabel, type GarageLane, type GarageRow, type GarageVehicle } from "@/lib/garage";
 import { paintColor, type BodyStyle } from "@/lib/car-styles";
 import { carMesh, type CarMesh } from "@/lib/car-mesh";
+import { liveStore } from "@/lib/live";
 
 const PER_ZONE = 8;
 const ZONE_W = 10.4, ZONE_D = 8.2, GAP = 1.2;
@@ -138,7 +139,8 @@ export function Garage3D({ groups, onOpen, styleFor }: { groups: Record<GarageLa
         return out;
       };
 
-      const cars: { body: InstanceType<typeof THREE.Group>; paint: InstanceType<typeof THREE.MeshPhysicalMaterial>; v: GarageVehicle; baseY: number; z1?: number; delay?: number }[] = [];
+      const cars: { body: InstanceType<typeof THREE.Group>; paint: InstanceType<typeof THREE.MeshPhysicalMaterial>; v: GarageVehicle; baseY: number; z1?: number; delay?: number; trip?: number; home?: number }[] = [];
+      let nowT = 0;
       let introEnd = 0;
       const beacons: InstanceType<typeof THREE.MeshStandardMaterial>[] = [];
 
@@ -263,7 +265,7 @@ export function Garage3D({ groups, onOpen, styleFor }: { groups: Record<GarageLa
           const y = lifted ? 1.0 : 0.06;
           // drive-in: each car starts on the apron in front of its zone and rolls into its bay, zone by zone
           const entry = cars[cars.length - 1];
-          entry.baseY = y;
+          entry.baseY = y; entry.home = z;
           if (!reduced) {
             entry.z1 = z; entry.delay = 0.2 + ri * 0.35 + ci * 0.18 + i * 0.06;
             introEnd = Math.max(introEnd, entry.delay + 1.1);
@@ -364,7 +366,18 @@ export function Garage3D({ groups, onOpen, styleFor }: { groups: Record<GarageLa
       function loop() {
         cancelAnimationFrame(raf);
         if (!visible || document.hidden || disposed) return;
-        timer.update(); const t = timer.getElapsed();
+        timer.update(); const t = timer.getElapsed(); nowT = t;
+        // live traffic: a road-ready car drives out to the lane, waits, and comes back in
+        let trips = false;
+        for (const c of cars) {
+          if (c.trip === undefined || c.home === undefined) continue;
+          const k = t - c.trip, ease = (x: number) => 1 - Math.pow(1 - Math.min(1, Math.max(0, x)), 3);
+          const out = k < 1.3 ? ease(k / 1.3) : k < 3.3 ? 1 : 1 - ease((k - 3.3) / 1.3);
+          c.body.position.z = c.home + 5.4 * out;
+          if (k >= 4.6) { c.body.position.z = c.home; c.trip = undefined; }
+          trips = true;
+        }
+        if (trips) dirty = true;
         // animate at about 20 frames a second, and only while something moves (a beacon, a hovered or settling car)
         if (!reduced && t < introEnd) {
           for (const c of cars) {
@@ -378,6 +391,7 @@ export function Garage3D({ groups, onOpen, styleFor }: { groups: Record<GarageLa
           introEnd = 0; dirty = true;
         }
         const moving = beacons.length > 0 || !!hovered || cars.some((x) => x.body.position.y !== x.baseY);
+        if (trips && t - last < 0.05 && !moving) { renderer.render(scene, camera); dirty = false; }
         if (!reduced && moving && t - last >= 0.05) {
           last = t;
           const pulse = 0.4 + 1.4 * Math.max(0, Math.sin(t * 5));
@@ -393,12 +407,24 @@ export function Garage3D({ groups, onOpen, styleFor }: { groups: Record<GarageLa
         if (dirty) { renderer.render(scene, camera); dirty = false; }
         raf = requestAnimationFrame(loop);
       }
+      // drive a car out on live trip and handover events (simulated demo feed)
+      let lastEvent = liveStore.get().events[0]?.id ?? 0;
+      const unsubscribe = liveStore.subscribe(() => {
+        const e = liveStore.get().events[0];
+        if (!e || e.id === lastEvent || reduced) return;
+        lastEvent = e.id;
+        if (e.kind !== "trip" && e.kind !== "handover") return;
+        const idle = cars.filter((c) => c.v.lane === "road" && c.trip === undefined && c !== hovered);
+        const c = idle[Math.floor(Math.random() * idle.length)];
+        if (c) { c.trip = nowT; loop(); }
+      });
       const vis = () => { if (!document.hidden) loop(); };
       document.addEventListener("visibilitychange", vis);
       loop();
 
       cleanup = () => {
         cancelAnimationFrame(raf);
+        unsubscribe();
         ro.disconnect(); io.disconnect();
         document.removeEventListener("visibilitychange", vis);
         cv.removeEventListener("pointerdown", down); cv.removeEventListener("pointermove", move);
