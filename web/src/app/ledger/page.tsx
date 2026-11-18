@@ -27,7 +27,7 @@ export default function LedgerPage() {
 
   return (
     <>
-      <PageHeader eyebrow="The ledger" title="What each vehicle costs, and who pays">
+      <PageHeader art="ledger" eyebrow="The ledger" title="What each vehicle costs, and who pays">
         Service spend per vehicle, goodwill (the price of broken laws), cost against budget, and the cost per km of each powertrain:
         energy, maintenance and depreciation.
       </PageHeader>

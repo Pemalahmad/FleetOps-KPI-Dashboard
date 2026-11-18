@@ -61,7 +61,7 @@ disable it, read your data or delete it.
 ## 8. Third-party components
 
 The product includes open-source components (among them DuckDB, Tesseract, pdf.js, SheetJS, ECharts, three.js, KaTeX,
-React, Next.js and eight React Bits components) under their own licences, which this EULA does not change. Their licence texts ship with the offline package
+React, Next.js and eight React Bits components, Arc UI components, Motion) under their own licences, which this EULA does not change. Their licence texts ship with the offline package
 and are listed in the repository's dependency files.
 
 ## 9. No warranty

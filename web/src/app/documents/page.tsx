@@ -81,7 +81,7 @@ export default function DocumentsPage() {
 
   return (
     <>
-      <PageHeader eyebrow="Your fleet" title="Registration cards and policies">
+      <PageHeader art="documents" eyebrow="Your fleet" title="Registration cards and policies">
         Photograph or scan registration cards (mulkiya, istimara, ruhsat, V5C), insurance policies, inspection certificates and permits.
         Each is read in this browser (English and Arabic), matched to the vehicle by its plate, VIN or fleet number, and its expiry flows
         into compliance once you confirm it.

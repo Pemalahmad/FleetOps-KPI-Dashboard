@@ -16,6 +16,8 @@ import { IncidentDialog } from "./incident-dialog";
 import { VehicleDialog } from "./vehicle-dialog";
 import { useGarageOperations } from "./use-garage";
 import { LivePanel } from "../live";
+import Button from "../arc/button";
+import { PageArt } from "../art";
 
 const EMPTY: GarageRow[] = [];
 const NUM = new Intl.NumberFormat("en");
@@ -79,12 +81,13 @@ export function GaragePage() {
   return <Sparks>
     <header className="garage-header page-head page-head-dots">
       <HeaderDots />
+      <PageArt kind="garage" />
       <div><Label>Fleet garage</Label><h1 className="mt-3 text-[30px] font-semibold leading-[1.1] tracking-[-0.03em] md:text-[38px]">Every vehicle <span className="text-faint">has a next move.</span></h1>
         <p className="mt-2 max-w-2xl text-[14px] leading-relaxed text-muted">See what is holding each car back, work through its checks, and bring it back to the road.</p></div>
       <div className="flex flex-wrap gap-2">
         <Link className="ops-button" href="/overview/"><ChartPieSlice size={17} /> Analytics</Link>
         <button className="ops-button" disabled={!ready} onClick={() => setNotifications(true)}><Bell size={17} /> Alerts <span className="garage-count">{unread > 99 ? "99+" : unread}</span></button>
-        <Pull><button className="garage-primary" disabled={!ready || !vehicles.length} onClick={() => setIncidentFor(null)}><Warning size={17} /> Report accident</button></Pull>
+        <Pull><Button className="arc-accent" size="lg" disabled={!ready || !vehicles.length} onClick={() => setIncidentFor(null)}><Warning size={17} /> Report accident</Button></Pull>
       </div>
     </header>
     <div className="garage-context">

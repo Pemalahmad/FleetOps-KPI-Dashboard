@@ -26,7 +26,7 @@ export default function LicencePage() {
 
   return (
     <>
-      <PageHeader eyebrow="The licence" title="A gate, not a score">
+      <PageHeader art="licence" eyebrow="The licence" title="A gate, not a score">
         Law 6: registration, insurance, preventive maintenance and recalls are not traded against speed or cost. An expired vehicle is
         grounded until it is renewed (SOP-07).
       </PageHeader>

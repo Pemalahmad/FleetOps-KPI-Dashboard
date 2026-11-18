@@ -1,5 +1,7 @@
 "use client";
 
+import { Emoji, emojiFor, PageArt, type ArtKind } from "./art";
+
 import katex from "katex";
 import { HeaderDots, Shine, SpotCard } from "./bits/fleetops-bits";
 import { useEffect, useRef, useState } from "react";
@@ -38,11 +40,12 @@ export function Label({ children, className = "" }: { children: ReactNode; class
   return <span className={`mono-label ${className}`}><span className="mono-mark" aria-hidden />{children}</span>;
 }
 
-export function PageHeader({ eyebrow, title, children, backdrop = false }: { eyebrow: string; title: string; children?: ReactNode; backdrop?: boolean }) {
+export function PageHeader({ eyebrow, title, children, backdrop = false, art }: { eyebrow: string; title: string; children?: ReactNode; backdrop?: boolean; art?: ArtKind }) {
   const [lead, rest] = split(title, /[,:]\s/);
   return (
-    <header className={backdrop ? "page-head page-head-dots" : "page-head"}>
+    <header className={[backdrop ? "page-head page-head-dots" : "page-head", art ? "page-head-art" : ""].join(" ")}>
       {backdrop && <HeaderDots />}
+      {art && <PageArt kind={art} />}
       <Label>{eyebrow}</Label>
       <h1 className="mt-3 text-[30px] font-semibold leading-[1.1] tracking-[-0.03em] md:text-[38px]">
         {lead}{rest && <Shine>{rest}</Shine>}
@@ -56,7 +59,7 @@ export function SectionTitle({ children, sub }: { children: ReactNode; sub?: Rea
   const [lead, rest] = typeof sub === "string" ? split(sub, /[.;]\s/) : [null, null];
   return (
     <div className="section-head">
-      <h2><Label>{children}</Label></h2>
+      <h2 className="flex items-center gap-2.5"><Emoji e={emojiFor(children)} className="emoji-sm" /><Label>{children}</Label></h2>
       {sub && (
         <p className="mt-2 max-w-4xl text-[17px] font-medium leading-snug tracking-[-0.015em] md:text-[19px]">
           {lead === null ? sub : <>{lead}{rest && <span className="text-faint">{rest}</span>}</>}

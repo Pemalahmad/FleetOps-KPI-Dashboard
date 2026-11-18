@@ -4,6 +4,8 @@ import Link from "next/link";
 import { ArrowRight } from "@phosphor-icons/react";
 import { Chart } from "@/components/chart";
 import { LivePanel } from "@/components/live";
+import { Emoji, emojiFor } from "@/components/art";
+import { GaugeRow } from "@/components/gauges";
 import { Swarm, SwarmToggle } from "@/components/bits/fleetops-bits";
 import type { EChartsOption } from "echarts";
 import { regionWhere, useEngine, useSql } from "@/components/engine-provider";
@@ -145,7 +147,7 @@ export default function Overview() {
 
   return (
     <>
-      <PageHeader backdrop eyebrow={region ?? "Network"} title="Fleet operations, as one system">
+      <PageHeader art="analytics" backdrop eyebrow={region ?? "Network"} title="Fleet operations, as one system">
         Every number below is computed in your browser by the same tested SQL pipeline, and every KPI is connected to the north
         star by exact algebra or a measured driver. Open the <Link href="/network/" className="text-accent underline-offset-2 hover:underline">metric network</Link> to see the maths.
       </PageHeader>
@@ -209,11 +211,20 @@ export default function Overview() {
         </div>
       </section>
 
+      <GaugeRow label="Headline gauges" items={[
+        { label: "Utilisation", value: extra?.utilization, target: 70 },
+        { label: "PM compliance", value: extra?.pm, target: 95, near: 3 },
+        { label: "First-time fix", value: extra?.first_time_fix, target: 98.5, near: 2 },
+        { label: "Registration valid", value: extra?.reg_valid, target: 99, near: 2 },
+        { label: "Insurance valid", value: extra?.ins_valid, target: 99, near: 2 },
+        { label: "Fleet health", value: extra?.health, target: 80, near: 10, detail: "Score out of 100" },
+      ]} />
+
       <SectionTitle sub={`${WALL.reduce((n, g) => n + g.items.length, 0)} indicators for ${region ?? "the network"}, report month. Values in amber or red are off target; the change is against last month.`}>Every KPI</SectionTitle>
       <div className="kpi-wall">
         {WALL.map((g) => (
           <section key={g.title} className="kpi-group">
-            <header><h3 className="text-[14px] font-semibold">{g.title}</h3><span className="text-[11.5px] text-muted">{g.sub}</span></header>
+            <header><h3 className="flex items-center gap-2 text-[14px] font-semibold"><Emoji e={emojiFor(g.title)} />{g.title}</h3><span className="text-[11.5px] text-muted">{g.sub}</span></header>
             {g.items.map((it) => {
               if ("node" in it) {
                 const n = NODE[it.node], v = p.last?.v[it.node] ?? null, t = n.target ? p.targets[n.target] : undefined;

@@ -4,6 +4,11 @@ What changed in each version of FleetOps KPI. Dates are release dates; the newes
 
 ## Unreleased
 
+### Illustrations, emoji and Arc UI (2026-11-18)
+- A vector illustration on every page header, drawn in code and coloured from the theme: the garage with a car driving in, charts for Analytics, a steering wheel on the road for Drivers, a car on a lift for Workshop, clocks, invoices, ID cards, a spreadsheet flowing into the database, and more. Wheels turn, roads move and badges float; all still for reduced motion.
+- Emoji beside section titles, on every KPI group and on every live event (🚗 trip, 🔧 check-in, ✅ ready, ⚡ charged, ⛽ refuelled, 🧾 fine, ⚠️ alert).
+- Arc UI (MIT): Button (spring press, morphing labels) for the main actions, and ring Gauges for headline KPIs on Analytics (utilisation, PM compliance, first-time fix, registration, insurance, fleet health) and Drivers (compliance, safety, licences). Every other button restyled to match.
+
 ### Swarm cursor (2026-11-18)
 - Analytics: a particle swarm (React Bits SwarmCursor) follows the pointer and gathers around the KPI, live number or button under it; a fixed, click-through layer with an on/off switch remembered in this browser. Off for reduced motion and on machines without a graphics card.
 - Count-up numbers now expose their final value to screen readers.

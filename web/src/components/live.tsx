@@ -4,6 +4,7 @@ import { useEffect, useRef, useSyncExternalStore } from "react";
 import { Pause, Play, Broadcast } from "@phosphor-icons/react";
 import NumberFlow from "@number-flow/react";
 import { Chart } from "./chart";
+import Button from "./arc/button";
 import { useEngine, useSql } from "./engine-provider";
 import { fileEvent, liveStore, nextEvent, seed, type Cast, type LiveState } from "@/lib/live";
 import { readFile, toCsv } from "@/lib/sheets";
@@ -119,7 +120,19 @@ export function LiveBadge() {
 }
 
 /* ----------------------------------------------------------------------------------------------- dashboard panel */
-const TONE = { bad: "var(--bad)", warn: "var(--warn)", good: "var(--good)" } as const;
+/** A picture for each kind of event, so the feed scans at a glance. */
+function eventEmoji(e: LiveState["events"][number]): string {
+  switch (e.kind) {
+    case "trip": return e.tone ? "🏎️" : "🚗";
+    case "workshop_in": return "🔧";
+    case "ready": return "✅";
+    case "handover": return "🛣️";
+    case "energy": return e.text.endsWith("charged") ? "⚡" : "⛽";
+    case "fine": return "🧾";
+    case "alert": return e.text.startsWith("Left") ? "📍" : e.text.startsWith("Long") ? "⏳" : "⚠️";
+    default: return "📄";
+  }
+}
 const ago = (t: number, now: number) => { const s = Math.max(0, Math.round((now - t) / 1000)); return s < 60 ? `${s}s ago` : `${Math.round(s / 60)}m ago`; };
 
 function Num({ label, value, decimals = 0, unit }: { label: string; value: number; decimals?: number; unit?: string }) {
@@ -149,7 +162,7 @@ export function LivePanel({ focus = "fleet" }: { focus?: "fleet" | "drivers" | "
       <header className="flex flex-wrap items-center justify-between gap-2">
         <span className="flex items-center gap-2"><span className="live-dot" data-paused={s.paused || undefined} aria-hidden="true" /><b className="mono-label">Live</b>
           <span className="text-[11.5px] text-faint">Simulated demo feed: events generated in your browser from the demo fleet</span></span>
-        <button className="ops-chip" onClick={() => liveStore.set({ paused: !s.paused })}>{s.paused ? <><Play size={12} className="mr-1.5" /> Resume</> : <><Pause size={12} className="mr-1.5" /> Pause</>}</button>
+        <Button variant="secondary" size="sm" onClick={() => liveStore.set({ paused: !s.paused })}>{s.paused ? <><Play size={13} weight="fill" /> Resume</> : <><Pause size={13} weight="fill" /> Pause</>}</Button>
       </header>
       <div className="live-grid">
         <div className="live-nums">{nums.map((n) => <Num key={n.label} {...n} />)}</div>
@@ -170,7 +183,7 @@ export function LivePanel({ focus = "fleet" }: { focus?: "fleet" | "drivers" | "
         <ul className="live-feed" aria-label="Latest events">
           {s.events.slice(0, 6).map((e) => (
             <li key={e.id} className="live-item">
-              <span className="live-kind" style={{ background: e.tone ? TONE[e.tone] : "var(--accent)" }} />
+              <span className="live-emoji" data-tone={e.tone} aria-hidden="true">{eventEmoji(e)}</span>
               <span className="min-w-0 flex-1"><span className="block truncate text-[12.5px]">{e.text}</span>{e.detail && <span className="block truncate text-[11px] text-faint">{e.detail}</span>}</span>
               <span className="tnum shrink-0 text-[10.5px] text-faint">{ago(e.at, now)}</span>
             </li>
@@ -191,8 +204,8 @@ function FollowCard({ s }: { s: LiveState }) {
         <span className="flex items-center gap-2"><span className="live-dot" data-paused={s.paused || undefined} aria-hidden="true" /><b className="mono-label">Live</b>
           <span className="text-[12px] text-muted">Following <b className="text-text">{f.name}</b>: checked {t(f.checkedAt)}, last change {t(f.changedAt)}, {f.rebuilds} rebuild{f.rebuilds === 1 ? "" : "s"}</span></span>
         <span className="flex gap-2">
-          <button className="ops-chip" onClick={() => liveStore.set({ paused: !s.paused })}>{s.paused ? "Resume" : "Pause"}</button>
-          <button className="ops-chip" onClick={stopFollowing}>Stop following</button>
+          <Button variant="secondary" size="sm" onClick={() => liveStore.set({ paused: !s.paused })}>{s.paused ? "Resume" : "Pause"}</Button>
+          <Button variant="ghost" size="sm" onClick={stopFollowing}>Stop following</Button>
         </span>
       </header>
       {f.error && <p role="alert" className="mt-2 text-[12.5px] text-bad">{f.error}</p>}

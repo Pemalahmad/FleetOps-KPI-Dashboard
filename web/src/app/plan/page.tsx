@@ -23,7 +23,7 @@ export default function PlanPage() {
 
   return (
     <>
-      <PageHeader eyebrow="Your plan" title="Plan, licence and offline use">
+      <PageHeader art="plan" eyebrow="Your plan" title="Plan, licence and offline use">
         FleetOps runs entirely on your device. Use it in the browser, install it as an app, or download it and run it with no internet.
       </PageHeader>
 

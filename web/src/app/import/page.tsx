@@ -7,6 +7,7 @@ import { CheckCircle, DownloadSimple, FileXls, Trash, UploadSimple, WarningCircl
 import { useEngine } from "@/components/engine-provider";
 import { Card, PageHeader, SectionTitle } from "@/components/ui";
 import { NameLoop } from "@/components/bits/fleetops-bits";
+import Button from "@/components/arc/button";
 import { canFollow, chooseFileToFollow, LivePanel, useLive } from "@/components/live";
 import type { TableSpec } from "@/lib/engine";
 import { guessMapping, guessTable, readFile, toCsv, type Sheet } from "@/lib/sheets";
@@ -107,7 +108,7 @@ export default function ImportPage() {
 
   return (
     <>
-      <PageHeader eyebrow="Your fleet" title="Bring your fleet in">
+      <PageHeader art="import" eyebrow="Your fleet" title="Bring your fleet in">
         Drop the spreadsheets you already have: a vehicle list with VINs, plates, trims and configurations; a list of registration and
         insurance documents; service history if you have it. Every sheet is read, recognised and mapped for you to check. Your files
         stay in this browser.
@@ -288,12 +289,12 @@ function FollowFile() {
       <p className="max-w-3xl text-[13px] text-muted"><b className="text-text">Live updates from your own files.</b> Follow an export your telematics or fleet system keeps
         updating (for example a trips or vehicle list saved to a shared folder): FleetOps checks it every few seconds and, when it changes, re-imports it with the
         mapping you already confirmed and rebuilds every dashboard. The file stays on your computer.{!workspace?.inputs.length && " Import the file once first."}</p>
-      <button className="ops-button" disabled={!workspace?.inputs.length} onClick={async () => {
+      <Button className="arc-accent" disabled={!workspace?.inputs.length} onClick={async () => {
         try {
           if (!canFollow()) { setMsg("This browser cannot follow files. Use Chrome or Edge, or re-import the file when it changes."); return; }
           await chooseFileToFollow(); setMsg(null);
         } catch (e) { if ((e as Error).name !== "AbortError") setMsg((e as Error).message); }
-      }}>Follow a file</button>
+      }}>📡 Follow a file</Button>
       {msg && <p className="w-full text-[12.5px] text-warn">{msg}</p>}
     </div>
   );

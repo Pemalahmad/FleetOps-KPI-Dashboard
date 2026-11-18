@@ -21,6 +21,9 @@ const eslintConfig = defineConfig([
     "src/components/bits/LogoLoop.tsx",
     "src/components/bits/Magnet.tsx",
     "src/components/bits/SwarmCursor.tsx",
+    "src/components/arc/button.tsx",
+    "src/components/arc/gauge.tsx",
+    "src/components/arc/motion-tokens.ts",
   ]),
 ]);
 

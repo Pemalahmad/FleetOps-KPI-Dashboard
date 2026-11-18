@@ -65,7 +65,7 @@ export default function FleetPage() {
 
   return (
     <>
-      <PageHeader eyebrow={dataset === "mine" ? "My fleet" : "Demo fleet"} title="Fleet register">
+      <PageHeader art="fleet" eyebrow={dataset === "mine" ? "My fleet" : "Demo fleet"} title="Fleet register">
         Every vehicle with its identity (VIN, plate, make, model, year, trim, configuration), its licence to drive (registration,
         insurance and the documents behind them) and its service record, with one next action per vehicle.
         {dataset === "demo" && <> <Link href="/import/" className="text-accent hover:underline">Import your own fleet</Link> to see yours.</>}

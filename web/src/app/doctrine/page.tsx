@@ -62,7 +62,7 @@ export default function DoctrinePage() {
   const key = chosen ? sopProgressKey(engine.dataset, engine.workspace?.name ?? "Demo", engine.region, engine.log?.snapshot ?? "", chosen) : "";
   const scope = (engine.dataset === "demo" ? "Demo fleet" : engine.workspace?.name ?? "My fleet") + " / " + (engine.region ?? "All regions") + " / " + (engine.log?.snapshot.slice(0, 10) ?? "No snapshot");
   return <>
-    <PageHeader eyebrow="Operating system" title="From signal to action">Run the playbook, record the evidence, and give every exception an owner. Procedures follow the selected region and loaded report.</PageHeader>
+    <PageHeader art="doctrine" eyebrow="Operating system" title="From signal to action">Run the playbook, record the evidence, and give every exception an owner. Procedures follow the selected region and loaded report.</PageHeader>
     <div className="ops-banner mb-6 flex flex-wrap items-center justify-between gap-4 p-5">
       <div><p className="text-[14px] font-semibold">{evidence ? active + " procedures need attention" : "Checking operational evidence"}</p><p className="mt-1 text-[13px] text-muted">{scope}</p></div>
       <Link href="/network/" className="ops-button">Explore metric network</Link>

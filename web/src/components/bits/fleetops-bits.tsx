@@ -13,6 +13,7 @@ import GlareHover from "./GlareHover";
 import LogoLoop from "./LogoLoop";
 import Magnet from "./Magnet";
 import SwarmCursor from "./SwarmCursor";
+import Button from "../arc/button";
 import { useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
 import { useSoftwareGL, useTheme } from "../use-theme";
@@ -121,5 +122,5 @@ export function SwarmToggle() {
   const [on, set] = useSwarmSetting();
   const software = useSoftwareGL(), reduced = useReducedMotion();
   if (software || reduced) return null;
-  return <button className="ops-chip" aria-pressed={on} onClick={() => set(!on)}>{on ? "Swarm cursor on" : "Swarm cursor off"}</button>;
+  return <Button variant="secondary" size="sm" aria-pressed={on} onClick={() => set(!on)}>{on ? "✨ Swarm cursor on" : "Swarm cursor off"}</Button>;
 }

@@ -6,6 +6,8 @@ import * as Dialog from "@radix-ui/react-dialog";
 import { MagnifyingGlass, Warning, WarningCircle, Info, X } from "@phosphor-icons/react";
 import { Chart, PALETTE, STATUS } from "@/components/chart";
 import { LivePanel } from "@/components/live";
+import { Emoji, emojiFor } from "@/components/art";
+import { GaugeRow } from "@/components/gauges";
 import { regionWhere, useEngine, useSql } from "@/components/engine-provider";
 import { attention, Card, KpiRow, PageHeader, SectionTitle, Skeleton, StatStrip, type Rag } from "@/components/ui";
 
@@ -126,7 +128,7 @@ export default function DriversPage() {
 
   return (
     <>
-      <PageHeader backdrop eyebrow="Drivers & trips" title="Every driver, scored on the road">
+      <PageHeader art="drivers" backdrop eyebrow="Drivers & trips" title="Every driver, scored on the road">
         Drivers and their licences, and how each one drives: speeding, harsh driving, idling and leaving the permitted zone, read
         from your telematics exports (Geotab, Webfleet, Samsara, Motive…) and checked against the limits in your settings.
       </PageHeader>
@@ -151,11 +153,17 @@ export default function DriversPage() {
       ]} />
 
       <div className="mt-4"><LivePanel focus="drivers" /></div>
+      <GaugeRow label="Driver gauges" items={[
+        { label: "Drivers compliant", value: k.compliant, target: 98, near: 8 },
+        { label: "Average safety score", value: k.score, target: 80, near: 10, detail: "Score out of 100" },
+        { label: "Licences in date", value: k.drivers ? (100 * (k.drivers - (k.expired ?? 0))) / k.drivers : null, target: 99, near: 2 },
+        { label: "Right licence class", value: k.drivers ? (100 * (k.drivers - (k.mismatch ?? 0))) / k.drivers : null, target: 99, near: 2 },
+      ]} />
 
       <SectionTitle sub="Compliance, safety, fines and tickets, and activity for every active driver. Trends are weekly; the change is against the week before.">Driver KPIs</SectionTitle>
       <div className="kpi-wall">
         <section className="kpi-group">
-          <header><h3 className="text-[14px] font-semibold">Compliance</h3><span className="text-[11.5px] text-muted">May they drive?</span></header>
+          <header><h3 className="flex items-center gap-2 text-[14px] font-semibold"><Emoji e={emojiFor("Compliance")} />Compliance</h3><span className="text-[11.5px] text-muted">May they drive?</span></header>
           <KpiRow label="Compliant" value={k.compliant} unit="%" decimals={1} better="higher" status={k.compliant === null ? null : k.compliant >= 98 ? null : k.compliant >= 90 ? "amber" : "red"} target="Target ≥ 98" />
           <KpiRow label="Not compliant" value={k.notCompliant} decimals={0} better="lower" status={k.notCompliant ? "red" : null} hint="Expired licence or a class that does not cover the vehicle" />
           <KpiRow label="Action needed" value={k.actionNeeded} decimals={0} better="lower" status={k.actionNeeded ? "amber" : null} hint="Licence expiring or not recorded, or unpaid fines over the limit" />
@@ -166,7 +174,7 @@ export default function DriversPage() {
           <KpiRow label="Licence class not recorded" value={k.noClass} decimals={0} better="lower" status={k.noClass ? "amber" : null} />
         </section>
         <section className="kpi-group">
-          <header><h3 className="text-[14px] font-semibold">Safety</h3><span className="text-[11.5px] text-muted">How they drive</span></header>
+          <header><h3 className="flex items-center gap-2 text-[14px] font-semibold"><Emoji e={emojiFor("Safety")} />Safety</h3><span className="text-[11.5px] text-muted">How they drive</span></header>
           <KpiRow label="Average safety score" value={k.score} decimals={0} better="higher" target="0-100" />
           <KpiRow label="Drivers in band D" value={k.bandD} decimals={0} better="lower" status={k.bandD ? "amber" : null} hint="Safety score below 55" />
           <KpiRow label="Speeding" value={lastW?.sp ?? null} prev={prevW?.sp ?? null} unit="/100 km" decimals={2} better="lower" spark={series((w) => w.sp)}
@@ -177,7 +185,7 @@ export default function DriversPage() {
           <KpiRow label="Highest top speed" value={k.topSpeed} unit="km/h" decimals={0} better="lower" />
         </section>
         <section className="kpi-group">
-          <header><h3 className="text-[14px] font-semibold">Fines & tickets</h3><span className="text-[11.5px] text-muted">Last 12 months</span></header>
+          <header><h3 className="flex items-center gap-2 text-[14px] font-semibold"><Emoji e={emojiFor("Fines & tickets")} />Fines & tickets</h3><span className="text-[11.5px] text-muted">Last 12 months</span></header>
           <KpiRow label="Fines per driver" value={k.fines12} decimals={2} better="lower" />
           <KpiRow label="Unpaid fines" value={k.unpaid} decimals={0} better="lower" status={k.unpaid ? "amber" : null} />
           <KpiRow label="Drivers with unpaid fines" value={k.withUnpaid} decimals={0} better="lower" />
@@ -188,7 +196,7 @@ export default function DriversPage() {
           <KpiRow label="Open tickets on drivers" value={k.openOn} decimals={0} better="lower" />
         </section>
         <section className="kpi-group">
-          <header><h3 className="text-[14px] font-semibold">Activity</h3><span className="text-[11.5px] text-muted">From telematics</span></header>
+          <header><h3 className="flex items-center gap-2 text-[14px] font-semibold"><Emoji e={emojiFor("Activity")} />Activity</h3><span className="text-[11.5px] text-muted">From telematics</span></header>
           <KpiRow label="Drivers with trips" value={k.withTrips} unit="%" decimals={1} better="higher" />
           <KpiRow label="Distance per driver per week" value={k.kmPerWeek} unit="km" decimals={0} better="higher" />
           <KpiRow label="Distance this week" value={lastW?.km ?? null} prev={prevW?.km ?? null} unit="km" decimals={0} better="higher" spark={series((w) => w.km)} />

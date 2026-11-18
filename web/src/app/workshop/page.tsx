@@ -27,7 +27,7 @@ export default function WorkshopPage() {
 
   return (
     <>
-      <PageHeader eyebrow="Workshop clock" title="Key in to ready">
+      <PageHeader art="workshop" eyebrow="Workshop clock" title="Key in to ready">
         Law 3: fix it once, or pay three times. Law 4: a parts ETA is a promise. INTERVENE flags a site whose weekly median
         turnaround runs far above the network and its own trend.
       </PageHeader>

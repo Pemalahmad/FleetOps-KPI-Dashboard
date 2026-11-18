@@ -28,6 +28,8 @@ for (const [path, meta] of Object.entries(lock.packages)) {
 const bits = join(root, "src/components/bits/LICENSE.md");
 if (existsSync(bits)) {
   parts.push("-".repeat(78), "React Bits components: DotGrid, SpotlightCard, ClickSpark, ShinyText, GlareHover, LogoLoop, Magnet, SwarmCursor (MIT + Commons Clause)", "-".repeat(78), readFileSync(bits, "utf8").trim(), "");
+const arc = join(root, "src/components/arc/LICENSE.md");
+parts.push("-".repeat(78), "Arc UI components: Button, Gauge, motion tokens (MIT)", "-".repeat(78), readFileSync(arc, "utf8").trim(), "");
   n++;
 }
 writeFileSync(out, parts.join("\n"));
