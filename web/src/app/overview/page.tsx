@@ -3,8 +3,9 @@
 import Link from "next/link";
 import { ArrowRight } from "@phosphor-icons/react";
 import { Chart } from "@/components/chart";
+import type { EChartsOption } from "echarts";
 import { regionWhere, useEngine, useSql } from "@/components/engine-provider";
-import { Card, KpiRow, PageHeader, rag, ragColor, SectionTitle, Skeleton, Tile, type Rag } from "@/components/ui";
+import { attention, Card, Delta, KpiRow, Metric, PageHeader, rag, SectionTitle, Skeleton, type Rag } from "@/components/ui";
 import { usePanel } from "@/components/use-panel";
 import { NODE } from "@/lib/metrics";
 
@@ -104,49 +105,57 @@ export default function Overview() {
         </Card>
       )}
 
-      <div className="grid gap-4 lg:grid-cols-[1.15fr_2fr]">
-        <div className="card relative overflow-hidden p-6">
-          <p className="text-[12px] font-semibold uppercase tracking-[0.12em] text-bad">North star</p>
-          <p className="mt-1 text-[14px] text-muted">Off-road hours per vehicle per month</p>
-          <div className="tnum mt-3 text-[56px] font-bold leading-none">{north === null ? "–" : north.toFixed(1)}<span className="ml-1 text-[22px] font-medium text-muted">h</span></div>
-          <p className="mt-3 text-[13px] leading-relaxed text-muted">
-            = visits per vehicle <b className="tnum text-text">{p.last?.v.visits?.toFixed(3) ?? "–"}</b> × hours per visit{" "}
-            <b className="tnum text-text">{p.last?.v.per_visit?.toFixed(1) ?? "–"}</b>. Availability{" "}
-            <b className="tnum text-text">{p.last?.v.availability?.toFixed(2) ?? "–"}%</b> is the same number seen from the other side.
-          </p>
+      <section className="ov-hero" aria-label="Headline indicators">
+        <div className="ov-north">
+          <p className="text-[13px] text-muted">North star · off-road hours per vehicle per month</p>
+          <div className="mt-3 flex flex-wrap items-baseline gap-x-3 gap-y-1">
+            <span className="tnum text-[56px] font-semibold leading-none tracking-[-0.045em]">{north === null ? "–" : north.toFixed(1)}</span>
+            <span className="text-[18px] text-muted">h</span>
+            <span className="text-[12px]"><Delta delta={north !== null && p.prev?.v.offroad != null ? north - p.prev.v.offroad : null} decimals={1} unit="h" better="lower" />
+              <span className="ml-1.5 text-faint">vs last month · lower is better</span></span>
+          </div>
           <div className="mt-4">
             {p.ready ? (
-              <Chart height={130} option={(dark) => ({
-                grid: { left: 0, right: 0, top: 8, bottom: 0, containLabel: true },
-                tooltip: { trigger: "axis", valueFormatter: (v) => `${Number(v).toFixed(1)} h` },
-                xAxis: { type: "category", data: p.series.map((s) => s.month.slice(0, 7)), axisLabel: { show: false } },
-                yAxis: { type: "value", scale: true, splitNumber: 2 },
-                series: [{ type: "line", data: spark("offroad"), smooth: true, symbol: "none", lineStyle: { width: 2.5, color: dark ? "#fb7185" : "#e11d48" },
-                  areaStyle: { color: dark ? "rgba(251,113,133,.12)" : "rgba(225,29,72,.08)" } }],
-              })} />
-            ) : <Skeleton height={130} />}
+              <Chart height={140} option={(dark): EChartsOption => {
+                const data = spark("offroad");
+                return {
+                  grid: { left: 0, right: 6, top: 10, bottom: 0, containLabel: true },
+                  tooltip: { trigger: "axis", valueFormatter: (v) => `${Number(v).toFixed(1)} h` },
+                  xAxis: { type: "category", boundaryGap: false, data: p.series.map((s) => s.month.slice(0, 7)),
+                    axisLine: { show: false }, axisLabel: { interval: Math.max(0, Math.ceil(data.length / 4) - 1), fontSize: 10.5, showMinLabel: false,
+                      formatter: (m: string) => new Date(m + "-01T00:00:00").toLocaleDateString("en", { month: "short", year: "2-digit" }) } },
+                  yAxis: { type: "value", scale: true, splitNumber: 2, axisLabel: { show: false }, splitLine: { lineStyle: { type: "dashed" } } },
+                  series: [{ type: "line", data, smooth: 0.3, symbol: "none", lineStyle: { width: 1.75, color: dark ? "#c9cde0" : "#2b3150" },
+                    markPoint: { symbol: "circle", symbolSize: 7, itemStyle: { color: dark ? "#c9cde0" : "#2b3150" }, label: { show: false },
+                      data: [{ name: "latest", coord: [data.length - 1, data.at(-1) ?? 0] }] } }],
+                };
+              }} />
+            ) : <Skeleton height={140} />}
           </div>
-          <Link href="/network/" className="mt-3 inline-flex items-center gap-1.5 text-[13px] font-medium text-accent hover:gap-2.5 transition-all">
-            See what drives it <ArrowRight size={14} />
-          </Link>
+          <p className="mt-4 text-[12.5px] leading-relaxed text-muted">
+            Visits per vehicle <b className="tnum font-semibold text-text">{p.last?.v.visits?.toFixed(3) ?? "–"}</b> × hours per visit{" "}
+            <b className="tnum font-semibold text-text">{p.last?.v.per_visit?.toFixed(1) ?? "–"}</b>. Availability{" "}
+            <b className="tnum font-semibold text-text">{p.last?.v.availability?.toFixed(2) ?? "–"}%</b> is the same number from the other side.{" "}
+            <Link href="/network/" className="inline-flex items-center gap-1 font-medium text-accent hover:underline">What drives it <ArrowRight size={12} /></Link>
+          </p>
         </div>
-        <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+        <div className="ov-metrics">
           {TILES.map((id) => {
             const n = NODE[id];
             const v = p.last?.v[id] ?? null;
             return (
-              <Tile key={id} label={n.label} value={v} unit={n.unit} decimals={n.decimals > 2 ? 2 : n.decimals} prev={p.prev?.v[id]}
-                better={n.better} status={rag(v, n.target ? p.targets[n.target] : undefined)} spark={spark(id)} hint={n.meaning} />
+              <Metric key={id} label={n.label} value={v} unit={n.unit} decimals={n.decimals > 2 ? 2 : n.decimals} prev={p.prev?.v[id]}
+                better={n.better} status={rag(v, n.target ? p.targets[n.target] : undefined)} spark={spark(id)} hint={n.meaning} target={targetText(n.target)?.toLowerCase()} />
             );
           })}
         </div>
-      </div>
+      </section>
 
-      <SectionTitle sub={`${WALL.reduce((n, g) => n + g.items.length, 0)} indicators for ${region ?? "the network"}, report month. The bar shows the target state; the change is against last month.`}>Every KPI</SectionTitle>
+      <SectionTitle sub={`${WALL.reduce((n, g) => n + g.items.length, 0)} indicators for ${region ?? "the network"}, report month. Values in amber or red are off target; the change is against last month.`}>Every KPI</SectionTitle>
       <div className="kpi-wall">
         {WALL.map((g) => (
-          <section key={g.title} className="kpi-panel">
-            <header><h3 className="text-[14px] font-semibold">{g.title}</h3><span className="text-[11.5px] text-faint">{g.sub}</span></header>
+          <section key={g.title} className="kpi-group">
+            <header><h3 className="text-[14px] font-semibold">{g.title}</h3><span className="text-[11.5px] text-muted">{g.sub}</span></header>
             {g.items.map((it) => {
               if ("node" in it) {
                 const n = NODE[it.node], v = p.last?.v[it.node] ?? null, t = n.target ? p.targets[n.target] : undefined;
@@ -161,28 +170,26 @@ export default function Overview() {
         ))}
       </div>
 
-      <SectionTitle sub="Every region against every target, report month. Green / amber / red come from fleet.yml.">Scorecard</SectionTitle>
-      <Card>
+      <SectionTitle sub="Every region against every target, report month. Amber and red mark values off target (thresholds from fleet.yml).">Scorecard</SectionTitle>
+      <Card className="!p-0">
         {sc.data ? (
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[900px] border-separate border-spacing-1 text-[12.5px]">
+            <table className="score-table tnum w-full min-w-[1000px] border-collapse text-[12.5px]">
               <thead>
                 <tr>
-                  <th className="sticky left-0 bg-panel text-left font-medium text-muted">Region</th>
-                  {SCORE.map(([, l]) => <th key={l} className="px-1 text-center font-medium text-muted">{l}</th>)}
+                  <th className="sticky left-0 z-[1] bg-panel !text-left">Region</th>
+                  {SCORE.map(([, l]) => <th key={l}>{l}</th>)}
                 </tr>
               </thead>
               <tbody>
                 {sc.data.filter((r) => !region || r.region === region).map((r) => (
                   <tr key={String(r.region)}>
-                    <td className="sticky left-0 bg-panel pr-2 font-medium">{String(r.region)}</td>
+                    <td className="sticky left-0 z-[1] bg-panel !text-left font-medium">{String(r.region)}</td>
                     {SCORE.map(([k, l, v]) => {
-                      const c = ragColor((r[k] as Rag) ?? null);
-                      const val = r[v] as number | null;
+                      const state = (r[k] as Rag) ?? null, val = r[v] as number | null;
                       return (
-                        <td key={l} className="tnum rounded-md px-1.5 py-2 text-center font-medium"
-                          style={{ background: `color-mix(in srgb, ${c} 16%, transparent)`, color: c }}>
-                          {val === null || val === undefined ? "–" : Number(val).toFixed(Math.abs(Number(val)) >= 100 ? 0 : 1)}
+                        <td key={l} style={{ color: attention(state) }} className={state === "red" ? "font-semibold" : ""}>
+                          {val === null || val === undefined ? <span className="text-faint">–</span> : Number(val).toFixed(Math.abs(Number(val)) >= 100 ? 0 : 1)}
                         </td>
                       );
                     })}
@@ -202,9 +209,9 @@ export default function Overview() {
             tooltip: { trigger: "axis", axisPointer: { type: "none" } },
             xAxis: { type: "value", max: 1000 },
             yAxis: { type: "category", data: lb.data!.map((r) => r.site_name) },
-            series: [{ type: "bar", barWidth: "60%", data: lb.data!.map((r) => ({
+            series: [{ type: "bar", barWidth: 10, data: lb.data!.map((r) => ({
               value: r.ops_score,
-              itemStyle: { borderRadius: [0, 6, 6, 0], color: { Platinum: "#8B5CF6", Gold: "#F59E0B", Silver: "#94A3B8", Bronze: "#B45309" }[r.tier] ?? "#6366F1" },
+              itemStyle: { borderRadius: [0, 3, 3, 0], color: dark ? "#818cf8" : "#6366f1", opacity: 0.35 + 0.65 * (r.ops_score / 1000) },
             })), label: { show: true, position: "right", color: dark ? "#9097b0" : "#5b6178", fontSize: 11,
               formatter: (x) => `${x.value} · ${lb.data![x.dataIndex].tier}` } }],
           })} />

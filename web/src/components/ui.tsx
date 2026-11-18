@@ -57,7 +57,7 @@ export function rag(value: number | null | undefined, t?: { green: number; amber
   return value <= t.green ? "green" : value <= t.amber ? "amber" : "red";
 }
 
-export function Sparkline({ values, color = "var(--accent)", height = 34 }: { values: (number | null)[]; color?: string; height?: number }) {
+export function Sparkline({ values, color = "var(--accent)", height = 34, fill = true, width = 1.8 }: { values: (number | null)[]; color?: string; height?: number; fill?: boolean; width?: number }) {
   const v = values.filter((x): x is number => x !== null && Number.isFinite(x));
   if (v.length < 2) return <div style={{ height }} />;
   const min = Math.min(...v), max = Math.max(...v), w = 120;
@@ -65,14 +65,13 @@ export function Sparkline({ values, color = "var(--accent)", height = 34 }: { va
   const d = pts.map((p, i) => `${i ? "L" : "M"}${p[0].toFixed(1)},${p[1].toFixed(1)}`).join("");
   return (
     <svg viewBox={`0 0 ${w} ${height}`} preserveAspectRatio="none" className="w-full" style={{ height }} aria-hidden>
-      <path d={`${d}L${w},${height}L0,${height}Z`} fill={color} opacity={0.12} />
-      <path d={d} fill="none" stroke={color} strokeWidth={1.8} vectorEffect="non-scaling-stroke" strokeLinejoin="round" />
+      {fill && <path d={`${d}L${w},${height}L0,${height}Z`} fill={color} opacity={0.12} />}
+      <path d={d} fill="none" stroke={color} strokeWidth={width} vectorEffect="non-scaling-stroke" strokeLinejoin="round" />
     </svg>
   );
 }
 
 const unitText = (unit: string) => (unit === "%" ? "%" : unit === "$" ? "" : unit ? " " + unit : "");
-const statusWord = (r: Rag) => (r === "green" ? "On target" : r === "amber" ? "Watch" : r === "red" ? "Off target" : null);
 
 /** Signed change against last month, coloured by whether it moved the right way. */
 export function Delta({ delta, decimals, unit, better }: { delta: number | null; decimals: number; unit: string; better: "higher" | "lower" }) {
@@ -86,35 +85,35 @@ export function Delta({ delta, decimals, unit, better }: { delta: number | null;
   );
 }
 
-export function Tile({
-  label, value, unit = "", decimals = 1, prev, better = "higher", status = null, spark, hint,
+/** Colour for a value only when it needs attention; on-target numbers stay in the text colour. */
+export const attention = (r: Rag) => (r === "red" ? "var(--bad)" : r === "amber" ? "var(--warn)" : undefined);
+
+/** A headline number in a shared grid: label, value, change, target, and a quiet trend line. */
+export function Metric({
+  label, value, unit = "", decimals = 1, prev, better = "higher", status = null, spark, hint, target,
 }: {
   label: string; value: number | null | undefined; unit?: string; decimals?: number; prev?: number | null;
-  better?: "higher" | "lower"; status?: Rag; spark?: (number | null)[]; hint?: string;
+  better?: "higher" | "lower"; status?: Rag; spark?: (number | null)[]; hint?: string; target?: string;
 }) {
   const has = value !== null && value !== undefined && Number.isFinite(value);
   const delta = has && prev !== null && prev !== undefined ? value - prev : null;
-  const word = statusWord(status);
   return (
-    <div className="kpi-tile" title={hint} style={{ ["--kpi" as string]: ragColor(status) }}>
-      <div className="flex items-start justify-between gap-2">
-        <span className="text-[12px] leading-snug text-muted">{label}</span>
-        {word && <span className="kpi-flag">{word}</span>}
-      </div>
-      <div className="tnum mt-2 text-[25px] font-semibold leading-none tracking-[-0.03em]">
+    <div className="ov-metric" title={hint}>
+      <span className="block truncate text-[12.5px] text-muted">{label}</span>
+      <span className="tnum mt-2 block text-[26px] font-semibold leading-none tracking-[-0.03em]" style={{ color: attention(status) }}>
         {!has ? <span className="text-faint">–</span> : (
           <>
             {unit === "$" && <span className="mr-0.5 text-[16px] font-medium text-muted">$</span>}
             <NumberFlow value={value} format={{ maximumFractionDigits: decimals, minimumFractionDigits: decimals }} />
-            {unit && unit !== "$" && <span className="ml-0.5 text-[13px] font-medium tracking-normal text-muted">{unitText(unit).trim()}</span>}
+            {unit && unit !== "$" && <span className="ml-0.5 text-[13px] font-normal tracking-normal text-muted">{unitText(unit).trim()}</span>}
           </>
         )}
-      </div>
-      <div className="mt-1.5 flex h-4 items-center gap-1.5 text-[11px]">
+      </span>
+      <span className="mt-2 flex items-center gap-1.5 text-[11.5px] text-faint">
         <Delta delta={delta} decimals={decimals} unit={unit} better={better} />
-        {delta !== null && <span className="text-faint">vs last month</span>}
-      </div>
-      {spark && <div className="kpi-spark"><Sparkline values={spark} height={28} color={status === "red" ? "var(--bad)" : "var(--accent)"} /></div>}
+        {target && <span className="truncate">{delta !== null ? "· " : ""}{target}</span>}
+      </span>
+      {spark && <span className="mt-3 block"><Sparkline values={spark} height={22} fill={false} width={1.25} color="var(--faint)" /></span>}
     </div>
   );
 }
@@ -154,18 +153,15 @@ export function KpiRow({ label, value, unit = "", decimals = 1, prev, better = "
   const delta = has && prev !== null && prev !== undefined ? value - prev : null;
   return (
     <div className="kpi-row" title={hint}>
-      <span className="kpi-row-bar" style={{ background: ragColor(status) }} />
       <span className="min-w-0">
-        <span className="block truncate text-[12.5px]">{label}</span>
+        <span className="block truncate text-[13px]">{label}</span>
         {target && <span className="block truncate text-[11px] text-faint">{target}</span>}
       </span>
-      <span className="hidden w-[64px] sm:block">{spark && <Sparkline values={spark} height={20} color={status === "red" ? "var(--bad)" : "var(--accent)"} />}</span>
-      <span className="text-right">
-        <span className="tnum block text-[14px] font-semibold">
-          {has ? <>{unit === "$" && "$"}{fmt(value, decimals)}{unitText(unit)}</> : <span className="text-faint">–</span>}
-        </span>
-        <span className="block h-[14px] text-[10.5px]"><Delta delta={delta} decimals={decimals} unit={unit} better={better} /></span>
+      <span className="hidden w-[56px] sm:block">{spark && <Sparkline values={spark} height={18} fill={false} width={1.25} color="var(--faint)" />}</span>
+      <span className="tnum text-right text-[13.5px] font-semibold" style={{ color: attention(status) }}>
+        {has ? <>{unit === "$" && "$"}{fmt(value, decimals)}<span className="font-normal text-muted">{unitText(unit)}</span></> : <span className="text-faint">–</span>}
       </span>
+      <span className="w-[62px] text-right text-[11px]"><Delta delta={delta} decimals={decimals} unit={unit} better={better} /></span>
     </div>
   );
 }
