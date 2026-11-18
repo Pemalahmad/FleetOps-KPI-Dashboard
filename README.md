@@ -24,19 +24,27 @@ No install, no server, no upload: DuckDB-WASM runs the 59 SQL models and 24 test
 The sample fleet has an expired registration, an insurance renewal due, a broken VIN and a missing VIN; the scanned
 card renews the expired one.
 
-![The garage home page, a vehicle's road checklist, importing a vehicle list, the fleet register and scanning a registration card](docs/demo.gif)
+![A walk through the 3D garage, a vehicle at the renewal desk, the analytics page and the fleet register](docs/demo.gif)
 
-![The visual garage: every vehicle grouped by what is holding it back](docs/web-garage.gif)
+![The 3D garage floor: six work zones, cars in their registered colour and body style, hover for a vehicle's stage and gates](docs/web-garage.gif)
 
 ## The visual garage
 
-The home dashboard groups vehicles into Road ready, Repair bays, Renewal desk, Accident intake, Dispatch review and Safety checks. Open a car for recorded repair milestones, registration and insurance stages, source blockers, a release checklist, a named owner and a target return date.
+The home page is a 3D garage floor with six work zones: Road ready, Repair bays, Renewal desk, Accident intake, Dispatch review and Safety checks. Each car is drawn in its registered colour and body style (sedan, hatchback, SUV, pickup, van, minibus or box truck); accident holds flash, repair bays lift the car. Drag to turn the floor, zoom in, hover a car for its stage and gates, click it to open it. The zone list below the scene is the keyboard and screen-reader route to the same vehicles.
+
+Open a car for recorded repair milestones, registration and insurance stages, source blockers, a release checklist, a named owner and a target return date.
 
 ![A vehicle's road checklist, recorded repair milestones and registration and insurance stages](docs/web-garage-vehicle.gif)
 
-Report an accident to hold the vehicle and track assessment, repair, quality checks and dispatch review. The alert inbox includes paging, type filters and read status. Recovery missions and handover XP reward completed work; points cannot bypass an expired document, unresolved repair or evidence gap. The existing KPI dashboard is available under **Analytics**.
+Report an accident to hold the vehicle and track assessment, repair, quality checks and dispatch review. The alert inbox includes paging, type filters and read status. A crew rank with an XP bar, badges and recovery missions with progress reward completed work; points cannot bypass an expired document, unresolved repair or evidence gap.
 
-![Analytics: the KPI dashboard](docs/web-overview.gif)
+**The fleet register** shows every vehicle's identity, licence and next action, one bar per model split by trim, and the car shape the garage draws for each model. The shape is guessed from the model name (Hilux → pickup, Hiace → van, Land Cruiser → SUV) and the owner can change it.
+
+![The fleet register: headline numbers, models split by trim, and a car shape per model](docs/web-register.gif)
+
+**Analytics** opens with the north star (off-road hours per vehicle per month) and eight headline KPIs, then 30 indicators in five groups (fleet and uptime, compliance, workshop, customer clock, cost), each with its target, trend and change on last month, and a scorecard of every region against every target. A value turns amber or red only when it is off target.
+
+![Analytics: north star, headline KPIs, every KPI and the region scorecard](docs/web-overview.gif)
 
 Garage actions for your fleet use the same device-local Workspace and optional passphrase encryption. Demo actions are isolated practice in tab memory. Notifications update from imported evidence and in-app incident reports; there is no automatic accident detection or external alert service. Current handovers recheck document dates, source freshness, vehicle-level usage coverage and all release requirements. See [garage workflow](docs/GARAGE.md).
 
@@ -206,7 +214,7 @@ Built in TypeScript with Next.js (static export), Tailwind, ECharts, KaTeX and D
 
 - **24 SQL data tests** and **41 SQL validation rules** run inside every build, in Python and in the browser alike, including the clock identity on every work order (`t18`) and the metric-network identities on every region-month (`t21`).
 - **Security and garage end-to-end tests** (Playwright, production build in a real browser): strict CSP with no violations on every page, an injected script refused, a hostile workbook (XSS and SQL injection) rendered as text, a clickjacking guard, encryption at rest (fleet data and SOP notes) with wrong and right passphrases, and the document reader under the policy, with every request staying on the app's own site.
-- **98 TypeScript tests** (Vitest), including **property-based fuzzing** (fast-check) of every parser that reads untrusted input: encryption at rest (round trip, wrong passphrase, tamper detection, fresh IVs); licence keys signed in Python and verified in the browser (forged and expired keys rejected); calendar and Excel exports (formula injection neutralised); every statistical routine against R / scipy / statsmodels reference values; the metric network's identities and propagation; VIN rules and vPIC mapping; workbook reading (title rows, Excel dates, many sheets) and table / column recognition for common fleet-platform exports; document reading (day-first and Arabic-Indic dates, plates, VINs, weighted document typing).
+- **109 TypeScript tests** (Vitest), including **property-based fuzzing** (fast-check) of every parser that reads untrusted input: encryption at rest (round trip, wrong passphrase, tamper detection, fresh IVs); licence keys signed in Python and verified in the browser (forged and expired keys rejected); calendar and Excel exports (formula injection neutralised); every statistical routine against R / scipy / statsmodels reference values; the metric network's identities and propagation; VIN rules and vPIC mapping; workbook reading (title rows, Excel dates, many sheets) and table / column recognition for common fleet-platform exports; document reading (day-first and Arabic-Indic dates, plates, VINs, weighted document typing); vehicle-name cleaning, car-shape guessing and the 3D car bodies (finite, inside the footprint, glass on every style).
 - **20 Python tests** (`pytest`): licence signing; the demo end to end; the fleet register and documents (matched by plate, VIN or id; renewed cards move the expiry); VIN macros against reference VINs; a foreign-format fleet (Excel, its own column names, `dd/mm` dates, monthly usage, no optional tables) that must plug in with mapping only; bad data blocked with the right reasons; dependency order and layer rules; the web export runs exactly the package's SQL.
 - **CI** on Python 3.11 and 3.13, the web app (lint, type-check, tests, build), and a Docker build that runs the demo inside the image.
 
