@@ -10,7 +10,7 @@ import { vinModelYear } from "@/lib/vin";
 import { deleteFile, emptyWorkspace, loadFile, saveFile, uid, type SavedDocument } from "@/lib/workspace";
 
 const TYPES: DocType[] = ["Registration", "Insurance", "Inspection", "Permit", "Other"];
-const STATUS_COLOR: Record<string, string> = { Valid: "var(--good)", Expiring: "var(--warn)", Expired: "var(--bad)", Unknown: "var(--faint)" };
+const STATUS_COLOR: Record<string, string> = { Valid: "#94A3B8", Expiring: "var(--warn)", Expired: "var(--bad)", Unknown: "var(--border)" };
 
 function status(expiry: string | null): string {
   if (!expiry) return "Unknown";

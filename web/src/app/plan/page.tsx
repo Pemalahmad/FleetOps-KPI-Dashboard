@@ -50,8 +50,9 @@ export default function PlanPage() {
           </ul>
         </Card>
 
-        <Card title="Licence key" sub="Not needed during early access. A key is checked on this device; it is never sent anywhere.">
-          <div className="flex gap-2">
+        <ProtectCard />
+        <Card className="lg:col-span-2" title="Licence key" sub="Not needed during early access. A key is checked on this device; it is never sent anywhere.">
+          <div className="flex max-w-xl gap-2">
             <div className="flex flex-1 items-center gap-2 rounded-lg border border-border px-2.5">
               <Key size={15} className="text-faint" />
               <input value={key} onChange={(e) => setKey(e.target.value)} placeholder="Paste a licence key" className="w-full bg-transparent py-2 text-[13px] outline-none" />
@@ -64,7 +65,6 @@ export default function PlanPage() {
           </div>
           {keyMsg && <p className="mt-2 text-[12.5px]" style={{ color: keyMsg.ok ? "var(--good)" : "var(--bad)" }}>{keyMsg.text}</p>}
         </Card>
-        <ProtectCard />
       </div>
 
       <SectionTitle sub="Three ways to run FleetOps without depending on a connection.">Offline</SectionTitle>

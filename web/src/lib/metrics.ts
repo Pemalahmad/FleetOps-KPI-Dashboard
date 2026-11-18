@@ -23,13 +23,13 @@ export interface MetricNode {
 }
 
 export const GROUPS: Record<Group, { label: string; color: string }> = {
-  north: { label: "North star", color: "#F43F5E" },
-  fleet: { label: "Fleet clock", color: "#F59E0B" },
-  clock: { label: "Hours per visit", color: "#06B6D4" },
-  workshop: { label: "Workshop clock", color: "#6366F1" },
-  customer: { label: "Customer clock", color: "#10B981" },
-  ledger: { label: "Ledger", color: "#8B5CF6" },
-  licence: { label: "Licence (a gate)", color: "#94A3B8" },
+  north: { label: "North star", color: "#312E81" },
+  fleet: { label: "Fleet clock", color: "#4F46E5" },
+  clock: { label: "Hours per visit", color: "#818CF8" },
+  workshop: { label: "Workshop clock", color: "#A5B4FC" },
+  customer: { label: "Customer clock", color: "#475569" },
+  ledger: { label: "Ledger", color: "#94A3B8" },
+  licence: { label: "Licence (a gate)", color: "#CBD5E1" },
 };
 
 export const NODES: MetricNode[] = [

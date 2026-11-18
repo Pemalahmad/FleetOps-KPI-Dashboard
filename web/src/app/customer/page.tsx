@@ -1,9 +1,9 @@
 "use client";
 
-import { Chart, PALETTE } from "@/components/chart";
+import { Chart, PALETTE, STATUS } from "@/components/chart";
 import { regionWhere, useEngine, useSql } from "@/components/engine-provider";
 import { Card, PageHeader, SectionTitle, Skeleton } from "@/components/ui";
-import { linesBy, monthLabels, months } from "@/lib/chart-helpers";
+import { contextLines, monthLabels, months } from "@/lib/chart-helpers";
 
 export default function CustomerPage() {
   const { region } = useEngine();
@@ -36,7 +36,7 @@ export default function CustomerPage() {
             yAxis: { type: "category", data: clocks.data!.map((r) => r.region) },
             series: (["workshop", "pickup", "back"] as const).map((k, i) => ({
               name: ["Workshop", "Pick-up", "Back to operations"][i], type: "bar" as const, stack: "c", barWidth: "58%",
-              itemStyle: { color: ["#6366F1", "#06B6D4", "#F59E0B"][i], borderRadius: i === 2 ? [0, 6, 6, 0] : 0 },
+              itemStyle: { color: PALETTE[i], borderRadius: i === 2 ? [0, 6, 6, 0] : 0 },
               label: { show: true, color: "#fff", textBorderWidth: 0, fontSize: 11, formatter: (x: { value: unknown }) => Number(x.value).toFixed(1) },
               data: clocks.data!.map((r) => Number(r[k]?.toFixed(2))),
             })),
@@ -46,22 +46,30 @@ export default function CustomerPage() {
 
       <SectionTitle>Satisfaction</SectionTitle>
       <div className="grid gap-4 lg:grid-cols-3">
-        <Card title="CSAT by region" sub="Share of 4-5★" className="lg:col-span-2">
-          {cust.data ? <Chart height={300} option={() => ({
-            tooltip: { trigger: "axis", valueFormatter: (v) => `${Number(v).toFixed(1)}%` },
-            legend: { type: "scroll" }, xAxis: { type: "category", data: monthLabels(cust.data!) },
+        <Card title="CSAT by region" sub="Share of 4-5★. Grey lines are regions (hover one to see it); purple is the median region." className="lg:col-span-2">
+          {cust.data ? <Chart height={300} option={(dark) => ({
+            tooltip: { trigger: "item", valueFormatter: (v) => `${Number(v).toFixed(1)}%` },
+            xAxis: { type: "category", data: monthLabels(cust.data!) },
             yAxis: { type: "value", scale: true, axisLabel: { formatter: "{value}%" } },
-            series: linesBy(cust.data!, (r) => r.region, (r) => r.csat_pct),
+            ...contextLines(cust.data!, (r) => r.region, (r) => r.csat_pct, "Median region", dark),
           })} /> : <Skeleton />}
         </Card>
-        <Card title="Rating distribution" sub="All responses in the window">
-          {dist.data ? <Chart height={300} option={() => ({
-            tooltip: { trigger: "item" },
-            series: [{ type: "pie", radius: ["52%", "78%"], padAngle: 2, itemStyle: { borderRadius: 6 },
-              label: { formatter: "{b}★ {d}%", fontSize: 11 },
-              data: dist.data!.map((d) => ({ name: String(d.rating), value: d.responses,
-                itemStyle: { color: ["#F43F5E", "#FB923C", "#FBBF24", "#34D399", "#10B981"][d.rating - 1] } })) }],
-          })} /> : <Skeleton />}
+        <Card title="Rating distribution" sub="Share of all responses in the window">
+          {dist.data ? <Chart height={300} option={(dark) => {
+            const total = dist.data!.reduce((n, d) => n + d.responses, 0) || 1;
+            const rows = [...dist.data!].sort((a, b) => a.rating - b.rating);
+            return {
+              grid: { left: 4, right: 56, top: 4, bottom: 4, containLabel: true },
+              tooltip: { trigger: "item", formatter: (x: unknown) => { const d = x as { name: string; dataIndex: number };
+                return `${d.name}\n${rows[d.dataIndex].responses.toLocaleString()} responses`; } },
+              xAxis: { type: "value", show: false, max: 100 },
+              yAxis: { type: "category", data: rows.map((d) => `${d.rating} ★`), axisLine: { show: false } },
+              series: [{ type: "bar", barWidth: 14, label: { show: true, position: "right", formatter: (x: unknown) => `${Number((x as { value: number }).value).toFixed(1)}%`,
+                color: dark ? "#9097b0" : "#5b6178", fontSize: 11 },
+                data: rows.map((d) => ({ value: (100 * d.responses) / total,
+                  itemStyle: { borderRadius: [0, 3, 3, 0], color: d.rating <= 2 ? STATUS.bad : d.rating === 3 ? (dark ? "#475569" : "#CBD5E1") : d.rating === 4 ? PALETTE[2] : PALETTE[0] } })) }],
+            };
+          }} /> : <Skeleton />}
         </Card>
       </div>
 
@@ -73,9 +81,9 @@ export default function CustomerPage() {
             yAxis: { type: "value", axisLabel: { formatter: "{value} h" } },
             series: [
               { name: "p90", type: "line", smooth: true, symbol: "none", data: k2k.data!.map((r) => r.p90),
-                lineStyle: { color: "#F59E0B", width: 2 }, areaStyle: { color: "rgba(245,158,11,.10)" } },
+                lineStyle: { color: "#94A3B8", width: 1.5, type: "dashed" } },
               { name: "p50", type: "line", smooth: true, symbol: "none", data: k2k.data!.map((r) => r.p50),
-                lineStyle: { color: "#6366F1", width: 2.5 }, areaStyle: { color: "rgba(99,102,241,.14)" } }],
+                lineStyle: { color: "#6366F1", width: 2 } }],
           })} /> : <Skeleton />}
         </Card>
         <Card title="Key-to-key by job type" sub="Jobs per duration bucket">
@@ -101,7 +109,7 @@ export default function CustomerPage() {
           yAxis: { type: "category", data: sites.data!.map((s) => s.site_name) },
           series: [{ type: "bar", barWidth: "60%", label: { show: true, position: "right", formatter: "{c}%", fontSize: 11, color: dark ? "#9097b0" : "#5b6178", textBorderWidth: 0 },
             data: sites.data!.map((s) => ({ value: Number(s.csat_pct.toFixed(1)),
-              itemStyle: { borderRadius: [0, 6, 6, 0], color: s.csat_pct >= 85 ? "#10B981" : s.csat_pct >= 75 ? "#F59E0B" : "#F43F5E" } })) }],
+              itemStyle: { borderRadius: [0, 3, 3, 0], color: s.csat_pct >= 85 ? PALETTE[0] : s.csat_pct >= 75 ? STATUS.warn : STATUS.bad } })) }],
         })} /> : <Skeleton />}
       </Card>
     </>

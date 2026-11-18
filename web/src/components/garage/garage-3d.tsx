@@ -47,9 +47,12 @@ export function Garage3D({ groups, onOpen, styleFor }: { groups: Record<GarageLa
         setFailed(true);
         return;
       }
-      const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
-      renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
-      renderer.shadowMap.enabled = true;
+      // A software renderer (no graphics card, e.g. a virtual machine) gets a still, shadow-free frame so the page stays responsive.
+      const gl = renderer.getContext(), info = gl.getExtension("WEBGL_debug_renderer_info");
+      const software = /swiftshader|llvmpipe|softpipe|software|basic render/i.test(String(info ? gl.getParameter(info.UNMASKED_RENDERER_WEBGL) : ""));
+      const reduced = software || matchMedia("(prefers-reduced-motion: reduce)").matches;
+      renderer.setPixelRatio(software ? 1 : Math.min(devicePixelRatio, 2));
+      renderer.shadowMap.enabled = !software;
       renderer.shadowMap.type = THREE.PCFShadowMap;
       renderer.outputColorSpace = THREE.SRGBColorSpace;
       renderer.toneMapping = THREE.ACESFilmicToneMapping;
@@ -66,17 +69,20 @@ export function Garage3D({ groups, onOpen, styleFor }: { groups: Record<GarageLa
 
       const scene = new THREE.Scene();
       // soft studio reflections for paint and glass, generated on the device (no image is loaded)
-      const pmrem = new THREE.PMREMGenerator(renderer);
-      const envMap = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
-      scene.environment = envMap;
-      scene.environmentIntensity = dark ? 0.55 : 0.5;
-      pmrem.dispose();
+      let envMap: { dispose(): void } | null = null;
+      if (!software) {
+        const pmrem = new THREE.PMREMGenerator(renderer);
+        const tex = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+        scene.environment = tex; envMap = tex;
+        scene.environmentIntensity = dark ? 0.55 : 0.5;
+        pmrem.dispose();
+      }
       const camera = new THREE.PerspectiveCamera(32, 1, 0.5, 200);
       scene.add(new THREE.HemisphereLight(dark ? "#b4bce0" : "#ffffff", dark ? "#1a1d2b" : "#b9bdcc", dark ? 1.7 : 1.15));
       const sun = new THREE.DirectionalLight("#ffffff", dark ? 2.2 : 2.0);
       sun.position.set(-14, 26, 16);
       sun.castShadow = true;
-      sun.shadow.mapSize.set(2048, 2048);
+      sun.shadow.mapSize.set(1536, 1536);
       Object.assign(sun.shadow.camera, { left: -24, right: 24, top: 18, bottom: -18, near: 1, far: 70 });
       sun.shadow.bias = -0.0004;
       scene.add(sun);
@@ -120,7 +126,7 @@ export function Garage3D({ groups, onOpen, styleFor }: { groups: Record<GarageLa
         const p = carProfile(style);
         const shape = (pts: [number, number][]) => new THREE.Shape(pts.map(([z, y]) => new THREE.Vector2(z, y)));
         const inner = p.width - 2 * BEV;
-        const body = keep(new THREE.ExtrudeGeometry(shape(p.outline), { depth: inner, bevelEnabled: true, bevelThickness: BEV, bevelSize: BEV, bevelSegments: 4, curveSegments: 8 }));
+        const body = keep(new THREE.ExtrudeGeometry(shape(p.outline), { depth: inner, bevelEnabled: true, bevelThickness: BEV, bevelSize: BEV, bevelSegments: 3, curveSegments: 6 }));
         body.translate(0, 0, -inner / 2).rotateY(-Math.PI / 2);
         // same depth, slightly larger bevel: the glass sits just proud of the painted body on every face
         const glass = keep(new THREE.ExtrudeGeometry(shape(p.glass), { depth: inner, bevelEnabled: true, bevelThickness: GBEV, bevelSize: GBEV, bevelSegments: 3 }));
@@ -318,7 +324,7 @@ export function Garage3D({ groups, onOpen, styleFor }: { groups: Record<GarageLa
       cv.addEventListener("pointerup", up); cv.addEventListener("pointerleave", leave);
 
       // render only while visible; animate the accident beacons and a gentle idle float unless motion is reduced
-      let visible = true, raf = 0;
+      let visible = true, raf = 0, last = 0;
       const io = new IntersectionObserver(([en]) => { visible = en.isIntersecting; if (visible) loop(); });
       io.observe(el);
       const timer = new THREE.Timer();
@@ -326,11 +332,18 @@ export function Garage3D({ groups, onOpen, styleFor }: { groups: Record<GarageLa
         cancelAnimationFrame(raf);
         if (!visible || document.hidden || disposed) return;
         timer.update(); const t = timer.getElapsed();
-        if (!reduced) {
+        // animate at about 20 frames a second, and only while something moves (a beacon, a hovered or settling car)
+        const moving = beacons.length > 0 || !!hovered || cars.some((x) => x.body.position.y !== x.baseY);
+        if (!reduced && moving && t - last >= 0.05) {
+          last = t;
           const pulse = 0.4 + 1.4 * Math.max(0, Math.sin(t * 5));
           beacons.forEach((b) => { b.emissiveIntensity = pulse; });
           if (hovered) hovered.body.position.y = hovered.baseY + 0.12 + Math.sin(t * 4) * 0.03;
-          cars.forEach((x) => { if (x !== hovered && x.body.position.y !== x.baseY) x.body.position.y += (x.baseY - x.body.position.y) * 0.25; });
+          cars.forEach((x) => {
+            if (x === hovered || x.body.position.y === x.baseY) return;
+            const dy = x.baseY - x.body.position.y;
+            x.body.position.y = Math.abs(dy) < 0.005 ? x.baseY : x.body.position.y + dy * 0.4;
+          });
           dirty = true;
         }
         if (dirty) { renderer.render(scene, camera); dirty = false; }
@@ -347,7 +360,7 @@ export function Garage3D({ groups, onOpen, styleFor }: { groups: Record<GarageLa
         cv.removeEventListener("pointerdown", down); cv.removeEventListener("pointermove", move);
         cv.removeEventListener("pointerup", up); cv.removeEventListener("pointerleave", leave);
         disposables.forEach((d) => d.dispose());
-        envMap.dispose();
+        envMap?.dispose();
         renderer.dispose();
         cv.remove();
       };

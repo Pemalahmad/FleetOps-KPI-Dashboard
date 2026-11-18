@@ -1,11 +1,11 @@
 "use client";
 
-import { Chart, PALETTE } from "@/components/chart";
+import { Chart, PALETTE, STATUS } from "@/components/chart";
 import { regionWhere, useEngine, useSql } from "@/components/engine-provider";
 import { Card, PageHeader, SectionTitle, Skeleton } from "@/components/ui";
 import { months } from "@/lib/chart-helpers";
 
-const STATUS_COLOR: Record<string, string> = { Valid: "#10B981", Expiring: "#F59E0B", Expired: "#F43F5E", Unknown: "#94A3B8" };
+const STATUS_COLOR: Record<string, string> = { Valid: PALETTE[1], Expiring: STATUS.warn, Expired: STATUS.bad, Unknown: "#DDE1EA" };
 
 export default function LicencePage() {
   const { region } = useEngine();
@@ -77,9 +77,9 @@ export default function LicencePage() {
             tooltip: { trigger: "axis", axisPointer: { type: "shadow" } }, legend: {},
             xAxis: { type: "value", max: 100, axisLabel: { formatter: "{value}%" } },
             yAxis: { type: "category", data: pm.data!.map((r) => r.powertrain) },
-            series: ([["On schedule", "#10B981", (r: NonNullable<typeof pm.data>[number]) => r.vehicles - r.overdue - r.due_soon],
-              ["Due soon", "#F59E0B", (r: NonNullable<typeof pm.data>[number]) => r.due_soon],
-              ["Overdue", "#F43F5E", (r: NonNullable<typeof pm.data>[number]) => r.overdue]] as const).map(([n, c, f]) => ({
+            series: ([["On schedule", PALETTE[1], (r: NonNullable<typeof pm.data>[number]) => r.vehicles - r.overdue - r.due_soon],
+              ["Due soon", STATUS.warn, (r: NonNullable<typeof pm.data>[number]) => r.due_soon],
+              ["Overdue", STATUS.bad, (r: NonNullable<typeof pm.data>[number]) => r.overdue]] as const).map(([n, c, f]) => ({
               name: n, type: "bar" as const, stack: "p", barWidth: "55%", itemStyle: { color: c },
               data: pm.data!.map((r) => Number(((100 * f(r)) / r.vehicles).toFixed(1))) })),
           })} /> : <Skeleton />}
@@ -115,16 +115,25 @@ export default function LicencePage() {
         </Card>
       </div>
 
-      <SectionTitle sub="Cumulative completion by week since launch, per campaign and region.">Recalls</SectionTitle>
+      <SectionTitle sub="Cumulative completion by week since launch. Grey: each campaign and region (hover to see it); purple: the median.">Recalls</SectionTitle>
       <Card>
-        {recall.data ? <Chart height={300} option={() => {
+        {recall.data ? <Chart height={300} option={(dark) => {
           const keys = [...new Set(recall.data!.map((r) => `${r.campaign_id} · ${r.region}`))].sort();
+          const weeks = [...new Set(recall.data!.map((r) => r.week_no))].sort((a, b) => a - b);
+          const med = weeks.map((w) => {
+            const v = recall.data!.filter((r) => r.week_no === w).map((r) => r.cumulative_completion_pct).sort((a, b) => a - b);
+            const m = v.length >> 1;
+            return [w, v.length % 2 ? v[m] : (v[m - 1] + v[m]) / 2];
+          });
           return {
-            tooltip: { trigger: "axis", valueFormatter: (v) => `${Number(v).toFixed(1)}%` }, legend: { type: "scroll" },
+            tooltip: { trigger: "item", valueFormatter: (v) => `${Number(v).toFixed(1)}%` }, legend: { data: ["Median campaign"] },
             xAxis: { type: "value", name: "weeks since launch", nameLocation: "middle", nameGap: 26 },
             yAxis: { type: "value", max: 100, axisLabel: { formatter: "{value}%" } },
-            series: keys.map((k) => ({ name: k, type: "line" as const, smooth: true, symbol: "none", lineStyle: { width: 1.8 },
+            series: [...keys.map((k) => ({ name: k, type: "line" as const, symbol: "none", z: 1, lineStyle: { width: 1, color: dark ? "#3a4159" : "#d3d7e2" },
+              emphasis: { focus: "series" as const, lineStyle: { width: 2, color: dark ? "#c9cde0" : "#2b3150" } },
               data: recall.data!.filter((r) => `${r.campaign_id} · ${r.region}` === k).map((r) => [r.week_no, r.cumulative_completion_pct]) })),
+              { name: "Median campaign", type: "line" as const, symbol: "none", z: 3, lineStyle: { width: 2.25, color: dark ? "#818cf8" : "#6366f1" },
+                itemStyle: { color: dark ? "#818cf8" : "#6366f1" }, data: med }],
           };
         }} /> : <Skeleton />}
       </Card>

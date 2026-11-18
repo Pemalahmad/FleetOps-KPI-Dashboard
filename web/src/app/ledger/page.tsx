@@ -3,7 +3,7 @@
 import { Chart, PALETTE } from "@/components/chart";
 import { regionWhere, useEngine, useSql } from "@/components/engine-provider";
 import { Card, PageHeader, SectionTitle, Skeleton } from "@/components/ui";
-import { linesBy, monthLabels, months } from "@/lib/chart-helpers";
+import { contextLines, linesBy, monthLabels, months } from "@/lib/chart-helpers";
 
 const PT = ["BEV", "PHEV", "HEV", "ICE"];
 
@@ -71,21 +71,21 @@ export default function LedgerPage() {
           yAxis: [{ type: "value", axisLabel: { formatter: (v: number) => `$${(v / 1000).toFixed(0)}k` } },
             { type: "value", axisLabel: { formatter: "{value}%" }, splitLine: { show: false } }],
           series: [
-            { name: "Goodwill paid", type: "bar", barWidth: "55%", itemStyle: { color: dark ? "rgba(245,158,11,.55)" : "rgba(245,158,11,.7)", borderRadius: [5, 5, 0, 0] },
+            { name: "Goodwill paid", type: "bar", barWidth: "55%", itemStyle: { color: dark ? "#475569" : "#CBD5E1", borderRadius: [3, 3, 0, 0] },
               data: gw.data!.map((r) => Math.round(r.goodwill)) },
-            { name: "% of service spend", type: "line", yAxisIndex: 1, smooth: true, symbolSize: 6, lineStyle: { width: 2.5, color: "#6366F1" }, itemStyle: { color: "#6366F1" },
+            { name: "% of service spend", type: "line", yAxisIndex: 1, smooth: true, symbolSize: 5, lineStyle: { width: 2, color: "#6366F1" }, itemStyle: { color: "#6366F1" },
               data: gw.data!.map((r) => Number(((100 * r.goodwill) / r.spend).toFixed(2))) }],
         })} /> : <Skeleton />}
       </Card>
 
       <SectionTitle>Budget and powertrain economics</SectionTitle>
       <div className="grid gap-4 lg:grid-cols-2">
-        <Card title="Cost vs budget by region" sub="Fleet-paid maintenance, % over (+) or under (−) budget">
-          {cost.data ? <Chart height={300} option={() => ({
-            tooltip: { trigger: "axis", valueFormatter: (v) => `${Number(v).toFixed(1)}%` }, legend: { type: "scroll" },
+        <Card title="Cost vs budget by region" sub="Fleet-paid maintenance, % over (+) or under (−) budget. Grey: each region; purple: median.">
+          {cost.data ? <Chart height={300} option={(dark) => ({
+            tooltip: { trigger: "item", valueFormatter: (v) => `${Number(v).toFixed(1)}%` },
             xAxis: { type: "category", data: monthLabels(cost.data!) },
             yAxis: { type: "value", axisLabel: { formatter: "{value}%" } },
-            series: linesBy(cost.data!, (r) => r.region, (r) => r.cost_vs_budget_pct),
+            ...contextLines(cost.data!, (r) => r.region, (r) => r.cost_vs_budget_pct, "Median region", dark),
           })} /> : <Skeleton />}
         </Card>
         <Card title="Cost per km by powertrain" sub="Energy + maintenance + depreciation">
@@ -95,8 +95,8 @@ export default function LedgerPage() {
               tooltip: { trigger: "axis", axisPointer: { type: "shadow" }, valueFormatter: (v) => `$${Number(v).toFixed(3)}` }, legend: {},
               xAxis: { type: "category", data: rows.map((r) => r.powertrain) },
               yAxis: { type: "value", axisLabel: { formatter: (v: number) => `$${v.toFixed(2)}` } },
-              series: ([["energy_cost_per_km", "Energy", "#06B6D4"], ["maintenance_cost_per_km", "Maintenance", "#6366F1"],
-                ["depreciation_per_km", "Depreciation", "#94A3B8"]] as const).map(([k, n, c], i) => ({
+              series: ([["energy_cost_per_km", "Energy", PALETTE[2]], ["maintenance_cost_per_km", "Maintenance", PALETTE[0]],
+                ["depreciation_per_km", "Depreciation", PALETTE[1]]] as const).map(([k, n, c], i) => ({
                 name: n, type: "bar" as const, stack: "t", barWidth: "45%", itemStyle: { color: c, borderRadius: i === 2 ? [5, 5, 0, 0] : 0 },
                 data: rows.map((r) => r[k]) })),
             };

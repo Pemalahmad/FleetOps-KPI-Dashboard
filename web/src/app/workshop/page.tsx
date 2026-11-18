@@ -1,9 +1,9 @@
 "use client";
 
-import { Chart, PALETTE } from "@/components/chart";
+import { Chart, PALETTE, RISK_SCALE, STATUS } from "@/components/chart";
 import { regionWhere, useEngine, useSql } from "@/components/engine-provider";
 import { Card, PageHeader, SectionTitle, Skeleton } from "@/components/ui";
-import { linesBy, monthLabels } from "@/lib/chart-helpers";
+import { contextLines, linesBy, monthLabels } from "@/lib/chart-helpers";
 
 export default function WorkshopPage() {
   const { region } = useEngine();
@@ -32,7 +32,7 @@ export default function WorkshopPage() {
         turnaround runs far above the network and its own trend.
       </PageHeader>
 
-      <Card title="Weekly turnaround by site" sub="Median hours, key in → ready. Outlined cells are INTERVENE weeks (SOP-03).">
+      <Card title="Weekly turnaround by site" sub="Median hours, key in → ready; darker is slower. A dot marks an INTERVENE week (SOP-03).">
         {weekly.data ? (() => {
           const wks = [...new Set(weekly.data!.map((r) => r.wk))].sort();
           const sites = [...new Set(weekly.data!.map((r) => r.site_name))].sort();
@@ -45,18 +45,19 @@ export default function WorkshopPage() {
             yAxis: { type: "category", data: sites },
             visualMap: { min: 10, max: 50, dimension: 2, orient: "horizontal", left: "center", bottom: 0, itemHeight: 160, itemWidth: 10,
               textStyle: { color: dark ? "#9097b0" : "#5b6178" },
-              inRange: { color: dark ? ["#1e2240", "#4f46e5", "#f59e0b", "#f43f5e"] : ["#eef0ff", "#818cf8", "#f59e0b", "#e11d48"] } },
+              seriesIndex: 0, inRange: { color: dark ? ["#1a1e2e", "#2f3370", "#5b5fc7", "#a5b4fc"] : ["#f4f5fa", "#dfe3fb", "#a5b4fc", "#4f46e5"] } },
             series: [{ type: "heatmap", itemStyle: { borderColor: dark ? "#11141f" : "#fff", borderWidth: 1 },
-              data: weekly.data!.map((r) => ({
-                value: [wks.indexOf(r.wk), sites.indexOf(r.site_name), Number((r.p50_turnaround_h ?? 0).toFixed(1)), r.status],
-                itemStyle: r.status === "INTERVENE" ? { borderColor: dark ? "#fb7185" : "#e11d48", borderWidth: 1.5 } : undefined })) }],
+              data: weekly.data!.map((r) => [wks.indexOf(r.wk), sites.indexOf(r.site_name), Number((r.p50_turnaround_h ?? 0).toFixed(1)), r.status]) },
+              // INTERVENE weeks: a small dark dot in the cell, readable on any heat colour
+              { type: "scatter", symbolSize: 5, silent: true, z: 3, itemStyle: { color: dark ? "#ffffff" : "#0f1222" },
+                data: weekly.data!.filter((r) => r.status === "INTERVENE").map((r) => [wks.indexOf(r.wk), sites.indexOf(r.site_name)]) }],
           })} />;
         })() : <Skeleton height={380} />}
       </Card>
 
       <SectionTitle sub="Comebacks on the same fault within the repeat window; each one runs every clock twice.">Fix it once</SectionTitle>
       <div className="grid gap-4 lg:grid-cols-[1fr_1.4fr]">
-        <Card title="Repeat repairs by site" sub="Last quarter">
+        <Card title="Repeat repairs by site" sub="Last quarter; red above 8%, dashed line is the 5% target">
           {rep.data ? <Chart height={rowsH} option={(dark) => ({
             grid: { left: 8, right: 120, top: 8, bottom: 8, containLabel: true },
             tooltip: { trigger: "axis", axisPointer: { type: "none" } },
@@ -66,24 +67,28 @@ export default function WorkshopPage() {
               label: { show: true, position: "right", fontSize: 11, color: dark ? "#9097b0" : "#5b6178", textBorderWidth: 0,
                 formatter: (x: { dataIndex: number; value: unknown }) => `${x.value}% · ${rep.data![x.dataIndex].repeat_repairs} comebacks` },
               data: rep.data!.map((r) => ({ value: Number((r.repeat_repair_pct ?? 0).toFixed(1)),
-                itemStyle: { borderRadius: [0, 6, 6, 0], color: r.repeat_repair_pct <= 5 ? "#10B981" : r.repeat_repair_pct <= 8 ? "#F59E0B" : "#F43F5E" } })) }],
+                itemStyle: { borderRadius: [0, 3, 3, 0], color: r.repeat_repair_pct > 8 ? STATUS.bad : dark ? "#818cf8" : "#6366f1" } })),
+              markLine: { silent: true, symbol: "none", data: [{ xAxis: 5 }], label: { formatter: "5%", position: "end", fontSize: 10.5, color: dark ? "#9097b0" : "#5b6178" },
+                lineStyle: { type: "dashed", width: 1, color: dark ? "#5d6480" : "#9aa0b4" } } }],
           })} /> : <Skeleton />}
         </Card>
-        <Card title="Common repair & issue categories" sub="Jobs by category, then powertrain; colour = repeat-repair %">
+        <Card title="Common repair & issue categories" sub="Jobs by category, with the repeat-repair rate; red above 8%">
           {cats.data ? <Chart height={rowsH} option={(dark) => {
-            const cs = [...new Set(cats.data!.map((c) => c.issue_category))];
+            const agg = [...new Set(cats.data!.map((c) => c.issue_category))].map((c) => {
+              const xs = cats.data!.filter((x) => x.issue_category === c), jobs = xs.reduce((n, x) => n + x.jobs, 0);
+              const rr = jobs ? xs.reduce((n, x) => n + (x.repeat_repair_pct ?? 0) * x.jobs, 0) / jobs : 0;
+              return { c, jobs, rr };
+            }).sort((a, b) => a.jobs - b.jobs);
             return {
-              tooltip: { formatter: (x: unknown) => {
-                const d = x as { name: string; value: number[] | number; data: { rr?: number; cost?: number } };
-                const jobs = Array.isArray(d.value) ? d.value[0] : d.value;
-                return `${d.name}\n${Number(jobs).toLocaleString()} jobs${d.data.rr !== undefined ? `\nrepeat ${d.data.rr.toFixed(1)}% · avg $${d.data.cost?.toFixed(0)}` : ""}`; } },
-              visualMap: { show: false, min: 0, max: 10, dimension: 1, inRange: { color: ["#10B981", "#F59E0B", "#F43F5E"] } },
-              series: [{ type: "treemap", roam: false, nodeClick: false, breadcrumb: { show: false }, top: 0, left: 0, right: 0, bottom: 0,
-                upperLabel: { show: true, height: 22, color: "#fff", fontWeight: 600 }, label: { fontSize: 11, formatter: "{b}" },
-                itemStyle: { borderColor: dark ? "#11141f" : "#fff", borderWidth: 2, gapWidth: 2, borderRadius: 6 },
-                levels: [{ itemStyle: { borderWidth: 3, gapWidth: 3 } }, {}],
-                data: cs.map((c) => ({ name: c, children: cats.data!.filter((x) => x.issue_category === c).map((x) => ({
-                  name: x.powertrain, value: [x.jobs, x.repeat_repair_pct ?? 0], rr: x.repeat_repair_pct ?? 0, cost: x.avg_cost })) })) }],
+              grid: { left: 4, right: 110, top: 4, bottom: 4, containLabel: true },
+              tooltip: { trigger: "item", formatter: (x: unknown) => { const a = agg[(x as { dataIndex: number }).dataIndex];
+                return `${a.c}\n${a.jobs.toLocaleString()} jobs · repeat ${a.rr.toFixed(1)}%`; } },
+              xAxis: { type: "value", splitNumber: 3 },
+              yAxis: { type: "category", data: agg.map((a) => a.c), axisLine: { show: false } },
+              series: [{ type: "bar", barWidth: 12, data: agg.map((a) => ({ value: a.jobs,
+                itemStyle: { borderRadius: [0, 3, 3, 0], color: a.rr > 8 ? STATUS.bad : dark ? "#818cf8" : "#6366f1" } })),
+                label: { show: true, position: "right", fontSize: 10.5, color: dark ? "#9097b0" : "#5b6178",
+                  formatter: (x: unknown) => { const a = agg[(x as { dataIndex: number }).dataIndex]; return `${a.jobs.toLocaleString()} · ${a.rr.toFixed(1)}% repeat`; } } }],
             };
           }} /> : <Skeleton />}
         </Card>
@@ -96,7 +101,7 @@ export default function WorkshopPage() {
             tooltip: { trigger: "axis", valueFormatter: (v) => `${Number(v).toFixed(1)}%` }, legend: {},
             xAxis: { type: "category", data: monthLabels(parts.data!) },
             yAxis: { type: "value", max: 100, axisLabel: { formatter: "{value}%" } },
-            series: linesBy(parts.data!, (r) => r.supplier, (r) => r.on_time_pct, 2.5).map((s, i) => ({ ...s, lineStyle: { width: 2.5, color: PALETTE[i] } })),
+            series: linesBy(parts.data!, (r) => r.supplier, (r) => r.on_time_pct, 1.75).map((s, i) => ({ ...s, lineStyle: { width: 1.75, color: PALETTE[i] } })),
           })} /> : <Skeleton />}
         </Card>
         <Card title="Open orders, overdue first">
@@ -128,18 +133,21 @@ export default function WorkshopPage() {
           {backlog.data ? <Chart height={Math.max(300, backlog.data.length * 26)} option={() => ({
             tooltip: { trigger: "axis", axisPointer: { type: "shadow" } }, legend: {},
             xAxis: { type: "value" }, yAxis: { type: "category", data: backlog.data!.map((b) => b.site_name) },
-            series: ([["age_lt_1d", "< 1 day", "#10B981"], ["age_1_3d", "1-3 days", "#84CC16"], ["age_3_7d", "3-7 days", "#F59E0B"],
-              ["age_7d_plus", "7+ days", "#F43F5E"]] as const).map(([k, n, c]) => ({
+            series: ([["age_lt_1d", "< 1 day", RISK_SCALE[0]], ["age_1_3d", "1-3 days", RISK_SCALE[1]], ["age_3_7d", "3-7 days", RISK_SCALE[2]],
+              ["age_7d_plus", "7+ days", RISK_SCALE[3]]] as const).map(([k, n, c]) => ({
               name: n, type: "bar" as const, stack: "b", itemStyle: { color: c }, data: backlog.data!.map((b) => b[k]) })),
           })} /> : <Skeleton />}
         </Card>
-        <Card title="Technician productivity by site">
-          {prod.data ? <Chart height={Math.max(300, (backlog.data?.length ?? 12) * 26)} option={() => ({
-            tooltip: { trigger: "axis", valueFormatter: (v) => `${Number(v).toFixed(1)}%` }, legend: { type: "scroll" },
-            xAxis: { type: "category", data: monthLabels(prod.data!) },
-            yAxis: { type: "value", scale: true, axisLabel: { formatter: "{value}%" } },
-            series: linesBy(prod.data!, (r) => r.site_name, (r) => r.productivity_pct, 1.6),
-          })} /> : <Skeleton />}
+        <Card title="Technician productivity by site" sub="Grey: each site (hover to see it); purple: median site; dashed: 80% target">
+          {prod.data ? <Chart height={Math.max(300, (backlog.data?.length ?? 12) * 26)} option={(dark) => {
+            const ctx = contextLines(prod.data!, (r) => r.site_name, (r) => r.productivity_pct, "Median site", dark, { value: 80, label: "target 80%" });
+            return {
+              tooltip: { trigger: "item", valueFormatter: (v) => `${Number(v).toFixed(1)}%` },
+              xAxis: { type: "category", data: monthLabels(prod.data!) },
+              yAxis: { type: "value", scale: true, axisLabel: { formatter: "{value}%" } },
+              ...ctx,
+            };
+          }} /> : <Skeleton />}
         </Card>
       </div>
     </>

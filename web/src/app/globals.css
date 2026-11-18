@@ -60,7 +60,7 @@ h1, h2, h3 { letter-spacing: -0.02em; text-wrap: balance; }
 ::selection { background: var(--accent-soft); }
 :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 6px; }
 
-.card { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; box-shadow: 0 2px 4px rgb(15 18 34 / 0.025); }
+.card { min-width: 0; background: var(--panel); border: 1px solid var(--border); border-radius: 12px; }
 button, a, input, select, textarea { -webkit-tap-highlight-color: transparent; }
 button:not(:disabled), summary { cursor: pointer; }
 button:disabled { cursor: not-allowed; }

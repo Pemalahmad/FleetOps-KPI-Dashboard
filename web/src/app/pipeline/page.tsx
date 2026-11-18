@@ -6,7 +6,7 @@ import { Chart } from "@/components/chart";
 import { useEngine } from "@/components/engine-provider";
 import { Card, PageHeader, SectionTitle, Skeleton } from "@/components/ui";
 
-const LAYER_COLOR: Record<string, string> = { source: "#94A3B8", staging: "#06B6D4", intermediate: "#6366F1", marts: "#10B981" };
+const LAYER_COLOR: Record<string, string> = { source: "#CBD5E1", staging: "#94A3B8", intermediate: "#A5B4FC", marts: "#6366F1" };
 
 export default function PipelinePage() {
   const { log, runDemo, runMine, dataset, workspace, status } = useEngine();
@@ -86,15 +86,18 @@ export default function PipelinePage() {
         <>
           <SectionTitle sub="Validation rules that found rows to fix. Errors block the build; warnings do not.">Data quality</SectionTitle>
           <Card>
-            <table className="w-full text-[12.5px]">
-              <thead className="text-left text-faint"><tr><th className="py-1 font-medium">Rule</th><th className="font-medium">Table</th><th className="font-medium">Check</th><th className="text-right font-medium">Rows</th><th className="font-medium">Examples</th></tr></thead>
+            <div className="overflow-x-auto">
+            <table className="w-full min-w-[720px] border-collapse text-[12.5px]">
+              <thead className="text-left text-faint"><tr className="[&>th]:px-3 [&>th]:py-2 [&>th]:font-medium">
+                <th className="!pl-0">Rule</th><th>Table</th><th>Check</th><th className="text-right">Rows</th><th className="!pr-0">Examples</th></tr></thead>
               <tbody>{log.issues.map((i) => (
-                <tr key={i.rule} className="border-t border-border">
-                  <td className="py-1.5" style={{ color: i.severity === "error" ? "var(--bad)" : "var(--warn)" }}>{i.rule}</td>
-                  <td>{i.table}</td><td className="text-muted">{i.check}</td><td className="tnum text-right">{i.count}</td><td className="text-muted">{i.example}</td>
+                <tr key={i.rule} className="border-t border-border align-top [&>td]:px-3 [&>td]:py-2">
+                  <td className="!pl-0 font-mono text-[11.5px]"><span className="mr-1.5 inline-block h-1.5 w-1.5 rounded-full align-middle" style={{ background: i.severity === "error" ? "var(--bad)" : "var(--warn)" }} />{i.rule}</td>
+                  <td>{i.table}</td><td className="text-muted">{i.check}</td><td className="tnum text-right">{i.count}</td><td className="!pr-0 text-muted">{i.example}</td>
                 </tr>))}
               </tbody>
             </table>
+            </div>
           </Card>
         </>
       )}
@@ -154,7 +157,7 @@ function Lineage({ log }: { log: NonNullable<ReturnType<typeof useEngine>["log"]
       series: [{
         type: "graph", layout: "none", roam: false, left: 150, right: 190, top: 16, bottom: 16, edgeSymbol: ["none", "arrow"], edgeSymbolSize: 5,
         label: { show: true, fontSize: 10, color: dark ? "#9097b0" : "#5b6178", position: "right" },
-        emphasis: { focus: "adjacency", lineStyle: { width: 2.5, opacity: 1 }, label: { color: dark ? "#e8eaf3" : "#0f1222", fontWeight: 600 } },
+        emphasis: { focus: "adjacency", lineStyle: { width: 2, opacity: 1 }, label: { color: dark ? "#e8eaf3" : "#0f1222", fontWeight: 600 } },
         data: placed.map((n) => ({ id: n.id, name: n.id, x: n.x, y: n.y, symbolSize: 8,
           itemStyle: { color: LAYER_COLOR[n.layer] }, label: { position: n.layer === "source" ? "left" : "right" } })),
         links: log.models.flatMap((m) => [...m.deps, ...m.sources].map((d) => ({ source: d, target: m.name }))),

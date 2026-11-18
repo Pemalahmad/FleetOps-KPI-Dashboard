@@ -14,7 +14,12 @@ export function useTheme() {
   return useSyncExternalStore(subscribeTheme, () => document.documentElement.classList.contains("dark"), () => false);
 }
 
-export const PALETTE = ["#6366F1", "#06B6D4", "#F59E0B", "#10B981", "#F43F5E", "#8B5CF6", "#64748B", "#EC4899"];
+/** One family of colours for series: the purple accent and slate tones. Colour means a category, never decoration. */
+export const PALETTE = ["#6366F1", "#94A3B8", "#A5B4FC", "#475569", "#C7D2FE", "#64748B", "#4338CA", "#CBD5E1"];
+/** Status colours, used only where a mark means good, watch or bad. */
+export const STATUS = { good: "#34A37E", warn: "#E0A63A", bad: "#E05A6B", neutral: "#A3AAC0", goodSoft: "#9ED3BE", badSoft: "#F0A9B2" };
+/** Ordered steps from fine to urgent (age buckets, ratings, heat). */
+export const RISK_SCALE = ["#CBD5E1", "#94A3B8", "#E0A63A", "#E05A6B"];
 
 export function tokens(dark: boolean) {
   return dark
@@ -29,7 +34,7 @@ function base(dark: boolean): EChartsOption {
     axisLine: { lineStyle: { color: t.grid } },
     axisTick: { show: false },
     axisLabel: { color: t.muted, fontSize: 11 },
-    splitLine: { lineStyle: { color: t.grid } },
+    splitLine: { lineStyle: { color: t.grid, type: "dashed" as const } },
     nameTextStyle: { color: t.muted, fontSize: 11 },
   };
   return {
@@ -37,7 +42,7 @@ function base(dark: boolean): EChartsOption {
     color: PALETTE,
     textStyle: { fontFamily: "var(--font-geist-sans), system-ui, sans-serif", color: t.text },
     grid: { left: 8, right: 16, top: 28, bottom: 8, containLabel: true },
-    legend: { textStyle: { color: t.muted, fontSize: 11 }, icon: "roundRect", itemWidth: 10, itemHeight: 10, top: 0 },
+    legend: { textStyle: { color: t.muted, fontSize: 11 }, icon: "circle", itemWidth: 7, itemHeight: 7, itemGap: 14, top: 0, right: 0 },
     tooltip: {
       renderMode: "richText", // Draw imported labels on canvas; never interpret them as HTML.
       backgroundColor: t.panel, borderColor: t.grid, textStyle: { color: t.text, fontSize: 12 },

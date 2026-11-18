@@ -137,7 +137,7 @@ function Graph({ values, models, sel, onSelect, targets, focus }: {
           return {
             id: n.id, name: n.id, x: POS[n.id][0], y: POS[n.id][1], symbolSize: big ? 46 : n.id === sel ? 30 : 22,
             itemStyle: { opacity: focus && !connected.has(n.id) ? 0.2 : 1, color: GROUPS[n.group].color, borderColor: n.id === sel ? t.text : r ? ragColor(r).replace(/var\((.*)\)/, (_, v) => ({ "--good": t.good, "--warn": t.warn, "--bad": t.bad } as Record<string, string>)[v] ?? t.faint) : t.panel,
-              borderWidth: n.id === sel ? 3 : r ? 3 : 1, shadowBlur: n.id === sel ? 18 : 0, shadowColor: GROUPS[n.group].color },
+              borderWidth: n.id === sel ? 3 : r ? 3 : 1, shadowBlur: 0 },
           };
         }),
         links: EDGES.map((e) => {
@@ -170,7 +170,7 @@ function Detail({ id, models, p, onSelect }: { id: string; models: FittedModel[]
   const v = last[id];
   return (
     <Card className="xl:sticky xl:top-36 xl:max-h-[calc(100vh-10rem)] xl:self-start xl:overflow-y-auto">
-      <p className="text-[12px] font-semibold uppercase tracking-[0.1em]" style={{ color: GROUPS[n.group].color }}>{GROUPS[n.group].label}</p>
+      <p className="text-[12.5px] text-muted">{GROUPS[n.group].label}</p>
       <h2 className="mt-1 text-[22px] font-semibold">{n.label}</h2>
       <p className="mt-1 text-[13.5px] text-muted">{n.meaning}</p>
       {id === "key_to_key" && <p className="mt-2 text-[12px] text-warn">Across regions this is a job-weighted mean of regional medians, not a pooled fleet median.</p>}
@@ -224,7 +224,7 @@ function Detail({ id, models, p, onSelect }: { id: string; models: FittedModel[]
 function Block({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div className="mt-5 border-t border-border pt-4">
-      <p className="mb-2 text-[12px] font-semibold uppercase tracking-[0.08em] text-faint">{title}</p>
+      <p className="mb-2 text-[12.5px] font-semibold text-muted">{title}</p>
       <div className="text-[13.5px] text-muted">{children}</div>
     </div>
   );
@@ -394,7 +394,7 @@ function Corr({ rows }: { rows: ReturnType<typeof usePanel>["all"] }) {
       tooltip: { formatter: (x: unknown) => { const d = (x as { data: [number, number, number] }).data; return `${NODE[ids[d[1]]].label} × ${NODE[ids[d[0]]].label}\nr = ${d[2]}`; } },
       xAxis: { type: "category", data: ids.map((i) => NODE[i].label), axisLabel: { rotate: 45, fontSize: 10, interval: 0 }, splitArea: { show: false } },
       yAxis: { type: "category", data: ids.map((i) => NODE[i].label), axisLabel: { fontSize: 10, interval: 0 }, inverse: true },
-      visualMap: { min: -1, max: 1, show: false, inRange: { color: dark ? ["#fb7185", "#1c1f2e", "#818cf8"] : ["#e11d48", "#f5f6fa", "#4f46e5"] } },
+      visualMap: { min: -1, max: 1, show: false, inRange: { color: dark ? ["#a3485a", "#171b29", "#5b5fc7"] : ["#f2a7b1", "#f8f9fc", "#a5b4fc"] } },
       series: [{ type: "heatmap", data, label: { show: true, fontSize: 9, color: dark ? "#e8eaf3" : "#0f1222", formatter: (x: unknown) => {
         const v = (x as { data: [number, number, number | null] }).data[2]; return v === null ? "" : Math.abs(v) >= 0.3 ? v.toFixed(1) : ""; } },
         itemStyle: { borderColor: dark ? "#11141f" : "#fff", borderWidth: 1 } }],
@@ -438,7 +438,7 @@ function Evidence() {
               yAxis: { type: "value", axisLabel: { formatter: "{value}%" } },
               series: [
                 { name: "observed (12 bins)", type: "scatter", symbolSize: 8, data: bins.data!.map((b) => [Number(b.k.toFixed(1)), Number(b.rate.toFixed(2))]) },
-                { name: "fitted", type: "line", smooth: true, symbol: "none", lineStyle: { width: 2.5 },
+                { name: "fitted", type: "line", smooth: true, symbol: "none", lineStyle: { width: 2 },
                   data: Array.from({ length: 41 }, (_, i) => { const x = (i / 40) * Math.max(...bins.data!.map((b) => b.k)); return [Number(x.toFixed(1)), Number((100 / (1 + Math.exp(-(lg.b0 + lg.b1 * x)))).toFixed(2))]; }) },
               ],
             })} />
@@ -460,8 +460,8 @@ function Evidence() {
               xAxis: { type: "category", data: ["First visit", "Comeback"] },
               yAxis: { type: "value", axisLabel: { formatter: "{value}%" } },
               series: [{ type: "bar", barWidth: "45%", data: [
-                { value: Number((100 * risk.p0).toFixed(2)), itemStyle: { color: "#94A3B8", borderRadius: [6, 6, 0, 0] } },
-                { value: Number((100 * risk.p1).toFixed(2)), itemStyle: { color: "#F43F5E", borderRadius: [6, 6, 0, 0] } }],
+                { value: Number((100 * risk.p0).toFixed(2)), itemStyle: { color: "#94A3B8", borderRadius: [3, 3, 0, 0] } },
+                { value: Number((100 * risk.p1).toFixed(2)), itemStyle: { color: "#E05A6B", borderRadius: [3, 3, 0, 0] } }],
                 label: { show: true, position: "top", formatter: "{c}%" } }],
             })} />
             <div className="mt-2 text-[12.5px] text-muted">
@@ -483,7 +483,7 @@ function Evidence() {
               series: [
                 { type: "scatter", symbolSize: 3, itemStyle: { color: dark ? "rgba(129,140,248,.35)" : "rgba(99,102,241,.3)" },
                   data: pw.data!.filter((r) => r.s).map((r) => [r.x, r.y]) },
-                { type: "line", symbol: "none", lineStyle: { width: 2.5, color: "#F59E0B" },
+                { type: "line", symbol: "none", lineStyle: { width: 2, color: dark ? "#c9cde0" : "#2b3150" },
                   data: [0, Math.max(...pw.data!.map((r) => r.x))].map((x) => [x, fit.intercept + fit.slope * x]) },
               ],
             })} />

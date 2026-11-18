@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 import { ArrowRight, CalendarPlus, CloudArrowDown, FileXls, MagnifyingGlass, X } from "@phosphor-icons/react";
-import { Chart, PALETTE } from "@/components/chart";
+import { Chart, PALETTE, STATUS } from "@/components/chart";
 import { regionWhere, useEngine, useSql } from "@/components/engine-provider";
 import { Card, PageHeader, SectionTitle, Skeleton, StatStrip } from "@/components/ui";
 import { decodeVins } from "@/lib/vin";
@@ -23,8 +23,8 @@ export interface RegistryRow {
   last_visit: string | null; service_spend: number; fines: number; unpaid_fines: number; next_action: string | null;
 }
 
-const STATUS_COLOR: Record<string, string> = { Valid: "#10B981", Expiring: "#F59E0B", Expired: "#F43F5E", Unknown: "#94A3B8" };
-const PT_COLOR: Record<string, string> = { BEV: "#6366F1", PHEV: "#06B6D4", HEV: "#10B981", ICE: "#94A3B8", Unknown: "#CBD5E1" };
+const STATUS_COLOR: Record<string, string> = { Valid: "var(--muted)", Expiring: STATUS.warn, Expired: STATUS.bad, Unknown: STATUS.neutral };
+const PT_COLOR: Record<string, string> = { BEV: PALETTE[0], PHEV: PALETTE[2], HEV: PALETTE[1], ICE: PALETTE[3], Unknown: PALETTE[7] };
 const PAGE = 40;
 
 export default function FleetPage() {
@@ -121,7 +121,7 @@ export default function FleetPage() {
             return {
               grid: { left: 8, right: 50, top: 8, bottom: 8, containLabel: true }, tooltip: { trigger: "axis", axisPointer: { type: "none" } },
               xAxis: { type: "value" }, yAxis: { type: "category", data: top.map((t) => t[0]), axisLabel: { width: 220, overflow: "truncate" } },
-              series: [{ type: "bar", barWidth: "60%", itemStyle: { color: "#6366F1", borderRadius: [0, 6, 6, 0] },
+              series: [{ type: "bar", barWidth: "60%", itemStyle: { color: "#6366F1", borderRadius: [0, 3, 3, 0] },
                 label: { show: true, position: "right", color: dark ? "#9097b0" : "#5b6178", textBorderWidth: 0 }, data: top.map((t) => t[1]) }],
             };
           }} /> : <Skeleton height={280} />}
@@ -238,7 +238,7 @@ function download(blob: Blob, name: string) {
   setTimeout(() => URL.revokeObjectURL(a.href), 1000);
 }
 
-const TRIM_TONES = ["var(--accent)", "#06B6D4", "#F59E0B", "#10B981", "#F43F5E", "#8B5CF6", "#64748B"];
+const TRIM_TONES = PALETTE;
 
 function ModelMix({ rows }: { rows: RegistryRow[] }) {
   const tree = useMemo(() => {
@@ -364,7 +364,7 @@ function VehicleDrawer({ row, onClose }: { row: RegistryRow | null; onClose: () 
             <>
               <div className="flex items-start justify-between">
                 <div>
-                  <p className="text-[12px] font-semibold uppercase tracking-[0.1em] text-accent">{row.powertrain ?? "Vehicle"}</p>
+                  <p className="text-[12.5px] text-muted">{row.powertrain ?? "Vehicle"}</p>
                   <Dialog.Title className="text-[22px] font-semibold">{row.plate_number ?? row.vehicle_id}</Dialog.Title>
                   <Dialog.Description className="text-[13px] text-muted">
                     {[row.model_year, row.make, row.model, row.trim].filter(Boolean).join(" ") || "Model not recorded"}

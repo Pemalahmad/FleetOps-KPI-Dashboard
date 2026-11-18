@@ -124,7 +124,7 @@ export function GaragePage() {
       <section className="garage-progress-grid" aria-label="Garage missions">
         <div className="garage-crew">
           <div className="flex items-center gap-3"><span className="garage-crew-badge"><Trophy size={22} weight="duotone" /></span>
-            <div className="min-w-0"><p className="text-[11px] font-medium uppercase tracking-[0.08em] text-muted">Crew rank</p><p className="text-[17px] font-semibold leading-tight">{level.name}</p></div>
+            <div className="min-w-0"><p className="text-[12px] text-muted">Crew rank</p><p className="text-[17px] font-semibold leading-tight">{level.name}</p></div>
             <p className="tnum ml-auto text-right text-[22px] font-bold leading-none">{NUM.format(xp)}<span className="block text-[11px] font-medium text-muted">XP</span></p></div>
           <div className="mt-4"><div className="garage-xp"><span style={{ width: level.pct + "%" }} /></div>
             <p className="mt-1.5 flex justify-between text-[11px] text-muted"><span>{level.next ? NUM.format(level.toNext) + " XP to " + level.next : "Top rank reached"}</span><span className="tnum">{doneToday} handover{doneToday === 1 ? "" : "s"} today</span></p></div>
