@@ -20,6 +20,7 @@ const eslintConfig = defineConfig([
     "src/components/bits/GlareHover.tsx",
     "src/components/bits/LogoLoop.tsx",
     "src/components/bits/Magnet.tsx",
+    "src/components/bits/SwarmCursor.tsx",
   ]),
 ]);
 

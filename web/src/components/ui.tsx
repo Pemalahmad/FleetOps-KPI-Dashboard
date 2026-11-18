@@ -120,7 +120,12 @@ export function CountIn({ value, decimals = 0 }: { value: number; decimals?: num
     io.observe(el);
     return () => io.disconnect();
   }, []);
-  return <span ref={ref}><NumberFlow value={seen ? value : 0} format={{ maximumFractionDigits: decimals, minimumFractionDigits: decimals }} /></span>;
+  const label = value.toLocaleString("en", { maximumFractionDigits: decimals, minimumFractionDigits: decimals });
+  return (
+    <span ref={ref} role="img" aria-label={label}>
+      <span aria-hidden="true"><NumberFlow value={seen ? value : 0} format={{ maximumFractionDigits: decimals, minimumFractionDigits: decimals }} /></span>
+    </span>
+  );
 }
 
 /** Colour for a value only when it needs attention; on-target numbers stay in the text colour. */

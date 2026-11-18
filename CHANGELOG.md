@@ -4,6 +4,10 @@ What changed in each version of FleetOps KPI. Dates are release dates; the newes
 
 ## Unreleased
 
+### Swarm cursor (2026-11-18)
+- Analytics: a particle swarm (React Bits SwarmCursor) follows the pointer and gathers around the KPI, live number or button under it; a fixed, click-through layer with an on/off switch remembered in this browser. Off for reduced motion and on machines without a graphics card.
+- Count-up numbers now expose their final value to screen readers.
+
 ### Live dashboards (2026-11-18)
 - LIVE badge in the top bar and live panels on the Garage, Analytics and Drivers pages: ticking numbers, a streaming chart and an incoming event feed; pause and resume.
 - Demo: a simulated feed from the demo fleet (trips, workshop check-ins, ready jobs, handovers, charging and refuelling, fines, alerts), labelled as simulated; 3D garage cars drive out and back on trips and handovers.

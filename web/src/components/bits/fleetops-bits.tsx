@@ -12,7 +12,9 @@ import ShinyText from "./ShinyText";
 import GlareHover from "./GlareHover";
 import LogoLoop from "./LogoLoop";
 import Magnet from "./Magnet";
+import SwarmCursor from "./SwarmCursor";
 import { useSyncExternalStore } from "react";
+import { createPortal } from "react-dom";
 import { useSoftwareGL, useTheme } from "../use-theme";
 
 /** Interactive dot field behind a page header; fades out towards the text. */
@@ -82,4 +84,42 @@ export function NameLoop({ names, label }: { names: string[]; label: string }) {
 export function Pull({ children, block = false }: { children: ReactNode; block?: boolean }) {
   const reduced = useReducedMotion();
   return <Magnet padding={36} magnetStrength={4} maxOffset={6} disabled={reduced} wrapperClassName={block ? "block" : "inline-block"} innerClassName={block ? "block" : undefined}>{children}</Magnet>;
+}
+
+const SWARM_KEY = "fleetops:swarm";
+const swarmSubs = new Set<() => void>();
+const readSwarm = () => { try { return localStorage.getItem(SWARM_KEY) !== "off"; } catch { return true; } };
+/** Whether the swarm cursor is on (a per-browser display preference, like the theme). */
+export function useSwarmSetting(): [boolean, (on: boolean) => void] {
+  const on = useSyncExternalStore((cb) => { swarmSubs.add(cb); return () => { swarmSubs.delete(cb); }; }, readSwarm, () => false);
+  const set = (v: boolean) => { try { localStorage.setItem(SWARM_KEY, v ? "on" : "off"); } catch { /* storage blocked: stays on for this view */ } swarmSubs.forEach((cb) => cb()); };
+  return [on, set];
+}
+
+/**
+ * A swarm of particles that follows the pointer across a dashboard and gathers around the KPI or button under it.
+ * A fixed, click-through layer; hidden while the pointer rests; off for reduced motion, on software rendering and
+ * when the reader switches it off.
+ */
+export function Swarm() {
+  const dark = useTheme(), software = useSoftwareGL(), reduced = useReducedMotion();
+  const [on] = useSwarmSetting();
+  if (software || reduced || !on || typeof document === "undefined") return null;
+  // portal to <body>: an animated ancestor would otherwise become the containing block of this fixed layer
+  return createPortal(
+    <div className="swarm-layer" aria-hidden="true">
+      <SwarmCursor key={dark ? "d" : "l"} count={260} size={2.2} shape="dot" color={dark ? "#818cf8" : "#6366f1"} accentColor={dark ? "#c7d2fe" : "#a5b4fc"}
+        spread={1} speed={1} tail={0.6} trail={0.5} idle="hide" clickEffect="pulse" hideCursor={false} lightMode={!dark}
+        targets="a, button, .ov-metric, .kpi-row, .live-num, [data-swarm-target]" />
+    </div>,
+    document.body,
+  );
+}
+
+/** The on/off switch for the swarm cursor. */
+export function SwarmToggle() {
+  const [on, set] = useSwarmSetting();
+  const software = useSoftwareGL(), reduced = useReducedMotion();
+  if (software || reduced) return null;
+  return <button className="ops-chip" aria-pressed={on} onClick={() => set(!on)}>{on ? "Swarm cursor on" : "Swarm cursor off"}</button>;
 }

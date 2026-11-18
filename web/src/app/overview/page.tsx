@@ -4,6 +4,7 @@ import Link from "next/link";
 import { ArrowRight } from "@phosphor-icons/react";
 import { Chart } from "@/components/chart";
 import { LivePanel } from "@/components/live";
+import { Swarm, SwarmToggle } from "@/components/bits/fleetops-bits";
 import type { EChartsOption } from "echarts";
 import { regionWhere, useEngine, useSql } from "@/components/engine-provider";
 import { attention, Card, Delta, KpiRow, Metric, PageHeader, rag, SectionTitle, Skeleton, type Rag } from "@/components/ui";
@@ -159,6 +160,8 @@ export default function Overview() {
         </Card>
       )}
 
+      <Swarm />
+      <div className="-mt-3 mb-3 flex justify-end"><SwarmToggle /></div>
       <LivePanel focus="fleet" />
       <section className="ov-hero" aria-label="Headline indicators">
         <div className="ov-north">

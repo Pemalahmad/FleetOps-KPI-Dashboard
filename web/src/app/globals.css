@@ -226,3 +226,5 @@ button:disabled { cursor: not-allowed; }
 .live-item { display: flex; align-items: center; gap: 9px; padding: 5px 4px; border-bottom: 1px solid var(--border); animation: live-in 360ms cubic-bezier(.2,.8,.2,1) both; }
 .live-kind { width: 6px; height: 6px; flex-shrink: 0; border-radius: 2px; }
 @media (max-width: 767px) { .live-last { display: none; } }
+.swarm-layer { position: fixed; inset: 0; z-index: 35; pointer-events: none; }
+.swarm-layer > * { pointer-events: none; }
