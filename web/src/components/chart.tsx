@@ -31,6 +31,11 @@ function base(dark: boolean): EChartsOption {
   };
   return {
     backgroundColor: "transparent",
+    // entrance: bars and points grow in with a short stagger, lines draw left to right
+    animationDuration: 850,
+    animationEasing: "cubicOut",
+    animationDelay: (i: number) => Math.min(i * 16, 480),
+    animationDurationUpdate: 450,
     color: PALETTE,
     textStyle: { fontFamily: "var(--font-geist-sans), system-ui, sans-serif", color: t.text },
     grid: { left: 8, right: 16, top: 28, bottom: 8, containLabel: true },

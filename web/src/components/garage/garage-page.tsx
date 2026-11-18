@@ -6,7 +6,7 @@ import { useMemo, useState } from "react";
 import { Bell, Car, ChartPieSlice, CheckCircle, Flag, MagnifyingGlass, ShieldCheck, Trophy, Warning, Wrench, X } from "@phosphor-icons/react";
 import { useEngine, useSql } from "../engine-provider";
 import { Card, Label, Skeleton } from "../ui";
-import { HeaderDots, Sparks } from "../bits/fleetops-bits";
+import { Glare, HeaderDots, Pull, Sparks } from "../bits/fleetops-bits";
 import { buildAlerts, deriveVehicle, LANES, localDate, vehicleLabel, type GarageAlert, type GarageContext, type GarageLane, type GarageRow, type GarageVehicle } from "@/lib/garage";
 import { GARAGE_SQL } from "@/lib/garage-query";
 import { GarageCar } from "./car";
@@ -83,7 +83,7 @@ export function GaragePage() {
       <div className="flex flex-wrap gap-2">
         <Link className="ops-button" href="/overview/"><ChartPieSlice size={17} /> Analytics</Link>
         <button className="ops-button" disabled={!ready} onClick={() => setNotifications(true)}><Bell size={17} /> Alerts <span className="garage-count">{unread > 99 ? "99+" : unread}</span></button>
-        <button className="garage-primary" disabled={!ready || !vehicles.length} onClick={() => setIncidentFor(null)}><Warning size={17} /> Report accident</button>
+        <Pull><button className="garage-primary" disabled={!ready || !vehicles.length} onClick={() => setIncidentFor(null)}><Warning size={17} /> Report accident</button></Pull>
       </div>
     </header>
     <div className="garage-context">
@@ -109,7 +109,7 @@ export function GaragePage() {
         <div className="garage-floor-header"><div><h2 className="text-lg font-semibold">The garage floor</h2><p className="mt-1 text-xs text-muted">{NUM.format(vehicles.length)} vehicles across six work zones. Accident holds flash; repair bays lift the car.</p></div>
           <div className="flex items-center gap-2"><Link href="/fleet/#car-shapes" className="garage-report-badge hover:text-accent">Match car shapes</Link><span className="garage-report-badge">Live from the loaded report</span></div></div>
         <Garage3D groups={groups} onOpen={openVehicle} styleFor={carStyles.styleFor} />
-        <div className="garage-zones">{LANES.map((lane) => <section key={lane.id} className="garage-zone" aria-label={lane.label + " queue"}>
+        <div className="garage-zones">{LANES.map((lane) => <section key={lane.id} className="garage-zone" aria-label={lane.label + " queue"}><Glare>
           <header className="flex items-baseline justify-between gap-2"><h3 className="flex items-center gap-2 text-[13px] font-semibold"><span className="h-2 w-2 rounded-full" style={{ background: lane.color }} />{lane.label}</h3>
             <span className="tnum text-lg font-semibold" style={{ color: lane.color }}>{NUM.format(groups[lane.id].length)}</span></header>
           <p className="mt-0.5 text-[11px] text-muted">{lane.description}</p>
@@ -120,7 +120,7 @@ export function GaragePage() {
             {!groups[lane.id].length && <div className="garage-zone-empty"><CheckCircle size={16} /> Clear</div>}
           </div>
           <button className="garage-zone-footer" onClick={() => filterQueue(lane.id)}>View all<span aria-hidden="true">→</span></button>
-        </section>)}</div>
+        </Glare></section>)}</div>
       </section>
 
       <section className="garage-progress-grid" aria-label="Garage missions">

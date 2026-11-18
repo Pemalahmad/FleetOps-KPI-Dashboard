@@ -146,7 +146,7 @@ export function Shell({ children }: { children: ReactNode }) {
           </nav>
           <div className="mt-2.5"><Regions /></div>
         </div>
-        <main id="main-content" tabIndex={-1} className="app-frame mx-auto max-w-[1480px] px-4 py-8 md:px-8"><UnlockBanner />{children}</main>
+        <main id="main-content" tabIndex={-1} className="app-frame mx-auto max-w-[1480px] px-4 py-8 md:px-8"><UnlockBanner /><div key={path} className="route-in">{children}</div></main>
         <footer className="mx-auto max-w-[1480px] px-4 pb-8 md:px-8 lg:hidden"><LegalLinks /></footer>
       </div>
     </div>

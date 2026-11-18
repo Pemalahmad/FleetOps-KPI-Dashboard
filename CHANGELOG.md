@@ -4,6 +4,10 @@ What changed in each version of FleetOps KPI. Dates are release dates; the newes
 
 ## Unreleased
 
+### More motion (2026-11-18)
+- Four more React Bits components: ShinyText (headline sweep), GlareHover (garage zones, car shapes), LogoLoop (supported exports on Import), Magnet (main buttons).
+- Numbers count up as they scroll into view; charts grow in with a stagger; sparklines and work-tree connectors draw themselves; work-tree nodes appear in sequence; cars drive into their garage bays; pages fade in on navigation; press feedback on buttons and chips. All off with reduced motion.
+
 ### Driver KPIs and charts (2026-11-18)
 - Drivers page: 25 KPIs in four groups (compliance, safety, fines and tickets, activity) with weekly trend lines and change on the week before.
 - New charts: driving behaviour by week, tickets on and by drivers by month, compliance by region, licence expiries over the next 12 months, fines on drivers by type, driver safety by site.

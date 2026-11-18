@@ -6,6 +6,7 @@ import * as XLSX from "xlsx";
 import { CheckCircle, DownloadSimple, FileXls, Trash, UploadSimple, WarningCircle } from "@phosphor-icons/react";
 import { useEngine } from "@/components/engine-provider";
 import { Card, PageHeader, SectionTitle } from "@/components/ui";
+import { NameLoop } from "@/components/bits/fleetops-bits";
 import type { TableSpec } from "@/lib/engine";
 import { guessMapping, guessTable, readFile, toCsv, type Sheet } from "@/lib/sheets";
 import { emptyWorkspace, uid, type SavedInput } from "@/lib/workspace";
@@ -135,6 +136,10 @@ export default function ImportPage() {
             <DownloadSimple size={15} /> Download an Excel template (a sheet per table)
           </button>
         </Card>
+      </div>
+      <div className="mt-4 rounded-lg border border-border bg-panel px-4 py-3">
+        <p className="mono-label mb-2">Reads exports from</p>
+        <NameLoop label="Fleet systems and file types FleetOps reads" names={["Fleetio", "Samsara", "Motive", "Geotab", "Verizon Connect", "Webfleet trips", "Excel", "CSV", "Parquet", "Registration cards", "Insurance policies"]} />
       </div>
       {error && <p className="mt-3 text-[13px] text-bad">{error}</p>}
 

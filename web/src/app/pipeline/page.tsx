@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { WorkTree } from "@/components/work-tree";
+import { Pull } from "@/components/bits/fleetops-bits";
 import { CheckCircle, UploadSimple, WarningCircle, XCircle } from "@phosphor-icons/react";
 import { Chart } from "@/components/chart";
 import { useEngine } from "@/components/engine-provider";
@@ -44,9 +45,9 @@ export default function PipelinePage() {
 
         <Card title="Run it on your fleet" sub="Import your vehicle list, registration cards and service history; the same pipeline runs on them here, in your browser.">
           <div className="flex flex-col gap-2">
-            <Link href="/import/" className="inline-flex items-center justify-center gap-2 rounded-xl bg-accent px-4 py-3 text-[14px] font-medium text-white transition hover:opacity-90 active:scale-[0.98]">
+            <Pull block><Link href="/import/" className="flex w-full items-center justify-center gap-2 rounded-xl bg-accent px-4 py-3 text-[14px] font-medium text-white transition hover:opacity-90 active:scale-[0.98]">
               <UploadSimple size={18} /> Import your fleet (Excel, CSV)
-            </Link>
+            </Link></Pull>
             <Link href="/documents/" className="inline-flex items-center justify-center gap-2 rounded-xl border border-border px-4 py-2.5 text-[13.5px] text-muted transition hover:text-text">
               Scan registration cards and policies
             </Link>

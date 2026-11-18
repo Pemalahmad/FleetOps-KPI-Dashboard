@@ -126,14 +126,14 @@ export function WorkTree({ log }: { log: PipelineLog }) {
         <g clipPath="url(#wf-canvas)">
           {wires.map((d, i) => (
             <g key={i}>
-              <path d={d} className="wf-wire" />
+              <path d={d} pathLength={1} className="wf-wire" style={{ animationDelay: `${200 + i * 60}ms` }} />
               <circle r="2.6" className="wf-packet"><animateMotion dur={`${2.2 + (i % 4) * 0.3}s`} begin={`${(i * 0.27) % 2}s`} repeatCount="indefinite" path={d} /></circle>
             </g>
           ))}
-          {nodes.map((n) => {
+          {nodes.map((n, idx) => {
             const h = nodeH(n);
             const body = (
-              <g transform={`translate(${n.x},${n.y})`} className={n.href ? "wf-node wf-link" : "wf-node"}>
+              <g transform={`translate(${n.x},${n.y})`} className={n.href ? "wf-node wf-link" : "wf-node"} style={{ animationDelay: `${idx * 110}ms` }}>
                 <rect width={NODE_W} height={h} rx="9" className="wf-card" />
                 <rect x="10" y="10" width="26" height="26" rx="6" fill={n.tint} className="wf-icon" />
                 <text x="23" y="28" textAnchor="middle" className="wf-glyph">{n.glyph}</text>

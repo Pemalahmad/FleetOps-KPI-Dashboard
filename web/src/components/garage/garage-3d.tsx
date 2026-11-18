@@ -138,7 +138,8 @@ export function Garage3D({ groups, onOpen, styleFor }: { groups: Record<GarageLa
         return out;
       };
 
-      const cars: { body: InstanceType<typeof THREE.Group>; paint: InstanceType<typeof THREE.MeshPhysicalMaterial>; v: GarageVehicle; baseY: number }[] = [];
+      const cars: { body: InstanceType<typeof THREE.Group>; paint: InstanceType<typeof THREE.MeshPhysicalMaterial>; v: GarageVehicle; baseY: number; z1?: number; delay?: number }[] = [];
+      let introEnd = 0;
       const beacons: InstanceType<typeof THREE.MeshStandardMaterial>[] = [];
 
       /** A car in its registered paint and body style, scaled to fit a bay, nose towards the drive lane. */
@@ -260,8 +261,14 @@ export function Garage3D({ groups, onOpen, styleFor }: { groups: Record<GarageLa
           const [w, l, h] = g.userData.size as number[];
           const lifted = lane === "repair" && r === 0 && b < 2;
           const y = lifted ? 1.0 : 0.06;
-          g.position.set(x, y, z);
-          cars[cars.length - 1].baseY = y;
+          // drive-in: each car starts on the apron in front of its zone and rolls into its bay, zone by zone
+          const entry = cars[cars.length - 1];
+          entry.baseY = y;
+          if (!reduced) {
+            entry.z1 = z; entry.delay = 0.2 + ri * 0.35 + ci * 0.18 + i * 0.06;
+            introEnd = Math.max(introEnd, entry.delay + 1.1);
+            g.position.set(x, y, z + 4.8);
+          } else g.position.set(x, y, z);
           const pad = mesh(padG, padM, x, 0.066, z, false); pad.scale.set(w + 0.4, 1, l + 0.35);
           zone.add(pad);
           if (lane === "incident") {
@@ -359,6 +366,17 @@ export function Garage3D({ groups, onOpen, styleFor }: { groups: Record<GarageLa
         if (!visible || document.hidden || disposed) return;
         timer.update(); const t = timer.getElapsed();
         // animate at about 20 frames a second, and only while something moves (a beacon, a hovered or settling car)
+        if (!reduced && t < introEnd) {
+          for (const c of cars) {
+            if (c.z1 === undefined || c.delay === undefined) continue;
+            const k = Math.min(1, Math.max(0, (t - c.delay) / 1.0)), e = 1 - Math.pow(1 - k, 3);
+            c.body.position.z = c.z1 + 4.8 * (1 - e);
+          }
+          dirty = true;
+        } else if (introEnd && !reduced) {
+          for (const c of cars) if (c.z1 !== undefined) c.body.position.z = c.z1;
+          introEnd = 0; dirty = true;
+        }
         const moving = beacons.length > 0 || !!hovered || cars.some((x) => x.body.position.y !== x.baseY);
         if (!reduced && moving && t - last >= 0.05) {
           last = t;

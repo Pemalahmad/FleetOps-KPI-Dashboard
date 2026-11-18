@@ -27,7 +27,7 @@ for (const [path, meta] of Object.entries(lock.packages)) {
 // Components copied into the source tree rather than installed from npm.
 const bits = join(root, "src/components/bits/LICENSE.md");
 if (existsSync(bits)) {
-  parts.push("-".repeat(78), "React Bits components: DotGrid, SpotlightCard, ClickSpark (MIT + Commons Clause)", "-".repeat(78), readFileSync(bits, "utf8").trim(), "");
+  parts.push("-".repeat(78), "React Bits components: DotGrid, SpotlightCard, ClickSpark, ShinyText, GlareHover, LogoLoop, Magnet (MIT + Commons Clause)", "-".repeat(78), readFileSync(bits, "utf8").trim(), "");
   n++;
 }
 writeFileSync(out, parts.join("\n"));

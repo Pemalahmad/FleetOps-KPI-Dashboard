@@ -286,7 +286,7 @@ Built in TypeScript with Next.js (static export), Tailwind, ECharts, KaTeX and D
 
 ## Credits
 
-Three interface effects come from [React Bits](https://github.com/DavidHDev/react-bits) by David Haz: the interactive dot field behind the garage, analytics, drivers and pipeline headers (DotGrid), the pointer spotlight on every card (SpotlightCard) and the click sparks in the garage (ClickSpark). They live in [`web/src/components/bits/`](web/src/components/bits/) under their own MIT + Commons Clause licence, not the FleetOps licence, and switch off for reduced motion and on machines without a graphics card.
+The interface motion uses seven components from [React Bits](https://github.com/DavidHDev/react-bits) by David Haz: the interactive dot field behind page headers (DotGrid), the pointer spotlight on every card (SpotlightCard), click sparks in the garage (ClickSpark), the light sweep across headlines (ShinyText), the glare on garage zones and car-shape cards (GlareHover), the marquee of supported exports on the import page (LogoLoop) and the magnetic main buttons (Magnet). They live in [`web/src/components/bits/`](web/src/components/bits/) under their own MIT + Commons Clause licence, not the FleetOps licence. FleetOps adds its own motion on top: numbers that count up as they come into view, charts that grow in, sparklines that draw themselves, cars that drive into the 3D garage, a work tree that assembles node by node and a soft page transition. All of it stops for readers who prefer reduced motion, and the heavier effects stay off on machines without a graphics card.
 
 ## Licence
 

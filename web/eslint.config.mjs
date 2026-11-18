@@ -16,6 +16,10 @@ const eslintConfig = defineConfig([
     "src/components/bits/DotGrid.tsx",
     "src/components/bits/SpotlightCard.tsx",
     "src/components/bits/ClickSpark.tsx",
+    "src/components/bits/ShinyText.tsx",
+    "src/components/bits/GlareHover.tsx",
+    "src/components/bits/LogoLoop.tsx",
+    "src/components/bits/Magnet.tsx",
   ]),
 ]);
 

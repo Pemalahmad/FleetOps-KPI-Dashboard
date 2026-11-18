@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { BODY_STYLES, guessBodyStyle, modelKey, paintColor, profilePath, type BodyStyle } from "@/lib/car-styles";
 import { cleanName, withoutPrefix } from "@/lib/names";
 import { useCarStyles } from "./use-car-styles";
+import { Glare } from "../bits/fleetops-bits";
 
 /** Side view of a body style, drawn from the same profile as the 3D car. */
 export function CarSilhouette({ style, paint = "#a9aeb8", className = "" }: { style: BodyStyle; paint?: string; className?: string }) {
@@ -57,7 +58,7 @@ export function CarShapes({ rows }: { rows: Row[] }) {
           const auto = guessBodyStyle(m.make, m.model), pick = chosen[m.key], style = pick ?? auto;
           const topColor = [...m.colors.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? "";
           return (
-            <li key={m.key} className="car-shape">
+            <li key={m.key} className="car-shape-wrap"><Glare><div className="car-shape">
               <CarSilhouette style={style} paint={paintColor(topColor)} className="car-shape-art" />
               <div className="min-w-0">
                 <p className="truncate text-[13px] font-semibold" title={m.name}>{m.name}</p>
@@ -69,7 +70,7 @@ export function CarShapes({ rows }: { rows: Row[] }) {
                 <option value="auto">Auto · {BODY_STYLES.find((s) => s.id === auto)!.label}</option>
                 {BODY_STYLES.map((s) => <option key={s.id} value={s.id}>{s.label}</option>)}
               </select>
-            </li>
+            </div></Glare></li>
           );
         })}
       </ul>

@@ -1,7 +1,8 @@
 "use client";
 
 import katex from "katex";
-import { HeaderDots, SpotCard } from "./bits/fleetops-bits";
+import { HeaderDots, Shine, SpotCard } from "./bits/fleetops-bits";
+import { useEffect, useRef, useState } from "react";
 import NumberFlow from "@number-flow/react";
 import type { ReactNode } from "react";
 
@@ -44,7 +45,7 @@ export function PageHeader({ eyebrow, title, children, backdrop = false }: { eye
       {backdrop && <HeaderDots />}
       <Label>{eyebrow}</Label>
       <h1 className="mt-3 text-[30px] font-semibold leading-[1.1] tracking-[-0.03em] md:text-[38px]">
-        {lead}{rest && <span className="text-faint">{rest}</span>}
+        {lead}{rest && <Shine>{rest}</Shine>}
       </h1>
       {children && <p className="mt-3 max-w-3xl text-[15px] leading-relaxed text-muted">{children}</p>}
     </header>
@@ -89,7 +90,7 @@ export function Sparkline({ values, color = "var(--accent)", height = 34, fill =
   return (
     <svg viewBox={`0 0 ${w} ${height}`} preserveAspectRatio="none" className="w-full" style={{ height }} aria-hidden>
       {fill && <path d={`${d}L${w},${height}L0,${height}Z`} fill={color} opacity={0.12} />}
-      <path d={d} fill="none" stroke={color} strokeWidth={width} vectorEffect="non-scaling-stroke" strokeLinejoin="round" />
+      <path d={d} pathLength={1} className="spark-line" fill="none" stroke={color} strokeWidth={width} vectorEffect="non-scaling-stroke" strokeLinejoin="round" />
     </svg>
   );
 }
@@ -106,6 +107,20 @@ export function Delta({ delta, decimals, unit, better }: { delta: number | null;
       {flat ? "±" : delta > 0 ? "+" : "−"}{Math.abs(delta).toFixed(decimals)}{unit === "%" ? " pp" : unit && unit !== "$" ? " " + unit : ""}
     </span>
   );
+}
+
+/** A number that counts up from zero the first time it scrolls into view (instant with reduced motion). */
+export function CountIn({ value, decimals = 0 }: { value: number; decimals?: number }) {
+  const ref = useRef<HTMLSpanElement>(null);
+  const [seen, setSeen] = useState(false);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const io = new IntersectionObserver(([e]) => { if (e.isIntersecting) { setSeen(true); io.disconnect(); } }, { threshold: 0.2 });
+    io.observe(el);
+    return () => io.disconnect();
+  }, []);
+  return <span ref={ref}><NumberFlow value={seen ? value : 0} format={{ maximumFractionDigits: decimals, minimumFractionDigits: decimals }} /></span>;
 }
 
 /** Colour for a value only when it needs attention; on-target numbers stay in the text colour. */
@@ -127,7 +142,7 @@ export function Metric({
         {!has ? <span className="text-faint">–</span> : (
           <>
             {unit === "$" && <span className="mr-0.5 text-[16px] font-medium text-muted">$</span>}
-            <NumberFlow value={value} format={{ maximumFractionDigits: decimals, minimumFractionDigits: decimals }} />
+            <CountIn value={value} decimals={decimals} />
             {unit && unit !== "$" && <span className="ml-0.5 text-[13px] font-normal tracking-normal text-muted">{unitText(unit).trim()}</span>}
           </>
         )}
@@ -156,7 +171,7 @@ export function StatStrip({ items }: {
               <span className="truncate">{it.label}</span>
             </span>
             <span className="tnum mt-1 block text-[20px] font-semibold leading-none tracking-[-0.02em]">
-              {has ? fmt(it.value, it.decimals ?? 0) : <span className="text-faint">–</span>}
+              {has ? <CountIn value={it.value as number} decimals={it.decimals ?? 0} /> : <span className="text-faint">–</span>}
               {has && it.unit && <span className="ml-0.5 text-[12px] font-medium tracking-normal text-muted">{unitText(it.unit).trim()}</span>}
             </span>
             {it.note && <span className="mt-1 block truncate text-[11px] text-faint">{it.note}</span>}
@@ -182,7 +197,7 @@ export function KpiRow({ label, value, unit = "", decimals = 1, prev, better = "
       </span>
       <span className="hidden w-[56px] sm:block">{spark && <Sparkline values={spark} height={18} fill={false} width={1.25} color="var(--faint)" />}</span>
       <span className="tnum text-right text-[13.5px] font-semibold" style={{ color: attention(status) }}>
-        {has ? <>{unit === "$" && "$"}{fmt(value, decimals)}<span className="font-normal text-muted">{unitText(unit)}</span></> : <span className="text-faint">–</span>}
+        {has ? <>{unit === "$" && "$"}<CountIn value={value as number} decimals={decimals} /><span className="font-normal text-muted">{unitText(unit)}</span></> : <span className="text-faint">–</span>}
       </span>
       <span className="w-[62px] text-right text-[11px]"><Delta delta={delta} decimals={decimals} unit={unit} better={better} /></span>
     </div>
