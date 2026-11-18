@@ -51,6 +51,7 @@ test.beforeEach(async ({ page }) => {
 });
 
 test("every page loads under the strict CSP, with no violations or errors", async ({ page, baseURL }) => {
+  test.setTimeout(PAGES.length * 30_000);   // each page rebuilds the warehouse; CI runners are several times slower than a laptop
   const seen = await watch(page);
   for (const p of PAGES) {
     await page.goto(p);
