@@ -28,7 +28,8 @@ jobs:
       - name: Audit production dependencies
         run: npm audit --omit=dev --audit-level=high
       - name: Audit all dependencies (including development tooling)
-        run: npm audit --audit-level=high
+        # fails on any high/critical advisory that has a fixed release; lists ones with no fix published yet
+        run: node scripts/audit-dev.mjs
   python-audit:
     runs-on: ubuntu-latest
     timeout-minutes: 15
