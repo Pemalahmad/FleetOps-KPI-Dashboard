@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { WorkTree } from "@/components/work-tree";
 import { CheckCircle, UploadSimple, WarningCircle, XCircle } from "@phosphor-icons/react";
 import { Chart } from "@/components/chart";
 import { useEngine } from "@/components/engine-provider";
@@ -102,8 +103,11 @@ export default function PipelinePage() {
         </>
       )}
 
+      <SectionTitle sub="How your files become the pages you use. Every count below comes from this browser's run; click an output to open it.">Work tree</SectionTitle>
+      <Card className="diagram-canvas !p-3">{log?.models.length ? <WorkTree log={log} /> : <Skeleton height={360} />}</Card>
+
       <SectionTitle sub="Every model and the tables it reads, discovered from its FROM / JOIN clauses. Hover to trace.">Lineage</SectionTitle>
-      <Card>{log?.models.length ? <Lineage log={log} /> : <Skeleton height={520} />}</Card>
+      <Card className="diagram-canvas">{log?.models.length ? <Lineage log={log} /> : <Skeleton height={520} />}</Card>
 
       <div className="mt-4 grid gap-4 lg:grid-cols-[1.5fr_1fr]">
         <Card title="Models" sub="Rows produced and time taken, in this browser">

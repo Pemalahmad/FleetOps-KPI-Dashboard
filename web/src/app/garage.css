@@ -4,7 +4,7 @@
 .garage-primary:hover { filter: brightness(1.08); }
 .garage-primary:disabled, .garage-dialog button:disabled { cursor: not-allowed; opacity: .45; }
 .garage-count { display: inline-flex; justify-content: center; min-width: 22px; padding: 1px 5px; border-radius: 5px; background: var(--accent-soft); color: var(--accent); font-size: 11px; }
-.garage-context { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 15px; margin: 20px 0; padding-bottom: 15px; border-bottom: 1px solid var(--border); color: var(--muted); font-size: 12px; }
+.garage-context { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 15px; margin: 0 0 20px; padding-bottom: 15px; border-bottom: 1px solid var(--border); color: var(--muted); font-size: 12px; }
 .garage-context-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); }
 .garage-safety-banner { display: flex; align-items: center; gap: 12px; padding: 14px 16px; margin-bottom: 18px; background: color-mix(in srgb, var(--bad) 5%, var(--panel)); border: 1px solid color-mix(in srgb, var(--bad) 20%, var(--border)); border-radius: 10px; }
 .garage-pulse { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); background: var(--panel); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; margin-bottom: 16px; }

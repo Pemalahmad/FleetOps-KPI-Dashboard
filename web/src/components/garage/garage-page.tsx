@@ -5,7 +5,7 @@ import * as Dialog from "@radix-ui/react-dialog";
 import { useMemo, useState } from "react";
 import { Bell, Car, ChartPieSlice, CheckCircle, Flag, MagnifyingGlass, ShieldCheck, Trophy, Warning, Wrench, X } from "@phosphor-icons/react";
 import { useEngine, useSql } from "../engine-provider";
-import { Card, Skeleton } from "../ui";
+import { Card, Label, Skeleton } from "../ui";
 import { buildAlerts, deriveVehicle, LANES, localDate, vehicleLabel, type GarageAlert, type GarageContext, type GarageLane, type GarageRow, type GarageVehicle } from "@/lib/garage";
 import { GARAGE_SQL } from "@/lib/garage-query";
 import { GarageCar } from "./car";
@@ -75,8 +75,8 @@ export function GaragePage() {
     await operations.change((s) => ({ ...s, acknowledged: [...new Set([...s.acknowledged, ...items.map((a) => a.id)])] }));
   };
   return <>
-    <header className="garage-header">
-      <div><p className="text-[13px] font-semibold text-accent">Fleet garage</p><h1 className="mt-1 text-[30px] font-bold leading-tight md:text-[36px]">Every vehicle has a next move.</h1>
+    <header className="garage-header page-head">
+      <div><Label>Fleet garage</Label><h1 className="mt-3 text-[30px] font-semibold leading-[1.1] tracking-[-0.03em] md:text-[38px]">Every vehicle <span className="text-faint">has a next move.</span></h1>
         <p className="mt-2 max-w-2xl text-[14px] leading-relaxed text-muted">See what is holding each car back, work through its checks, and bring it back to the road.</p></div>
       <div className="flex flex-wrap gap-2">
         <Link className="ops-button" href="/overview/"><ChartPieSlice size={17} /> Analytics</Link>

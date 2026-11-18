@@ -60,7 +60,7 @@ h1, h2, h3 { letter-spacing: -0.02em; text-wrap: balance; }
 ::selection { background: var(--accent-soft); }
 :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 6px; }
 
-.card { min-width: 0; background: var(--panel); border: 1px solid var(--border); border-radius: 12px; }
+.card { min-width: 0; background: var(--panel); border: 1px solid var(--border); border-radius: 8px; }
 button, a, input, select, textarea { -webkit-tap-highlight-color: transparent; }
 button:not(:disabled), summary { cursor: pointer; }
 button:disabled { cursor: not-allowed; }
@@ -127,3 +127,43 @@ button:disabled { cursor: not-allowed; }
 .car-shape { display: grid; grid-template-columns: 92px minmax(0, 1fr); grid-template-rows: auto auto; align-items: center; gap: 6px 10px; padding: 10px; border: 1px solid var(--border); border-radius: 10px; background: var(--panel); }
 .car-shape-art { grid-row: span 2; width: 92px; height: 46px; }
 .car-shape-select { min-height: 32px; padding: .3rem .5rem; font-size: 12.5px; }
+
+/* Frame, labels and section rhythm */
+.app-frame { --gutter: 1rem; min-height: 100vh; }
+@media (min-width: 768px) { .app-frame { --gutter: 2rem; } }
+@media (min-width: 1024px) { .app-frame { border-left: 1px solid var(--border); border-right: 1px solid var(--border); background: color-mix(in srgb, var(--panel) 55%, var(--bg)); } }
+.mono-label { display: inline-flex; align-items: center; gap: 8px; font-family: var(--font-mono); font-size: 11px; font-weight: 500; letter-spacing: 0.1em; text-transform: uppercase; color: var(--accent); }
+.mono-mark { width: 7px; height: 7px; border: 1.5px solid currentColor; border-radius: 1.5px; transform: rotate(45deg); }
+.page-head { margin: -2rem calc(-1 * var(--gutter)) 1.75rem; padding: 2.5rem var(--gutter) 2rem; border-bottom: 1px solid var(--border); }
+.section-head { margin: 2.75rem calc(-1 * var(--gutter)) 1.25rem; padding: 1.75rem var(--gutter) 0; border-top: 1px solid var(--border); }
+.page-head + .section-head, .section-head:first-child { border-top: none; margin-top: 0; padding-top: 0; }
+.diagram-canvas { background-color: var(--panel); background-image: radial-gradient(color-mix(in srgb, var(--faint) 45%, transparent) 1px, transparent 1px); background-size: 18px 18px; }
+
+/* Scroll-linked entrance: panels rise into place as they enter the view (CSS only; off with reduced motion) */
+@keyframes rise-in { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: none; } }
+@supports (animation-timeline: view()) {
+  .card, .kpi-group, .ov-hero, .stat-strip, .section-head, .garage-floor, .garage-pulse, .garage-crew, .garage-missions, .garage-queue {
+    animation: rise-in linear both; animation-timeline: view(); animation-range: entry 0px entry 180px;
+  }
+}
+
+/* Work tree diagram */
+.work-tree text { font-family: var(--font-sans); }
+.wt-edge { fill: none; stroke: var(--border); stroke-width: 1.5; }
+.wt-flow { fill: none; stroke: var(--accent); stroke-width: 1.5; stroke-dasharray: 4 10; opacity: .55; animation: wt-dash 1.4s linear infinite; }
+@keyframes wt-dash { to { stroke-dashoffset: -28; } }
+.wt-packet { fill: var(--accent); }
+.wt-box { fill: var(--panel); stroke: var(--border); stroke-width: 1; filter: drop-shadow(0 1px 2px rgb(15 18 34 / .06)); }
+.wt-link:hover .wt-box { stroke: var(--accent); }
+.wt-link { cursor: pointer; }
+.wt-icon { fill: var(--accent-soft); stroke: color-mix(in srgb, var(--accent) 35%, transparent); }
+.wt-title { font-size: 12.5px; font-weight: 600; fill: var(--text); }
+.wt-kind { font-size: 10px; fill: var(--faint); }
+.wt-row { fill: var(--panel-2); }
+.wt-key { font-size: 10.5px; fill: var(--muted); }
+.wt-val { font-size: 10.5px; font-weight: 600; fill: var(--text); font-variant-numeric: tabular-nums; }
+.wt-port { fill: var(--panel); stroke: var(--faint); stroke-width: 1.2; }
+.wt-cursor-arrow { fill: var(--accent); stroke: var(--panel); stroke-width: 1; }
+.wt-cursor-tag { fill: var(--accent); }
+.wt-cursor-text { font-size: 10.5px; font-weight: 600; fill: #fff; }
+@media (prefers-reduced-motion: reduce) { .wt-packet, .wt-cursor { display: none; } }

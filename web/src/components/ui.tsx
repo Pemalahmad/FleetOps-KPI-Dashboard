@@ -23,21 +23,42 @@ export function Card({ children, className = "", title, sub, right }: {
   );
 }
 
+/** Split "Lead clause, the rest" so the second half can sit in a quieter tone. */
+function split(text: string, at: RegExp): [string, string] {
+  const m = text.match(at);
+  if (!m || m.index === undefined) return [text, ""];
+  const cut = m.index + m[0].length;
+  return [text.slice(0, cut), text.slice(cut)];
+}
+
+/** Small monospace label with a square mark, used above page and section headlines. */
+export function Label({ children, className = "" }: { children: ReactNode; className?: string }) {
+  return <span className={`mono-label ${className}`}><span className="mono-mark" aria-hidden />{children}</span>;
+}
+
 export function PageHeader({ eyebrow, title, children }: { eyebrow: string; title: string; children?: ReactNode }) {
+  const [lead, rest] = split(title, /[,:]\s/);
   return (
-    <header className="mb-6">
-      <p className="text-[13px] font-semibold text-accent">{eyebrow}</p>
-      <h1 className="mt-1 text-[28px] font-bold leading-tight md:text-[32px]">{title}</h1>
-      {children && <p className="mt-2 max-w-3xl text-[15px] leading-relaxed text-muted">{children}</p>}
+    <header className="page-head">
+      <Label>{eyebrow}</Label>
+      <h1 className="mt-3 text-[30px] font-semibold leading-[1.1] tracking-[-0.03em] md:text-[38px]">
+        {lead}{rest && <span className="text-faint">{rest}</span>}
+      </h1>
+      {children && <p className="mt-3 max-w-3xl text-[15px] leading-relaxed text-muted">{children}</p>}
     </header>
   );
 }
 
 export function SectionTitle({ children, sub }: { children: ReactNode; sub?: ReactNode }) {
+  const [lead, rest] = typeof sub === "string" ? split(sub, /[.;]\s/) : [null, null];
   return (
-    <div className="mb-3 mt-10 first:mt-0">
-      <h2 className="text-[19px] font-semibold">{children}</h2>
-      {sub && <p className="mt-0.5 text-[13px] text-muted">{sub}</p>}
+    <div className="section-head">
+      <h2><Label>{children}</Label></h2>
+      {sub && (
+        <p className="mt-2 max-w-4xl text-[17px] font-medium leading-snug tracking-[-0.015em] md:text-[19px]">
+          {lead === null ? sub : <>{lead}{rest && <span className="text-faint">{rest}</span>}</>}
+        </p>
+      )}
     </div>
   );
 }
