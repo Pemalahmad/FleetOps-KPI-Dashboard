@@ -4,6 +4,18 @@ What changed in each version of FleetOps KPI. Dates are release dates; the newes
 
 ## Unreleased
 
+### Garage, register and analytics design (2026-11-18)
+- The garage floor is now a 3D scene: six work zones on one slab, cars coloured by queue, flashing beacons and cones on
+  accident holds, lifts in the repair bays. Drag to turn it, click a car to open it. Built with three.js, bundled and
+  loaded on demand; the zone list below stays the keyboard and screen-reader route.
+- Crew rank with an XP bar to the next rank, five badges, and recovery missions with progress bars. XP never clears a
+  safety or document gate.
+- Fleet register: one compact strip of headline numbers (now with electrified share), and the make → model → trim
+  sunburst replaced by one bar per model split by trim, with names tidied (spacing, one-case names, repeated make).
+- Analytics: redesigned KPI tiles (target state, change, trend) and a new "Every KPI" section with 30 indicators in
+  five groups, adding utilisation, first-time fix, PM compliance, backlog days, aged open jobs, registration and
+  insurance validity, total cost per km and CO₂ per km for the network or the selected region.
+
 ### Security and legal (2026-11-18)
 - SOP review notes, owners and due dates are saved in the encrypted workspace instead of plain localStorage; older
   notes are migrated and deleted. Notes typed while a report rebuilds are no longer lost.

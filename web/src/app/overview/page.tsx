@@ -4,9 +4,60 @@ import Link from "next/link";
 import { ArrowRight } from "@phosphor-icons/react";
 import { Chart } from "@/components/chart";
 import { regionWhere, useEngine, useSql } from "@/components/engine-provider";
-import { Card, PageHeader, rag, ragColor, SectionTitle, Skeleton, Tile, type Rag } from "@/components/ui";
+import { Card, KpiRow, PageHeader, rag, ragColor, SectionTitle, Skeleton, Tile, type Rag } from "@/components/ui";
 import { usePanel } from "@/components/use-panel";
 import { NODE } from "@/lib/metrics";
+
+type Extra = { utilization: number | null; first_time_fix: number | null; pm: number | null; backlog: number | null; aged7: number | null;
+  reg_valid: number | null; ins_valid: number | null; tco_km: number | null; co2_km: number | null };
+
+/** Network (or region) values for KPIs that are not in the monthly panel, weighted the same way as the scorecard. */
+const extraSql = (region: string | null) => {
+  const w = (col = "region") => regionWhere(region, "AND", col);
+  return `SELECT
+  (SELECT sum(utilization_pct * active_vehicles) / nullif(sum(active_vehicles), 0) FROM mart_region_month_kpis WHERE month_start = report_month()${w()}) AS utilization,
+  (SELECT 100 * (1 - avg(repeat_visit::INT)) FROM stg_work_orders WHERE job_type <> 'Recall' AND closed_at IS NOT NULL
+     AND date_trunc('month', closed_at)::DATE = report_month()${w("vehicle_region")}) AS first_time_fix,
+  (SELECT 100.0 * sum(vehicles - overdue) / nullif(sum(vehicles), 0) FROM mart_pm_compliance WHERE true${w()}) AS pm,
+  (SELECT sum(open_jobs) / nullif(sum(daily_closures), 0) FROM mart_backlog WHERE true${w()}) AS backlog,
+  (SELECT sum(age_7d_plus) FROM mart_backlog WHERE true${w()}) AS aged7,
+  (SELECT 100.0 * sum(vehicles) FILTER (WHERE document = 'Registration' AND status IN ('Valid', 'Expiring'))
+     / nullif(sum(vehicles) FILTER (WHERE document = 'Registration' AND status <> 'Unknown'), 0) FROM mart_compliance_status WHERE true${w()}) AS reg_valid,
+  (SELECT 100.0 * sum(vehicles) FILTER (WHERE document = 'Insurance' AND status IN ('Valid', 'Expiring'))
+     / nullif(sum(vehicles) FILTER (WHERE document = 'Insurance' AND status <> 'Unknown'), 0) FROM mart_compliance_status WHERE true${w()}) AS ins_valid,
+  (SELECT (sum(energy_cost) + sum(maintenance_cost) + sum(depreciation)) / nullif(sum(km), 0) FROM int_vehicle_month_economics WHERE true${w()}) AS tco_km,
+  (SELECT 1000 * sum(co2_kg) / nullif(sum(km), 0) FROM int_vehicle_month_economics WHERE true${w()}) AS co2_km`;
+};
+
+type WallItem = { node: string } | { label: string; key: keyof Extra; unit: string; decimals: number; better: "higher" | "lower"; target?: string; hint: string };
+const WALL: { title: string; sub: string; items: WallItem[] }[] = [
+  { title: "Fleet & uptime", sub: "Is the fleet on the road?", items: [
+    { node: "availability" },
+    { label: "Utilisation", key: "utilization", unit: "%", decimals: 1, better: "higher", target: "utilization_pct", hint: "Share of available vehicle time in use" },
+    { node: "visits" }, { node: "first_visits" },
+    { label: "PM compliance", key: "pm", unit: "%", decimals: 1, better: "higher", target: "pm_compliance_pct", hint: "Vehicles not overdue for preventive maintenance" },
+  ] },
+  { title: "Compliance", sub: "Licence to operate", items: [
+    { label: "Registration valid", key: "reg_valid", unit: "%", decimals: 1, better: "higher", target: "registration_valid_pct", hint: "Active vehicles with a valid or expiring (not expired) registration" },
+    { label: "Insurance valid", key: "ins_valid", unit: "%", decimals: 1, better: "higher", target: "insurance_valid_pct", hint: "Active vehicles with valid or expiring insurance" },
+    { node: "fines" }, { node: "recalls" },
+  ] },
+  { title: "Workshop", sub: "How fast and how well work gets done", items: [
+    { node: "per_visit" }, { node: "workshop" }, { node: "productivity" }, { node: "parts" },
+    { label: "First-time fix", key: "first_time_fix", unit: "%", decimals: 1, better: "higher", target: "first_time_fix_pct", hint: "Visits closed this month that did not come back" },
+    { node: "repeat_repair" }, { node: "repeat_share" },
+    { label: "Backlog", key: "backlog", unit: "days", decimals: 2, better: "lower", target: "backlog_days", hint: "Open jobs divided by average daily completions (last 28 days)" },
+    { label: "Open jobs older than 7 days", key: "aged7", unit: "", decimals: 0, better: "lower", hint: "Work orders still open after a week" },
+  ] },
+  { title: "Customer clock", sub: "The driver's side of every visit", items: [
+    { node: "key_to_key" }, { node: "customer_clock" }, { node: "pickup" }, { node: "back" }, { node: "open" }, { node: "csat" }, { node: "low_rating" },
+  ] },
+  { title: "Cost", sub: "What the fleet costs to run", items: [
+    { node: "spend" }, { node: "spend_per_visit" }, { node: "goodwill" },
+    { label: "Total cost per km", key: "tco_km", unit: "$", decimals: 3, better: "lower", hint: "Energy, maintenance and depreciation over distance driven" },
+    { label: "CO₂ per km", key: "co2_km", unit: "g", decimals: 0, better: "lower", hint: "Tailpipe and charging emissions over distance driven" },
+  ] },
+];
 
 const TILES = ["availability", "key_to_key", "csat", "low_rating", "parts", "repeat_repair", "productivity", "goodwill"];
 
@@ -28,6 +79,12 @@ export default function Overview() {
   const lb = useSql<{ site_name: string; ops_score: number; tier: string; badges: string; rank_change: number }>(
     `SELECT site_name, ops_score, tier, badges, rank_change FROM mart_leaderboard${regionWhere(region)} ORDER BY ops_score`);
   const spark = (id: string) => p.series.map((s) => s.v[id]);
+  const ex = useSql<Extra>(extraSql(region));
+  const extra = ex.data?.[0] ?? null;
+  const targetText = (key?: string) => {
+    const t = key ? p.targets[key] : undefined;
+    return t ? `Target ${t.direction === "higher" ? "≥" : "≤"} ${t.green.toLocaleString()}` : undefined;
+  };
   const north = p.last?.v.offroad ?? null;
 
   return (
@@ -83,6 +140,25 @@ export default function Overview() {
             );
           })}
         </div>
+      </div>
+
+      <SectionTitle sub={`${WALL.reduce((n, g) => n + g.items.length, 0)} indicators for ${region ?? "the network"}, report month. The bar shows the target state; the change is against last month.`}>Every KPI</SectionTitle>
+      <div className="kpi-wall">
+        {WALL.map((g) => (
+          <section key={g.title} className="kpi-panel">
+            <header><h3 className="text-[14px] font-semibold">{g.title}</h3><span className="text-[11.5px] text-faint">{g.sub}</span></header>
+            {g.items.map((it) => {
+              if ("node" in it) {
+                const n = NODE[it.node], v = p.last?.v[it.node] ?? null, t = n.target ? p.targets[n.target] : undefined;
+                return <KpiRow key={it.node} label={n.label} value={v} unit={n.unit} decimals={Math.min(n.decimals, 2)} prev={p.prev?.v[it.node]} better={n.better}
+                  status={rag(v, t)} spark={spark(it.node)} hint={n.meaning} target={targetText(n.target)} />;
+              }
+              const v = extra?.[it.key] ?? null;
+              return <KpiRow key={it.label} label={it.label} value={v === null ? null : Number(v)} unit={it.unit} decimals={it.decimals} better={it.better}
+                status={rag(v === null ? null : Number(v), it.target ? p.targets[it.target] : undefined)} hint={it.hint} target={targetText(it.target)} />;
+            })}
+          </section>
+        ))}
       </div>
 
       <SectionTitle sub="Every region against every target, report month. Green / amber / red come from fleet.yml.">Scorecard</SectionTitle>

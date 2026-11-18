@@ -6,9 +6,10 @@ import * as Dialog from "@radix-ui/react-dialog";
 import { ArrowRight, CalendarPlus, CloudArrowDown, FileXls, MagnifyingGlass, X } from "@phosphor-icons/react";
 import { Chart, PALETTE } from "@/components/chart";
 import { regionWhere, useEngine, useSql } from "@/components/engine-provider";
-import { Card, PageHeader, SectionTitle, Skeleton, Tile } from "@/components/ui";
+import { Card, PageHeader, SectionTitle, Skeleton, StatStrip } from "@/components/ui";
 import { decodeVins } from "@/lib/vin";
 import { renewalsIcs, safeRows } from "@/lib/exporters";
+import { cleanName, withoutPrefix } from "@/lib/names";
 
 export interface RegistryRow {
   vehicle_id: string; vin: string | null; vin_status: string; plate_number: string | null; make: string | null; model: string | null;
@@ -44,6 +45,7 @@ export default function FleetPage() {
       insOnFile: pct(active.filter((r) => r.insurance_docs > 0).length),
       grounded: active.filter((r) => r.registration_status === "Expired" || r.insurance_status === "Expired").length,
       due30: active.filter((r) => r.registration_status === "Expiring" || r.insurance_status === "Expiring").length,
+      electrified: active.length ? (100 * active.filter((r) => ["BEV", "PHEV", "HEV"].includes(r.powertrain ?? "")).length) / active.length : null,
       avgAge: (() => { const a = active.filter((r) => r.age_months !== null); return a.length ? a.reduce((s, r) => s + r.age_months!, 0) / a.length / 12 : null; })(),
     };
   }, [rows]);
@@ -77,26 +79,26 @@ export default function FleetPage() {
         </Card>
       )}
 
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-        <Tile label="Vehicles" value={k.vehicles} decimals={0} />
-        <Tile label="Active" value={k.active} decimals={0} />
-        <Tile label="VINs valid" value={k.vinOk} unit="%" decimals={1} status={k.vinOk === null ? null : k.vinOk >= 99 ? "green" : k.vinOk >= 95 ? "amber" : "red"} />
-        <Tile label="Registration card on file" value={k.regOnFile} unit="%" decimals={1} status={k.regOnFile === null ? null : k.regOnFile >= 95 ? "green" : k.regOnFile >= 80 ? "amber" : "red"} />
-        <Tile label="Insurance policy on file" value={k.insOnFile} unit="%" decimals={1} status={k.insOnFile === null ? null : k.insOnFile >= 95 ? "green" : k.insOnFile >= 80 ? "amber" : "red"} />
-        <Tile label="Grounded (expired)" value={k.grounded} decimals={0} better="lower" status={k.grounded ? "red" : "green"} />
-        <Tile label="Renewals ≤ 30 days" value={k.due30} decimals={0} better="lower" status={k.due30 ? "amber" : "green"} />
-        <Tile label="Average age" value={k.avgAge} unit="yr" decimals={1} />
-      </div>
+      <StatStrip items={[
+        { label: "Vehicles", value: k.vehicles, note: `${k.active.toLocaleString()} active` },
+        { label: "VINs valid", value: k.vinOk, unit: "%", decimals: 1, status: k.vinOk === null ? null : k.vinOk >= 99 ? "green" : k.vinOk >= 95 ? "amber" : "red" },
+        { label: "Registration on file", value: k.regOnFile, unit: "%", decimals: 1, status: k.regOnFile === null ? null : k.regOnFile >= 95 ? "green" : k.regOnFile >= 80 ? "amber" : "red" },
+        { label: "Insurance on file", value: k.insOnFile, unit: "%", decimals: 1, status: k.insOnFile === null ? null : k.insOnFile >= 95 ? "green" : k.insOnFile >= 80 ? "amber" : "red" },
+        { label: "Grounded", value: k.grounded, status: k.grounded ? "red" : "green", note: "Expired document" },
+        { label: "Due in 30 days", value: k.due30, note: "Registration or insurance", status: k.due30 ? "amber" : "green" },
+        { label: "Average age", value: k.avgAge, unit: "yr", decimals: 1 },
+        { label: "Electrified", value: k.electrified, unit: "%", decimals: 0, note: "BEV, PHEV or hybrid" },
+      ]} />
 
       {dataset === "mine" && workspace && <VinDecode rows={rows} />}
 
-      <SectionTitle sub="What the fleet is made of. Click a segment to drill in.">Composition</SectionTitle>
-      <div className="grid gap-4 lg:grid-cols-[1.2fr_1fr]">
-        <Card title="Make → model → trim">
-          {reg.data ? <Sunburst rows={rows} /> : <Skeleton height={380} />}
+      <SectionTitle sub="What the fleet is made of: every model with its trims, and the age and powertrain mix.">Composition</SectionTitle>
+      <div className="grid gap-3 lg:grid-cols-[1.25fr_1fr]">
+        <Card title="Make → model → trim" sub="Each bar is a model, split by trim">
+          {reg.data ? <ModelMix rows={rows} /> : <Skeleton height={380} />}
         </Card>
-        <Card title="Model year by powertrain">
-          {reg.data ? <Chart height={380} option={() => {
+        <Card title="Model year by powertrain" sub="Vehicles by model year">
+          {reg.data ? <Chart height={340} option={() => {
             const years = [...new Set(rows.map((r) => r.model_year).filter((y): y is number => y !== null))].sort();
             const pts = [...new Set(rows.map((r) => r.powertrain ?? "Unknown"))].sort();
             return {
@@ -109,11 +111,11 @@ export default function FleetPage() {
         </Card>
       </div>
 
-      <div className="mt-4 grid gap-4 lg:grid-cols-2">
+      <div className="mt-3 grid gap-3 lg:grid-cols-2">
         <Card title="Configurations" sub="Most common first">
-          {reg.data ? <Chart height={320} option={(dark) => {
+          {reg.data ? <Chart height={280} option={(dark) => {
             const m = new Map<string, number>();
-            rows.forEach((r) => m.set(r.configuration ?? "Not recorded", (m.get(r.configuration ?? "Not recorded") ?? 0) + 1));
+            rows.forEach((r) => { const c = cleanName(r.configuration) ?? "Not recorded"; m.set(c, (m.get(c) ?? 0) + 1); });
             const top = [...m.entries()].sort((a, b) => b[1] - a[1]).slice(0, 10).reverse();
             return {
               grid: { left: 8, right: 50, top: 8, bottom: 8, containLabel: true }, tooltip: { trigger: "axis", axisPointer: { type: "none" } },
@@ -121,10 +123,10 @@ export default function FleetPage() {
               series: [{ type: "bar", barWidth: "60%", itemStyle: { color: "#6366F1", borderRadius: [0, 6, 6, 0] },
                 label: { show: true, position: "right", color: dark ? "#9097b0" : "#5b6178", textBorderWidth: 0 }, data: top.map((t) => t[1]) }],
             };
-          }} /> : <Skeleton height={320} />}
+          }} /> : <Skeleton height={280} />}
         </Card>
         <Card title="Renewals due, next 12 weeks" sub="Registration and insurance; book inspections before the wave">
-          {reg.data ? <Chart height={320} option={() => {
+          {reg.data ? <Chart height={280} option={() => {
             const weeks = Array.from({ length: 12 }, (_, i) => i);
             const count = (f: (r: RegistryRow) => number | null) => weeks.map((w) => rows.filter((r) => { const d = f(r); return r.is_active && d !== null && d >= w * 7 && d < (w + 1) * 7; }).length);
             return {
@@ -135,7 +137,7 @@ export default function FleetPage() {
                 { name: "Insurance", type: "bar", stack: "r", itemStyle: { color: PALETTE[1] }, data: count((r) => r.insurance_days_left) },
               ],
             };
-          }} /> : <Skeleton height={320} />}
+          }} /> : <Skeleton height={280} />}
         </Card>
       </div>
 
@@ -195,9 +197,9 @@ export default function FleetPage() {
                     <td className="py-2 font-medium">{r.vehicle_id}</td>
                     <td>{r.plate_number ?? "–"}</td>
                     <td className="font-mono text-[11.5px]" style={{ color: r.vin_status === "Valid" ? undefined : "var(--bad)" }}>{r.vin ?? "–"}</td>
-                    <td>{[r.make, r.model].filter(Boolean).join(" · ") || "–"}</td>
+                    <td>{[cleanName(r.make), cleanName(r.model)].filter(Boolean).join(" ") || "–"}</td>
                     <td>{r.model_year ?? "–"}</td>
-                    <td className="max-w-[140px] truncate">{r.trim ?? "–"}</td>
+                    <td className="max-w-[140px] truncate">{cleanName(r.trim) ?? "–"}</td>
                     <td style={{ color: STATUS_COLOR[r.registration_status] }}>{r.registration_status}{r.registration_docs ? "" : " ·  no card"}</td>
                     <td style={{ color: STATUS_COLOR[r.insurance_status] }}>{r.insurance_status}</td>
                     <td className="text-muted">{r.next_action ?? "–"}</td>
@@ -230,27 +232,73 @@ function download(blob: Blob, name: string) {
   setTimeout(() => URL.revokeObjectURL(a.href), 1000);
 }
 
-function Sunburst({ rows }: { rows: RegistryRow[] }) {
-  const data = useMemo(() => {
-    const tree = new Map<string, Map<string, Map<string, number>>>();
+const TRIM_TONES = ["var(--accent)", "#06B6D4", "#F59E0B", "#10B981", "#F43F5E", "#8B5CF6", "#64748B"];
+
+function ModelMix({ rows }: { rows: RegistryRow[] }) {
+  const tree = useMemo(() => {
+    const makes = new Map<string, { label: string; n: number; models: Map<string, { label: string; n: number; trims: Map<string, { label: string; n: number }> }> }>();
     for (const r of rows) {
-      const a = r.make ?? "Unknown make", b = r.model ?? "Unknown model", c = r.trim ?? "No trim";
-      const m = tree.get(a) ?? new Map(); tree.set(a, m);
-      const t = m.get(b) ?? new Map(); m.set(b, t);
-      t.set(c, (t.get(c) ?? 0) + 1);
+      const make = cleanName(r.make) ?? "Make not recorded";
+      const model = withoutPrefix(cleanName(r.model) ?? "Model not recorded", make);
+      const trim = withoutPrefix(cleanName(r.trim) ?? "No trim", model);
+      const mk = make.toLowerCase(), md = model.toLowerCase(), tr = trim.toLowerCase();
+      const m = makes.get(mk) ?? { label: make, n: 0, models: new Map() }; makes.set(mk, m); m.n++;
+      const o = m.models.get(md) ?? { label: model, n: 0, trims: new Map() }; m.models.set(md, o); o.n++;
+      const t = o.trims.get(tr) ?? { label: trim, n: 0 }; o.trims.set(tr, t); t.n++;
     }
-    return [...tree.entries()].map(([make, models], i) => ({
-      name: make, itemStyle: { color: PALETTE[i % PALETTE.length] },
-      children: [...models.entries()].map(([model, trims]) => ({ name: model, children: [...trims.entries()].map(([trim, n]) => ({ name: trim, value: n })) })),
-    }));
+    return [...makes.values()].sort((a, b) => b.n - a.n);
   }, [rows]);
-  return <Chart height={380} option={(dark) => ({
-    tooltip: { formatter: (x: unknown) => { const d = x as { treePathInfo: { name: string }[]; value: number }; return `${d.treePathInfo.slice(1).map((p) => p.name).join(" › ")}\n${d.value.toLocaleString()} vehicles`; } },
-    series: [{ type: "sunburst", data, radius: ["12%", "95%"], sort: undefined, nodeClick: "rootToNode",
-      itemStyle: { borderColor: dark ? "#11141f" : "#fff", borderWidth: 2, borderRadius: 4 },
-      label: { fontSize: 10.5, minAngle: 8, color: "#fff", textBorderWidth: 0 },
-      levels: [{}, { r0: "12%", r: "38%" }, { r0: "38%", r: "68%", itemStyle: { opacity: 0.85 } }, { r0: "68%", r: "95%", itemStyle: { opacity: 0.7 }, label: { fontSize: 9.5 } }] }],
-  })} />;
+  const [pick, setPick] = useState<string | null>(null);
+  const make = tree.find((m) => m.label === pick) ?? null;
+  const models = (make ? [...make.models.values()] : tree.flatMap((m) => [...m.models.values()].map((o) => ({ ...o, label: tree.length > 1 ? m.label + " " + o.label : o.label }))))
+    .sort((a, b) => b.n - a.n);
+  const total = make?.n ?? rows.length;
+  const [all, setAll] = useState(false);
+  const shown = all ? models : models.slice(0, 7);
+  return (
+    <div>
+      <div className="mb-3 flex flex-wrap gap-1.5">
+        <button onClick={() => setPick(null)} className={"ops-chip " + (!make ? "ops-chip-active" : "")}>
+          {tree.length === 1 ? tree[0].label : "All makes"}<span className="tnum ml-1.5 text-faint">{rows.length.toLocaleString()}</span>
+        </button>
+        {tree.length > 1 && tree.map((m) => (
+          <button key={m.label} onClick={() => setPick(m.label)} className={"ops-chip " + (make === m ? "ops-chip-active" : "")}>
+            {m.label}<span className="tnum ml-1.5 text-faint">{m.n.toLocaleString()}</span>
+          </button>
+        ))}
+      </div>
+      <ul className="divide-y divide-border">
+        {shown.map((o) => {
+          const trims = [...o.trims.values()].sort((a, b) => b.n - a.n);
+          return (
+            <li key={o.label} className="py-2.5">
+              <div className="flex items-baseline justify-between gap-3">
+                <span className="truncate text-[13px] font-semibold">{o.label}</span>
+                <span className="tnum shrink-0 text-[12px] text-muted"><b className="font-semibold text-text">{o.n.toLocaleString()}</b> · {(100 * o.n / total).toFixed(1)}%</span>
+              </div>
+              <div className="mt-1.5 flex h-2 overflow-hidden rounded-full bg-panel-2" style={{ width: Math.max(8, (100 * o.n) / models[0].n) + "%" }}
+                role="img" aria-label={o.label + ": " + trims.map((t) => t.label + " " + t.n).join(", ")}>
+                {trims.map((t, i) => <span key={t.label} title={t.label + " · " + t.n.toLocaleString()} style={{ width: (100 * t.n) / o.n + "%", background: TRIM_TONES[i % TRIM_TONES.length], opacity: 1 - i * 0.08 }} className="h-full border-r border-panel last:border-r-0" />)}
+              </div>
+              <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-0.5 text-[11.5px] text-muted">
+                {trims.map((t, i) => (
+                  <span key={t.label} className="inline-flex items-center gap-1.5">
+                    <span className="h-2 w-2 rounded-[2px]" style={{ background: TRIM_TONES[i % TRIM_TONES.length], opacity: 1 - i * 0.08 }} />
+                    {t.label} <span className="tnum text-faint">{t.n.toLocaleString()}</span>
+                  </span>
+                ))}
+              </div>
+            </li>
+          );
+        })}
+      </ul>
+      {models.length > 7 && (
+        <button onClick={() => setAll(!all)} className="mt-1 text-[12px] font-medium text-accent hover:underline">
+          {all ? "Show fewer models" : `Show all ${models.length} models`}
+        </button>
+      )}
+    </div>
+  );
 }
 
 function VinDecode({ rows }: { rows: RegistryRow[] }) {

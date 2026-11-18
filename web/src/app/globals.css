@@ -100,3 +100,23 @@ button:disabled { cursor: not-allowed; }
 
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition: none !important; animation: none !important; } }
 
+
+/* KPI widgets */
+.kpi-tile { position: relative; display: flex; flex-direction: column; min-width: 0; overflow: hidden; padding: 14px 14px 0; border: 1px solid var(--border); border-radius: 12px; background: var(--panel); }
+.kpi-tile::before { content: ""; position: absolute; inset: 0 0 auto; height: 2px; background: var(--kpi); opacity: .85; }
+.kpi-flag { flex-shrink: 0; padding: 1px 6px; border-radius: 999px; background: color-mix(in srgb, var(--kpi) 13%, transparent); color: var(--kpi); font-size: 10.5px; font-weight: 600; white-space: nowrap; }
+.kpi-delta { font-weight: 600; }
+.kpi-spark { margin: auto -14px 0; padding-top: 6px; }
+.kpi-tile:not(:has(.kpi-spark)) { padding-bottom: 14px; }
+.stat-strip { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); overflow: hidden; border: 1px solid var(--border); border-radius: 12px; background: var(--border); gap: 1px; }
+@media (min-width: 768px) { .stat-strip { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+@media (min-width: 1280px) { .stat-strip { grid-template-columns: repeat(8, minmax(0, 1fr)); } }
+.stat-strip-item { min-width: 0; padding: 12px 14px; background: var(--panel); }
+.kpi-panel { border: 1px solid var(--border); border-radius: 12px; background: var(--panel); }
+.kpi-panel > header { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; padding: 12px 14px 8px; }
+.kpi-row { display: grid; grid-template-columns: 3px minmax(0, 1fr) auto auto; align-items: center; gap: 10px; padding: 7px 14px 7px 11px; border-top: 1px solid var(--border); }
+.kpi-row-bar { align-self: stretch; border-radius: 3px; }
+.kpi-wall { columns: 1; column-gap: 12px; }
+@media (min-width: 768px) { .kpi-wall { columns: 2; } }
+@media (min-width: 1280px) { .kpi-wall { columns: 3; } }
+.kpi-wall > .kpi-panel { break-inside: avoid; margin-bottom: 12px; }

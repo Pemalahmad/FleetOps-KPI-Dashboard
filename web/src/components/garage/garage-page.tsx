@@ -9,6 +9,7 @@ import { Card, Skeleton } from "../ui";
 import { buildAlerts, deriveVehicle, LANES, localDate, vehicleLabel, type GarageAlert, type GarageContext, type GarageLane, type GarageRow, type GarageVehicle } from "@/lib/garage";
 import { GARAGE_SQL } from "@/lib/garage-query";
 import { GarageCar } from "./car";
+import { Garage3D } from "./garage-3d";
 import { IncidentDialog } from "./incident-dialog";
 import { VehicleDialog } from "./vehicle-dialog";
 import { useGarageOperations } from "./use-garage";
@@ -55,7 +56,15 @@ export function GaragePage() {
   const handovers = operations.state.handovers.filter((h) => ids.has(h.vehicleId));
   const doneToday = handovers.filter((h) => localDate(new Date(h.at)) === today).length;
   const xp = handovers.length * 50;
-  const rank = handovers.length >= 20 ? "Garage captain" : handovers.length >= 5 ? "Recovery crew" : handovers.length > 0 ? "Dispatcher" : "Crew starter";
+  const level = crewLevel(handovers.length);
+  const roadPct = vehicles.length ? Math.round((100 * groups.road.length) / vehicles.length) : 0;
+  const badges = [
+    { label: "First handover", earned: handovers.length >= 1, hint: "Record one reviewed handover" },
+    { label: "Five clean", earned: handovers.length >= 5, hint: "Record five reviewed handovers" },
+    { label: "Recovery done", earned: handovers.some((h) => h.incidentIds.length > 0), hint: "Hand over a vehicle after accident recovery" },
+    { label: "Desk clear", earned: vehicles.length > 0 && groups.renewal.length === 0, hint: "No vehicle waiting at the renewal desk" },
+    { label: "No critical", earned: vehicles.length > 0 && critical === 0, hint: "No critical safety or compliance alert" },
+  ];
   const filterQueue = (lane: GarageLane | "all") => {
     setFilter(lane); setPage(0);
     document.getElementById("garage-queue")?.scrollIntoView({ behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "start" });
@@ -94,36 +103,40 @@ export function GaragePage() {
       </section>
 
       <section className="garage-floor" aria-label="Visual fleet garage">
-        <div className="garage-floor-header"><div><h2 className="text-lg font-semibold">The garage floor</h2><p className="mt-1 text-xs text-muted">{NUM.format(vehicles.length)} vehicles, grouped by status. Each area previews up to three cars.</p></div>
-          <span className="garage-report-badge">Report-based queues</span></div>
+        <div className="garage-floor-header"><div><h2 className="text-lg font-semibold">The garage floor</h2><p className="mt-1 text-xs text-muted">{NUM.format(vehicles.length)} vehicles across six work zones. Accident holds flash; repair bays lift the car.</p></div>
+          <span className="garage-report-badge">Live from the loaded report</span></div>
+        <Garage3D groups={groups} onOpen={openVehicle} />
         <div className="garage-zones">{LANES.map((lane) => <section key={lane.id} className="garage-zone" aria-label={lane.label + " queue"}>
-          <header className="flex items-start justify-between gap-2"><div><h3 className="flex items-center gap-2 text-sm font-semibold"><span className="h-2 w-2 rounded-full" style={{ background: lane.color }} />{lane.label}</h3><p className="mt-1 text-[11px] text-muted">{lane.description}</p></div>
-            <span className="tnum text-xl font-semibold" style={{ color: lane.color }}>{NUM.format(groups[lane.id].length)}</span></header>
+          <header className="flex items-baseline justify-between gap-2"><h3 className="flex items-center gap-2 text-[13px] font-semibold"><span className="h-2 w-2 rounded-full" style={{ background: lane.color }} />{lane.label}</h3>
+            <span className="tnum text-lg font-semibold" style={{ color: lane.color }}>{NUM.format(groups[lane.id].length)}</span></header>
+          <p className="mt-0.5 text-[11px] text-muted">{lane.description}</p>
           <div className="garage-bays">{groups[lane.id].slice(0, 3).map((v) => <button className="garage-bay" key={v.row.vehicle_id} onClick={() => openVehicle(v.row.vehicle_id)}
             aria-label={vehicleLabel(v.row) + ", " + (v.row.make ?? "") + " " + (v.row.model ?? "") + ", " + lane.label}>
-            <GarageCar color={lane.color} /><span className="garage-bay-plate">{vehicleLabel(v.row)}</span><span className="garage-bay-model">{v.row.model ?? v.row.vehicle_id}</span>
+            <span className="garage-bay-plate">{vehicleLabel(v.row)}</span><span className="garage-bay-model">{v.row.model ?? v.row.vehicle_id}</span>
           </button>)}
-            {!groups[lane.id].length && <div className="garage-zone-empty"><CheckCircle size={24} /><p>No vehicles in this queue</p></div>}
+            {!groups[lane.id].length && <div className="garage-zone-empty"><CheckCircle size={16} /> Clear</div>}
           </div>
-          <button className="garage-zone-footer" onClick={() => filterQueue(lane.id)}>View {NUM.format(groups[lane.id].length)} vehicle{groups[lane.id].length === 1 ? "" : "s"}<span aria-hidden="true">↗</span></button>
+          <button className="garage-zone-footer" onClick={() => filterQueue(lane.id)}>View all<span aria-hidden="true">→</span></button>
         </section>)}</div>
-        <div className="garage-drive-lane" aria-hidden="true"><span /><Car size={20} /><b>Dispatch lane</b><span /></div>
       </section>
 
-      <section className="mt-7 grid gap-4 xl:grid-cols-[1fr_260px]" aria-label="Garage missions">
-        <div className="garage-missions"><div className="mb-4 flex items-center gap-2"><Flag size={19} className="text-accent" /><h2 className="text-lg font-semibold">Recovery missions</h2></div>
-          <div className="grid gap-3 sm:grid-cols-2">
-            <Mission title="Recover accident holds" text="Assign an owner and move recovery through its stages." count={groups.incident.length} onClick={() => filterQueue("incident")} />
-            <Mission title="Clear the renewal desk" text="Track submissions, collect documents and refresh expiry evidence." count={groups.renewal.length} onClick={() => filterQueue("renewal")} />
-            <Mission title="Finish the repair queue" text="Resolve open work and capture the repair-ready milestone." count={groups.repair.length} onClick={() => filterQueue("repair")} />
-            <Mission title="Complete the handover" text="Verify source gates and sign off the release checklist." count={groups.dispatch.length} onClick={() => filterQueue("dispatch")} />
-          </div>
+      <section className="garage-progress-grid" aria-label="Garage missions">
+        <div className="garage-crew">
+          <div className="flex items-center gap-3"><span className="garage-crew-badge"><Trophy size={22} weight="duotone" /></span>
+            <div className="min-w-0"><p className="text-[11px] font-medium uppercase tracking-[0.08em] text-muted">Crew rank</p><p className="text-[17px] font-semibold leading-tight">{level.name}</p></div>
+            <p className="tnum ml-auto text-right text-[22px] font-bold leading-none">{NUM.format(xp)}<span className="block text-[11px] font-medium text-muted">XP</span></p></div>
+          <div className="mt-4"><div className="garage-xp"><span style={{ width: level.pct + "%" }} /></div>
+            <p className="mt-1.5 flex justify-between text-[11px] text-muted"><span>{level.next ? NUM.format(level.toNext) + " XP to " + level.next : "Top rank reached"}</span><span className="tnum">{doneToday} handover{doneToday === 1 ? "" : "s"} today</span></p></div>
+          <div className="mt-4 flex flex-wrap gap-1.5" aria-label="Badges">{badges.map((b) => <span key={b.label} title={b.hint} className={"garage-badge " + (b.earned ? "garage-badge-earned" : "")}>{b.earned ? "★" : "☆"} {b.label}</span>)}</div>
+          <p className="mt-4 text-[11px] leading-relaxed text-muted">50 XP per reviewed handover. XP never clears a safety or document gate.{context.demo ? " Practice progress resets on reload." : ""}</p>
         </div>
-        <div className="garage-achievement"><Trophy size={30} weight="duotone" className="text-accent" /><p className="mt-3 text-sm font-semibold">{rank}</p>
-          <p className="tnum mt-1 text-[30px] font-bold">{NUM.format(xp)} <span className="text-sm font-medium text-muted">crew XP</span></p>
-          <div className="mt-4 border-t border-border pt-4"><p className="text-xs text-muted">Handovers recorded today</p><p className="tnum mt-1 text-xl font-semibold">{doneToday}</p></div>
-          <p className="mt-4 text-xs leading-relaxed text-muted">Earn 50 XP for each reviewed handover. Safety and document requirements always apply.</p>
-          {context.demo && <span className="mt-4 inline-block rounded-full bg-accent-soft px-2 py-1 text-[11px] font-medium text-accent">Practice progress</span>}
+        <div className="garage-missions"><div className="mb-3 flex items-center gap-2"><Flag size={17} className="text-accent" /><h2 className="text-[15px] font-semibold">Recovery missions</h2><span className="ml-auto text-[11px] text-muted">Road ready {roadPct}%</span></div>
+          <div className="grid gap-2 sm:grid-cols-2">
+            <Mission title="Recover accident holds" text="Assign an owner and move recovery through its stages." count={groups.incident.length} total={vehicles.length} color="var(--bad)" onClick={() => filterQueue("incident")} />
+            <Mission title="Clear the renewal desk" text="Track submissions and refresh expiry evidence." count={groups.renewal.length} total={vehicles.length} color="var(--warn)" onClick={() => filterQueue("renewal")} />
+            <Mission title="Finish the repair queue" text="Resolve open work and capture repair-ready." count={groups.repair.length} total={vehicles.length} color="var(--accent)" onClick={() => filterQueue("repair")} />
+            <Mission title="Complete the handover" text="Verify source gates and sign off the checklist." count={groups.dispatch.length} total={vehicles.length} color="var(--good)" onClick={() => filterQueue("dispatch")} />
+          </div>
         </div>
       </section>
 
@@ -176,6 +189,18 @@ const RECOVERY_LABEL = { reported: "Assign assessment and protect the vehicle", 
 function Pulse({ icon, value, label, color, onClick }: { icon: React.ReactNode; value: number; label: string; color: string; onClick: () => void }) {
   return <button className="garage-pulse-item" onClick={onClick}><span className="garage-pulse-icon" style={{ color }}>{icon}</span><span><b className="tnum">{NUM.format(value)}</b><span className="mt-0.5 block text-xs text-muted">{label}</span></span></button>;
 }
-function Mission({ title, text, count, onClick }: { title: string; text: string; count: number; onClick: () => void }) {
-  return <button onClick={onClick} className="garage-mission"><span className="garage-mission-count">{NUM.format(count)}</span><span><b className="text-sm font-semibold">{title}</b><span className="mt-1 block text-xs leading-relaxed text-muted">{text}</span></span></button>;
+function Mission({ title, text, count, total, color, onClick }: { title: string; text: string; count: number; total: number; color: string; onClick: () => void }) {
+  const share = total ? Math.min(100, (100 * count) / total) : 0;
+  return <button onClick={onClick} className="garage-mission">
+    <span className="flex items-baseline justify-between gap-2"><b className="text-[13px] font-semibold">{title}</b><span className="tnum text-[13px] font-semibold" style={{ color: count ? color : "var(--good)" }}>{count ? NUM.format(count) + " left" : "Clear"}</span></span>
+    <span className="mt-0.5 block text-[11.5px] leading-snug text-muted">{text}</span>
+    <span className="garage-mission-bar"><span style={{ width: (count ? Math.max(share, 2) : 0) + "%", background: color }} /></span>
+  </button>;
 }
+const RANKS = [{ at: 0, name: "Crew starter" }, { at: 1, name: "Dispatcher" }, { at: 5, name: "Recovery crew" }, { at: 20, name: "Garage captain" }, { at: 50, name: "Fleet chief" }];
+function crewLevel(handovers: number) {
+  const i = RANKS.findLastIndex((r) => handovers >= r.at), cur = RANKS[i], nxt = RANKS[i + 1];
+  return { name: cur.name, next: nxt?.name ?? null, toNext: nxt ? (nxt.at - handovers) * 50 : 0,
+    pct: nxt ? Math.round((100 * (handovers - cur.at)) / (nxt.at - cur.at)) : 100 };
+}
+
