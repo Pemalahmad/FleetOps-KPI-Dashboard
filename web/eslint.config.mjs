@@ -12,6 +12,10 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Third-party React Bits components, kept as published (see src/components/bits/LICENSE.md).
+    "src/components/bits/DotGrid.tsx",
+    "src/components/bits/SpotlightCard.tsx",
+    "src/components/bits/ClickSpark.tsx",
   ]),
 ]);
 

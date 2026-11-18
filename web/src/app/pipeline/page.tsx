@@ -15,7 +15,7 @@ export default function PipelinePage() {
 
   return (
     <>
-      <PageHeader eyebrow="Govern" title="The pipeline, running in your browser">
+      <PageHeader backdrop eyebrow="Govern" title="The pipeline, running in your browser">
         The same SQL files as the Python package (<code>fleetkpi build</code>), executed by DuckDB-WASM on this page: ingest, settings,
         validation rules, staging → intermediate → marts, then data tests. Import your own fleet to run it on yours; nothing is uploaded anywhere.
       </PageHeader>

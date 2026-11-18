@@ -6,6 +6,7 @@ import { useMemo, useState } from "react";
 import { Bell, Car, ChartPieSlice, CheckCircle, Flag, MagnifyingGlass, ShieldCheck, Trophy, Warning, Wrench, X } from "@phosphor-icons/react";
 import { useEngine, useSql } from "../engine-provider";
 import { Card, Label, Skeleton } from "../ui";
+import { HeaderDots, Sparks } from "../bits/fleetops-bits";
 import { buildAlerts, deriveVehicle, LANES, localDate, vehicleLabel, type GarageAlert, type GarageContext, type GarageLane, type GarageRow, type GarageVehicle } from "@/lib/garage";
 import { GARAGE_SQL } from "@/lib/garage-query";
 import { GarageCar } from "./car";
@@ -74,8 +75,9 @@ export function GaragePage() {
   const markRead = async (items: GarageAlert[]) => {
     await operations.change((s) => ({ ...s, acknowledged: [...new Set([...s.acknowledged, ...items.map((a) => a.id)])] }));
   };
-  return <>
-    <header className="garage-header page-head">
+  return <Sparks>
+    <header className="garage-header page-head page-head-dots">
+      <HeaderDots />
       <div><Label>Fleet garage</Label><h1 className="mt-3 text-[30px] font-semibold leading-[1.1] tracking-[-0.03em] md:text-[38px]">Every vehicle <span className="text-faint">has a next move.</span></h1>
         <p className="mt-2 max-w-2xl text-[14px] leading-relaxed text-muted">See what is holding each car back, work through its checks, and bring it back to the road.</p></div>
       <div className="flex flex-wrap gap-2">
@@ -184,7 +186,7 @@ export function GaragePage() {
       {!filteredAlerts.length && <div className="py-12 text-center"><ShieldCheck size={32} className="mx-auto text-good" /><p className="mt-3 text-sm">No alerts of this type in the loaded evidence for this scope.</p></div>}
       {operations.error && <p role="alert" className="mt-4 text-sm text-bad">{operations.error}</p>}
     </Dialog.Content></Dialog.Portal></Dialog.Root>
-  </>;
+  </Sparks>;
 }
 const RECOVERY_LABEL = { reported: "Assign assessment and protect the vehicle", assessment: "Assess damage and arrange repair", repair: "Complete repair work", quality: "Complete the safety checks", ready: "Review and record handover" };
 function Pulse({ icon, value, label, color, onClick }: { icon: React.ReactNode; value: number; label: string; color: string; onClick: () => void }) {

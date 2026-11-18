@@ -24,5 +24,11 @@ for (const [path, meta] of Object.entries(lock.packages)) {
   if (!files.length) parts.push(`Licence: ${meta.license ?? "unknown"} (no licence file in the package)`, "");
   n++;
 }
+// Components copied into the source tree rather than installed from npm.
+const bits = join(root, "src/components/bits/LICENSE.md");
+if (existsSync(bits)) {
+  parts.push("-".repeat(78), "React Bits components: DotGrid, SpotlightCard, ClickSpark (MIT + Commons Clause)", "-".repeat(78), readFileSync(bits, "utf8").trim(), "");
+  n++;
+}
 writeFileSync(out, parts.join("\n"));
 console.log(`${n} production packages -> ${out}`);

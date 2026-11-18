@@ -85,7 +85,7 @@ export default function DriversPage() {
 
   return (
     <>
-      <PageHeader eyebrow="Drivers & trips" title="Every driver, scored on the road">
+      <PageHeader backdrop eyebrow="Drivers & trips" title="Every driver, scored on the road">
         Drivers and their licences, and how each one drives: speeding, harsh driving, idling and leaving the permitted zone, read
         from your telematics exports (Geotab, Webfleet, Samsara, Motive…) and checked against the limits in your settings.
       </PageHeader>

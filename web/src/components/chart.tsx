@@ -1,20 +1,12 @@
 "use client";
 
-import { useEffect, useRef, useSyncExternalStore } from "react";
+import { useEffect, useRef } from "react";
 import * as echarts from "echarts";
 import type { EChartsOption } from "echarts";
 
-/** Whether the page is in dark mode, kept in sync with the <html class="dark"> toggle. */
-function subscribeTheme(cb: () => void) {
-  const mo = new MutationObserver(cb);
-  mo.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
-  return () => mo.disconnect();
-}
-export function useTheme() {
-  return useSyncExternalStore(subscribeTheme, () => document.documentElement.classList.contains("dark"), () => false);
-}
+export { useTheme } from "./use-theme";
+import { useTheme } from "./use-theme";
 
-/** One family of colours for series: the purple accent and slate tones. Colour means a category, never decoration. */
 export const PALETTE = ["#6366F1", "#94A3B8", "#A5B4FC", "#475569", "#C7D2FE", "#64748B", "#4338CA", "#CBD5E1"];
 /** Status colours, used only where a mark means good, watch or bad. */
 export const STATUS = { good: "#34A37E", warn: "#E0A63A", bad: "#E05A6B", neutral: "#A3AAC0", goodSoft: "#9ED3BE", badSoft: "#F0A9B2" };

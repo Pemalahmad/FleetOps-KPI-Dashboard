@@ -1,6 +1,7 @@
 "use client";
 
 import katex from "katex";
+import { HeaderDots, SpotCard } from "./bits/fleetops-bits";
 import NumberFlow from "@number-flow/react";
 import type { ReactNode } from "react";
 
@@ -8,7 +9,7 @@ export function Card({ children, className = "", title, sub, right }: {
   children: ReactNode; className?: string; title?: ReactNode; sub?: ReactNode; right?: ReactNode;
 }) {
   return (
-    <section className={`card p-5 ${className}`}>
+    <SpotCard className={className}>
       {(title || right) && (
         <header className="mb-3 flex items-start justify-between gap-3">
           <div>
@@ -19,7 +20,7 @@ export function Card({ children, className = "", title, sub, right }: {
         </header>
       )}
       {children}
-    </section>
+    </SpotCard>
   );
 }
 
@@ -36,10 +37,11 @@ export function Label({ children, className = "" }: { children: ReactNode; class
   return <span className={`mono-label ${className}`}><span className="mono-mark" aria-hidden />{children}</span>;
 }
 
-export function PageHeader({ eyebrow, title, children }: { eyebrow: string; title: string; children?: ReactNode }) {
+export function PageHeader({ eyebrow, title, children, backdrop = false }: { eyebrow: string; title: string; children?: ReactNode; backdrop?: boolean }) {
   const [lead, rest] = split(title, /[,:]\s/);
   return (
-    <header className="page-head">
+    <header className={backdrop ? "page-head page-head-dots" : "page-head"}>
+      {backdrop && <HeaderDots />}
       <Label>{eyebrow}</Label>
       <h1 className="mt-3 text-[30px] font-semibold leading-[1.1] tracking-[-0.03em] md:text-[38px]">
         {lead}{rest && <span className="text-faint">{rest}</span>}

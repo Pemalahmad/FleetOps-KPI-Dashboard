@@ -282,6 +282,10 @@ Built in TypeScript with Next.js (static export), Tailwind, ECharts, KaTeX and D
 | [`tests/`](tests) | Python tests: the demo end to end, a foreign-format fleet, bad data, the runner |
 | `Dockerfile`, `.github/workflows/` | Container image, CI (Python, web, Docker) and the GitHub Pages deploy |
 
+## Credits
+
+Three interface effects come from [React Bits](https://github.com/DavidHDev/react-bits) by David Haz: the interactive dot field behind the garage, analytics, drivers and pipeline headers (DotGrid), the pointer spotlight on every card (SpotlightCard) and the click sparks in the garage (ClickSpark). They live in [`web/src/components/bits/`](web/src/components/bits/) under their own MIT + Commons Clause licence, not the FleetOps licence, and switch off for reduced motion and on machines without a graphics card.
+
 ## Licence
 
 [Functional Source License 1.1, MIT future licence](LICENSE.md) (FSL-1.1-MIT). Use it, change it and run it for your

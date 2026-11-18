@@ -185,3 +185,9 @@ button:disabled { cursor: not-allowed; }
 .wf-arrow { stroke: #0c0e16; stroke-width: .8; }
 .wf-tag { font-size: 11px; font-weight: 600; fill: #111322; }
 @media (prefers-reduced-motion: reduce) { .wf-packet, .wf-cursor { display: none; } }
+
+/* React Bits integrations */
+.card.spot { border-color: transparent; }
+.page-head-dots { position: relative; overflow: hidden; }
+.page-head-dots > :not(.page-dots) { position: relative; z-index: 1; }
+.page-dots { position: absolute; inset: 0; z-index: 0; -webkit-mask-image: linear-gradient(to left, #000 15%, transparent 70%); mask-image: linear-gradient(to left, #000 15%, transparent 70%); }

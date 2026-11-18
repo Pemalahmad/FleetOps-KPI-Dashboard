@@ -4,6 +4,9 @@ What changed in each version of FleetOps KPI. Dates are release dates; the newes
 
 ## Unreleased
 
+### React Bits effects (2026-11-18)
+- Interactive dot field behind the garage, analytics, drivers and pipeline headers; a pointer spotlight on every card; click sparks in the garage. Three components from React Bits (MIT + Commons Clause), kept in `web/src/components/bits/` with their licence, listed in the third-party notices and the EULA; no new npm packages.
+
 ### Driver compliance (2026-11-18)
 - Driver compliance status with reasons: licence class against the class the assigned vehicle needs (B, C, CE, D; worked out from the model or set with `licence_class_required`), licence validity, unpaid fines over a limit.
 - Fines are matched to a driver (named on the fine, else on a trip that day, else the assigned driver); work orders can name the driver involved (`driver_id`) and who reported them (`reported_by`).
