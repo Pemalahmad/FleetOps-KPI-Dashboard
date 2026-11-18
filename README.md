@@ -24,7 +24,7 @@ No install, no server, no upload: DuckDB-WASM runs the 59 SQL models and 24 test
 The sample fleet has an expired registration, an insurance renewal due, a broken VIN and a missing VIN; the scanned
 card renews the expired one.
 
-![A walk through the 3D garage, a vehicle at the renewal desk, the analytics page and the fleet register](docs/demo.gif)
+![A walk through the 3D garage, a vehicle at the renewal desk, the analytics page, the fleet register and the pipeline work tree](docs/demo.gif)
 
 ![The 3D garage floor: six work zones, cars in their registered colour and body style, hover for a vehicle's stage and gates](docs/web-garage.gif)
 
@@ -149,6 +149,10 @@ Every KPI has a green/amber/red target in `fleet.yml`. The gamified **Ops Score*
 | ![Compliance: registration, insurance, PM, recalls and fines](docs/st-compliance.gif) | ![Fleet & assets: spend, cost per km and the service ledger](docs/st-fleet-assets.gif) |
 
 ## The pipeline: SQL first, dbt-style
+
+In the web app the same run is drawn as a live **work tree**: your files flow through the checks, the SQL models and the data tests into the garage, register, analytics and metric network, with this run's counts on every node and a run log beside it.
+
+![Work tree: files, checks, SQL models and tests flowing into the garage, register, analytics and metric network](docs/web-work-tree.gif)
 
 ```mermaid
 flowchart LR

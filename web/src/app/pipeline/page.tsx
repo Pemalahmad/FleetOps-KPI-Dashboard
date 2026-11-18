@@ -104,7 +104,7 @@ export default function PipelinePage() {
       )}
 
       <SectionTitle sub="How your files become the pages you use. Every count below comes from this browser's run; click an output to open it.">Work tree</SectionTitle>
-      <Card className="diagram-canvas !p-3">{log?.models.length ? <WorkTree log={log} /> : <Skeleton height={360} />}</Card>
+      <div className="card overflow-hidden !border-0 !bg-transparent">{log?.models.length ? <WorkTree log={log} /> : <Skeleton height={480} />}</div>
 
       <SectionTitle sub="Every model and the tables it reads, discovered from its FROM / JOIN clauses. Hover to trace.">Lineage</SectionTitle>
       <Card className="diagram-canvas">{log?.models.length ? <Lineage log={log} /> : <Skeleton height={520} />}</Card>

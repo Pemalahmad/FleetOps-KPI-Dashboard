@@ -147,23 +147,41 @@ button:disabled { cursor: not-allowed; }
   }
 }
 
-/* Work tree diagram */
-.work-tree text { font-family: var(--font-sans); }
-.wt-edge { fill: none; stroke: var(--border); stroke-width: 1.5; }
-.wt-flow { fill: none; stroke: var(--accent); stroke-width: 1.5; stroke-dasharray: 4 10; opacity: .55; animation: wt-dash 1.4s linear infinite; }
-@keyframes wt-dash { to { stroke-dashoffset: -28; } }
-.wt-packet { fill: var(--accent); }
-.wt-box { fill: var(--panel); stroke: var(--border); stroke-width: 1; filter: drop-shadow(0 1px 2px rgb(15 18 34 / .06)); }
-.wt-link:hover .wt-box { stroke: var(--accent); }
-.wt-link { cursor: pointer; }
-.wt-icon { fill: var(--accent-soft); stroke: color-mix(in srgb, var(--accent) 35%, transparent); }
-.wt-title { font-size: 12.5px; font-weight: 600; fill: var(--text); }
-.wt-kind { font-size: 10px; fill: var(--faint); }
-.wt-row { fill: var(--panel-2); }
-.wt-key { font-size: 10.5px; fill: var(--muted); }
-.wt-val { font-size: 10.5px; font-weight: 600; fill: var(--text); font-variant-numeric: tabular-nums; }
-.wt-port { fill: var(--panel); stroke: var(--faint); stroke-width: 1.2; }
-.wt-cursor-arrow { fill: var(--accent); stroke: var(--panel); stroke-width: 1; }
-.wt-cursor-tag { fill: var(--accent); }
-.wt-cursor-text { font-size: 10.5px; font-weight: 600; fill: #fff; }
-@media (prefers-reduced-motion: reduce) { .wt-packet, .wt-cursor { display: none; } }
+/* Work tree: a workflow canvas inside a dark app window */
+.wf text { font-family: var(--font-sans); }
+.wf-frame { fill: #0c0e16; } .dark .wf-frame { stroke: #262b3d; stroke-width: 1.5; }
+.wf-logo { fill: #6366f1; } .wf-logo-text { font-size: 11px; font-weight: 700; fill: #fff; }
+.wf-title { font-size: 12.5px; font-weight: 600; fill: #e8eaf3; }
+.wf-chip { fill: #1d2131; } .wf-chip-text { font-family: var(--font-mono); font-size: 9.5px; fill: #9097b0; }
+.wf-status { fill: #14281f; } .wf-status-bad { fill: #2b1519; }
+.wf-status-dot { fill: #34d399; } .wf-bad { fill: #fb7185; }
+.wf-status-text { font-size: 11px; font-weight: 600; fill: #d1fae5; }
+.wf-panel { fill: #141826; }
+.wf-brief { margin: 0; padding: 9px 11px; border-radius: 8px; background: #1d2131; color: #b4b9cc; font: 11.5px/1.45 var(--font-sans); }
+.wf-log-strong { font-size: 11.5px; font-weight: 600; fill: #e8eaf3; }
+.wf-log-dim { font-size: 10.5px; fill: #7d84a0; }
+.wf-mono, .wf-mono-dark { font-family: var(--font-mono) !important; font-size: 8.5px; letter-spacing: .12em; }
+.wf-mono { fill: #7d84a0; } .wf-mono-dark { fill: var(--faint); }
+.wf-track { fill: #23283a; } .wf-bar { fill: #6366f1; }
+.wf-ok { fill: #10b981; } .wf-warn { fill: #f59e0b; } .wf-fail { fill: #f43f5e; }
+.wf-tick { fill: none; stroke: #fff; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+.wf-canvas { fill: var(--panel); } .dark .wf-canvas { fill: #11141f; }
+.wf-dot { fill: color-mix(in srgb, var(--faint) 55%, transparent); }
+.wf-wire { fill: none; stroke: color-mix(in srgb, var(--faint) 70%, transparent); stroke-width: 1.3; }
+.wf-packet { fill: var(--accent); }
+.wf-card { fill: var(--panel); stroke: var(--border); filter: drop-shadow(0 2px 6px rgb(15 18 34 / .08)); }
+.dark .wf-card { fill: #171b29; }
+.wf-link { cursor: pointer; } .wf-link:hover .wf-card { stroke: var(--accent); }
+.wf-icon { stroke: rgb(15 18 34 / .06); }
+.wf-glyph { font-size: 13px; fill: #3730a3; }
+.wf-node-title { font-size: 12px; font-weight: 600; fill: var(--text); }
+.wf-node-kind { font-size: 9.5px; fill: var(--faint); }
+.wf-sep { stroke: var(--border); }
+.wf-io { font-size: 10px; fill: var(--muted); }
+.wf-pill { fill: var(--panel-2); }
+.wf-pill-text { font-size: 10px; fill: var(--muted); }
+.wf-pill-val { font-size: 10px; font-weight: 600; fill: var(--text); font-variant-numeric: tabular-nums; }
+.wf-port { fill: var(--panel); stroke: var(--faint); stroke-width: 1.2; }
+.wf-arrow { stroke: #0c0e16; stroke-width: .8; }
+.wf-tag { font-size: 11px; font-weight: 600; fill: #111322; }
+@media (prefers-reduced-motion: reduce) { .wf-packet, .wf-cursor { display: none; } }
