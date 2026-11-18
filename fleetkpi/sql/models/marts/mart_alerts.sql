@@ -31,3 +31,11 @@ UNION ALL
 SELECT 'licence_expiring', 'Licence expiring soon', 'driver', d.driver_id, d.vehicle_id, d.region,
        d.licence_days_left, cfg_num('expiring_window_days'), 'days left', 'info'
 FROM stg_drivers d WHERE d.is_active AND d.licence_status = 'Expiring'
+UNION ALL
+SELECT 'licence_class', 'Licence class does not cover the vehicle', 'driver', c.driver_id, c.vehicle_id, c.region,
+       NULL, NULL, c.licence_class_held || ' held, ' || c.licence_class_required || ' needed', 'critical'
+FROM mart_driver_compliance c WHERE c.is_active AND c.class_ok = FALSE
+UNION ALL
+SELECT 'unpaid_fines', 'Unpaid fines', 'driver', c.driver_id, c.vehicle_id, c.region,
+       round(c.unpaid_amount, 0), cfg_num('alert_unpaid_fines_amount'), 'unpaid', 'warning'
+FROM mart_driver_compliance c WHERE c.is_active AND c.unpaid_amount >= cfg_num('alert_unpaid_fines_amount')

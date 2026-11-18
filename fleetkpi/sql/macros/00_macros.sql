@@ -49,3 +49,27 @@ CREATE OR REPLACE MACRO doc_status(expiry) AS CASE
     WHEN expiry <= snapshot_date() + to_days(CAST(cfg_num('expiring_window_days') AS INTEGER)) THEN 'Expiring'
     ELSE 'Valid'
 END;
+
+-- Licence classes: a held class covers a required one (CE covers C and B; C and D cover B). Free text is normalised.
+CREATE OR REPLACE MACRO licence_norm(c) AS CASE
+    WHEN c IS NULL OR trim(c) = '' THEN NULL
+    WHEN regexp_matches(lower(c), '^c\s*e$|^ce$|artic|trailer|semi') THEN 'CE'
+    WHEN regexp_matches(lower(c), '^c1?$|heavy|truck|lorry') THEN 'C'
+    WHEN regexp_matches(lower(c), '^d1?e?$|bus|coach') THEN 'D'
+    WHEN regexp_matches(lower(c), '^a\d?$|motor ?cycle|bike') THEN 'A'
+    WHEN regexp_matches(lower(c), '^b\s*e?$|light|car|private') THEN 'B'
+    ELSE upper(trim(c)) END;
+CREATE OR REPLACE MACRO required_licence(make, model) AS CASE
+    WHEN regexp_matches(lower(coalesce(make, '') || ' ' || coalesce(model, '')),
+         'tractor|prime mover|semi|head truck|volvo fh|fh16|scania [rsg]|tgx|daf xf|cascadia|t680|actros 1[89]|actros 2') THEN 'CE'
+    WHEN regexp_matches(lower(coalesce(make, '') || ' ' || coalesce(model, '')),
+         'truck|lorry|canter|npr|nqr|\belf\b|dyna|atego|fuso|tipper|hino') THEN 'C'
+    WHEN regexp_matches(lower(coalesce(make, '') || ' ' || coalesce(model, '')), '\bbus\b|coaster|rosa|civilian|minibus') THEN 'D'
+    ELSE 'B' END;
+CREATE OR REPLACE MACRO licence_covers(held, req) AS CASE
+    WHEN held IS NULL OR req IS NULL THEN NULL
+    WHEN req = 'B' THEN held IN ('B', 'C', 'CE', 'D')
+    WHEN req = 'C' THEN held IN ('C', 'CE')
+    WHEN req = 'CE' THEN held = 'CE'
+    WHEN req = 'D' THEN held = 'D'
+    ELSE held = req END;

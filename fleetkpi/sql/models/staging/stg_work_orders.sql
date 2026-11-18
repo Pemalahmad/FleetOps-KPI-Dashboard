@@ -3,6 +3,7 @@
 SELECT
     w.work_order_id, w.vehicle_id, w.site_id, w.job_type, w.opened_at, w.closed_at,
     w.labour_hours, w.parts_wait_hours, w.total_cost, w.paid_by, w.repeat_visit, w.campaign_id,
+    w.driver_id, w.reported_by,
     coalesce(w.goodwill_amount, 0)                                            AS goodwill_amount,
     coalesce(w.issue_category, CASE w.job_type
         WHEN 'Preventive maintenance' THEN 'Scheduled service' WHEN 'Tyres' THEN 'Tyres & wheels'

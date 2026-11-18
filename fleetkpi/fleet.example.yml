@@ -61,6 +61,7 @@ alerts:                                   # rules run on imported trips (telemat
   idle_pct: 20                            # idle minutes as % of engine-on time
   geofence_exits: 1                       # any exit from the permitted zone
   window_days: 90                         # look-back for driver scores and alerts
+  unpaid_fines_amount: 500                # a driver with this much in unpaid fines needs action
 
 compliance:
   expiring_window_days: 30                # registration / insurance shown as "Expiring" inside this window

@@ -40,6 +40,7 @@ One row per vehicle in the fleet: electric, hybrid or combustion.
 | `model_year` | INTEGER |  | Model year (decoded from the VIN when missing) | year, model_year, my, year_of_manufacture, manufacture_year |
 | `trim` | VARCHAR |  | Trim, grade or variant | trim, trim_level, grade, variant, version |
 | `configuration` | VARCHAR |  | Configuration: battery or engine, drive, body, seats, options | configuration, config, specification, specifications, spec |
+| `licence_class_required` | VARCHAR |  | Licence class needed to drive it (B car or van, C truck, CE articulated, D bus); worked out from the model when blank | licence_class_required, license_class_required, required_licence, required_license, vehicle_class |
 | `color` | VARCHAR |  | Exterior colour | color, colour, exterior_color, exterior_colour |
 
 ## `work_orders`
@@ -60,6 +61,8 @@ Every workshop visit: preventive maintenance, repairs, warranty, collisions, tyr
 | `paid_by` | VARCHAR |  | Fleet | OEM | Insurance (default Fleet) | payer, billing, charge_to |
 | `repeat_visit` | BOOLEAN |  | TRUE if the vehicle came back for the same fault | repeat, comeback, rework |
 | `campaign_id` | VARCHAR |  | Recall campaign id for recall jobs | recall_id, campaign |
+| `driver_id` | VARCHAR |  | Driver involved (at the wheel for a collision or breakdown) | driver, driver_name, involved_driver, at_fault_driver |
+| `reported_by` | VARCHAR |  | Who opened the ticket (a driver id, or a team) | reported_by, requested_by, raised_by, opened_by, requester |
 | `key_in_at` | TIMESTAMP |  | Customer handed over the key (defaults to opened_at) | key_in, key_drop, key_received, handover_in, drop_off |
 | `key_out_at` | TIMESTAMP |  | Key handed back to the customer (defaults to closed_at) | key_out, key_return, handover_out, pick_up, collected_at |
 | `ready_at` | TIMESTAMP |  | Vehicle ready for pick-up (defaults to closed_at) | ready, ready_for_pickup, ready_time, job_completed_at, qc_passed_at |
@@ -133,6 +136,7 @@ Traffic and regulatory fines registered against a vehicle.
 | `amount` | DOUBLE | yes | Fine amount | fine_amount, value, penalty |
 | `status` | VARCHAR |  | Paid | Unpaid | Disputed (default Unpaid) | payment_status, state |
 | `authority` | VARCHAR |  | Issuing authority | issuer, issued_by |
+| `driver_id` | VARCHAR |  | Driver responsible, when the authority or your records name one | driver, driver_name, offender, responsible_driver |
 
 ## `documents` (optional)
 

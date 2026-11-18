@@ -552,7 +552,7 @@ WITH fl AS (SELECT ['Omar', 'Ahmed', 'Yousef', 'Khalid', 'Faisal', 'Hassan', 'Me
 SELECT 'D' || lpad(k::VARCHAR, 6, '0') AS driver_id,
        f[1 + CAST(floor(rnd(vehicle_id || 'fn') * len(f)) AS INTEGER)] || ' ' || l[1 + CAST(floor(rnd(vehicle_id || 'ln') * len(l)) AS INTEGER)] AS driver_name,
        (1000000 + CAST(floor(rnd(vehicle_id || 'dl') * 8999999) AS BIGINT))::VARCHAR AS licence_number,
-       'B' AS licence_class,
+       CASE WHEN rnd(vehicle_id || 'cls') < 0.01 THEN 'A' WHEN rnd(vehicle_id || 'cls') < 0.016 THEN NULL ELSE 'B' END AS licence_class,
        CASE WHEN rnd(vehicle_id || 'dle') < 0.008 THEN DATE '2026-10-01' - to_days(CAST(1 + floor(rnd(vehicle_id || 'dld') * 60) AS INTEGER))
             ELSE DATE '2026-10-01' + to_days(CAST(1 + floor(rnd(vehicle_id || 'dld') * 1400) AS INTEGER)) END::DATE AS licence_expiry,
        home_site_id, vehicle_id, 'Active' AS status
@@ -578,3 +578,14 @@ SELECT 'TR' || lpad((row_number() OVER (ORDER BY wk, vehicle_id))::VARCHAR, 7, '
        CAST(round(km / 100 * CASE WHEN risky = 1 THEN 4.0 ELSE 0.7 END * (0.4 + 1.2 * rnd(tk || 'h'))) AS INTEGER) AS harsh_events,
        CASE WHEN rnd(tk || 'geo') < 0.0018 THEN 1 ELSE 0 END AS geofence_exits
 FROM m;
+
+-- ------------------------------------------------- tickets on and by drivers
+-- Collisions (and some breakdowns) name the driver at the wheel; most repair and tyre jobs are reported by the driver.
+CREATE OR REPLACE TABLE work_orders AS
+SELECT w.*,
+       CASE WHEN w.job_type = 'Collision' OR (w.job_type = 'Repair' AND rnd(w.work_order_id || 'drv') < 0.15) THEN d.driver_id END AS driver_id,
+       CASE WHEN w.job_type IN ('Repair', 'Tyres') AND rnd(w.work_order_id || 'rep') < 0.6 THEN d.driver_id
+            WHEN w.job_type IN ('Repair', 'Tyres', 'Collision') THEN 'Workshop'
+            WHEN w.job_type = 'Preventive maintenance' THEN 'Scheduler' END AS reported_by
+FROM work_orders w LEFT JOIN drivers d USING (vehicle_id);
+

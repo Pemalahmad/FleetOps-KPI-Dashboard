@@ -78,6 +78,8 @@ TABLES: dict[str, Table] = {t.name: t for t in [
           ("configuration", "config", "specification", "specifications", "spec", "specs", "options", "package", "body_type", "body",
            "body_class"),
           "75 kWh · AWD · 5 seats"),
+        C("licence_class_required", "VARCHAR", False, "Licence class needed to drive it (B car or van, C truck, CE articulated, D bus); worked out from the model when blank",
+          ("licence_class_required", "license_class_required", "required_licence", "required_license", "vehicle_class", "licence_category_required"), "C"),
         C("color", "VARCHAR", False, "Exterior colour", ("color", "colour", "exterior_color", "exterior_colour"), "White"),
     ), key=("vehicle_id",)),
 
@@ -94,6 +96,8 @@ TABLES: dict[str, Table] = {t.name: t for t in [
         C("paid_by", "VARCHAR", False, "Fleet | OEM | Insurance (default Fleet)", ("payer", "billing", "charge_to"), "Fleet"),
         C("repeat_visit", "BOOLEAN", False, "TRUE if the vehicle came back for the same fault", ("repeat", "comeback", "rework"), "false"),
         C("campaign_id", "VARCHAR", False, "Recall campaign id for recall jobs", ("recall_id", "campaign"), ""),
+        C("driver_id", "VARCHAR", False, "Driver involved (at the wheel for a collision or breakdown)", ("driver", "driver_name", "involved_driver", "at_fault_driver"), "D000123"),
+        C("reported_by", "VARCHAR", False, "Who opened the ticket (a driver id, or a team)", ("reported_by", "requested_by", "raised_by", "opened_by", "requester", "reporter"), "D000123"),
         C("key_in_at", "TIMESTAMP", False, "Customer handed over the key (defaults to opened_at)", ("key_in", "key_drop", "key_received", "handover_in", "drop_off"), "2026-03-04 08:20"),
         C("key_out_at", "TIMESTAMP", False, "Key handed back to the customer (defaults to closed_at)", ("key_out", "key_return", "handover_out", "pick_up", "collected_at"), "2026-03-05 16:10"),
         C("ready_at", "TIMESTAMP", False, "Vehicle ready for pick-up (defaults to closed_at)", ("ready", "ready_for_pickup", "ready_time", "job_completed_at", "qc_passed_at"), "2026-03-05 14:30"),
@@ -158,6 +162,7 @@ TABLES: dict[str, Table] = {t.name: t for t in [
         C("amount", "DOUBLE", True, "Fine amount", ("fine_amount", "value", "penalty"), "300"),
         C("status", "VARCHAR", False, "Paid | Unpaid | Disputed (default Unpaid)", ("payment_status", "state"), "Paid"),
         C("authority", "VARCHAR", False, "Issuing authority", ("issuer", "issued_by"), "Dubai Police"),
+        C("driver_id", "VARCHAR", False, "Driver responsible, when the authority or your records name one", ("driver", "driver_name", "offender", "responsible_driver"), "D000123"),
     ), key=("fine_id",)),
 
     Table("documents", False, "Registration cards, insurance policies, inspections and permits, one row per document. "

@@ -6,14 +6,14 @@
 [![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/Pemalahmad/FleetOps-KPI-Dashboard/badge)](https://securityscorecards.dev/viewer/?uri=github.com/Pemalahmad/FleetOps-KPI-Dashboard)
 ![TypeScript](https://img.shields.io/badge/TypeScript-Next.js-3178C6?logo=typescript&logoColor=white)
 ![SQL](https://img.shields.io/badge/SQL-DuckDB_(WASM)-FFF000?logo=duckdb&logoColor=black)
-![Models](https://img.shields.io/badge/SQL_models-63-6366F1)
-![Tests](https://img.shields.io/badge/SQL_tests-26-10B981)
+![Models](https://img.shields.io/badge/SQL_models-64-6366F1)
+![Tests](https://img.shields.io/badge/SQL_tests-27-10B981)
 ![Rules](https://img.shields.io/badge/validation_rules-44-F59E0B)
 [![License](https://img.shields.io/badge/license-FSL--1.1--MIT-blue)](LICENSE.md)
 
 ### ▶ [Open the live dashboard](https://pemalahmad.github.io/FleetOps-KPI-Dashboard/)
 
-No install, no server, no upload: DuckDB-WASM runs the 63 SQL models and 26 tests on a 6,500-vehicle demo fleet in about 2 seconds, in the page.
+No install, no server, no upload: DuckDB-WASM runs the 64 SQL models and 27 tests on a 6,500-vehicle demo fleet in about 2 seconds, in the page.
 
 **For fleet owners.** Import your vehicle list from Excel (VINs, plates, trims, configurations; exports from Fleetio, Samsara, Motive, Geotab or Verizon Connect are recognised), photograph your registration cards and insurance policies, and get a fleet register with one next action per vehicle. VINs are validated and decoded, documents are read in English and Arabic and matched by VIN or plate, and their expiries drive compliance. Your data stays in your browser. See [FleetOps as fleet software](docs/FLEET_SOFTWARE.md).
 
@@ -42,7 +42,7 @@ Report an accident to hold the vehicle and track assessment, repair, quality che
 
 ![The fleet register: headline numbers, models split by trim, and a car shape per model](docs/web-register.gif)
 
-**Analytics** opens with the north star (off-road hours per vehicle per month) and eight headline KPIs, then 43 indicators in seven groups (fleet and uptime, compliance, maintenance and health, drivers and trips, workshop, customer clock, cost), each with its target, trend and change on last month, and a scorecard of every region against every target. A value turns amber or red only when it is off target.
+**Analytics** opens with the north star (off-road hours per vehicle per month) and eight headline KPIs, then 44 indicators in seven groups (fleet and uptime, compliance, maintenance and health, drivers and trips, workshop, customer clock, cost), each with its target, trend and change on last month, and a scorecard of every region against every target. A value turns amber or red only when it is off target.
 
 ![Analytics: north star, headline KPIs, every KPI and the region scorecard](docs/web-overview.gif)
 
@@ -87,7 +87,16 @@ The statistics are written from first principles in [`web/src/lib/stats.ts`](web
 
 Import a drivers sheet (licence class and expiry, assigned vehicle) and a trips export from your telematics provider (Geotab, Webfleet, Samsara, Motive: one row per trip, or per vehicle and day or week). FleetOps scores every driver 0-100 from speeding, harsh driving, idling and zone exits, and runs an **alert rules engine** in SQL: speeding or harsh driving over a limit per 100 km, idling over a share of engine-on time, leaving the permitted zone, driving on an expired licence, a licence about to expire. The limits sit in `fleet.yml` under `alerts:`; the **Drivers & trips** page lists every alert and every driver, lowest score first, and Analytics adds a Drivers & trips group.
 
-![Drivers & trips: headline numbers, alert rules by type, score bands and the driver register](docs/web-drivers.gif)
+**Driver compliance.** Every driver gets a status (Compliant, Action needed, Not compliant) with the reasons:
+
+- **Licence matches the vehicle:** the class held (B car or van, C truck, CE articulated, D bus; free text such as "light vehicle" or "heavy truck" is understood) must cover the class the assigned vehicle needs, worked out from the model or set per vehicle (`licence_class_required`).
+- **Licence up to date:** valid, expiring or expired, with the days left; a driver with trips on an expired licence raises a critical alert.
+- **Fines:** count, 12-month count, total and unpaid amount. A fine is matched to the driver named on it, else the driver on a trip that day, else the vehicle's assigned driver, and the profile says which.
+- **Tickets on and by the driver:** work orders where they were at the wheel (collisions, breakdowns) and the ones they reported (`driver_id` and `reported_by` on work orders).
+
+Click a driver for the full profile: licence, driving record, the latest fines and every ticket.
+
+![Drivers & trips: compliance and driving numbers, alert rules by type, score bands, the driver register and a driver profile](docs/web-drivers.gif)
 
 ## Architecture: the classic fleet system, local-first
 
@@ -98,7 +107,7 @@ flowchart LR
     T["Telematics exports<br/>trips · idle · speeding"] --> I
     X["Excel / CSV / Parquet<br/>vehicles · work orders · fuel"] --> I
     P["Photos & PDFs<br/>registration · insurance"] --> O["OCR in the browser"] --> I
-    I["Ingest + 44 rules"] --> D[("DuckDB-WASM<br/>63 SQL models")]
+    I["Ingest + 44 rules"] --> D[("DuckDB-WASM<br/>64 SQL models")]
     D --> R["Alert rules<br/>mart_alerts"] --> G["Garage · Drivers · Register"]
     D --> K["KPIs · metric network"] --> A["Analytics"]
     D -. sealed .-> V[("IndexedDB<br/>AES-256 when protected")]
@@ -112,7 +121,7 @@ flowchart LR
 | Fuel consumption monitoring | Fuel L/100 km, electricity kWh/100 km, unusual fuel months |
 | Maintenance scheduling | PM intervals by powertrain, overdue and due-soon vehicles, planned maintenance share |
 | Alerts (speeding, geofencing, idle time) | SQL rules engine over trips and licences, limits in `fleet.yml` |
-| Reporting and analytics | 43 KPIs, region scorecard, metric network, Excel and calendar exports |
+| Reporting and analytics | 44 KPIs, region scorecard, metric network, Excel and calendar exports |
 | Availability, scalability | A static site and an offline package: nothing to keep up, 6,500 vehicles built in about 2 s |
 | Data durability | IndexedDB in the browser; the owner's own files remain the source |
 | Security: authentication, TLS, audit logs | No accounts or server to attack; strict CSP, encryption at rest, a sealed activity log of every change |

@@ -12,7 +12,7 @@ import { NODE } from "@/lib/metrics";
 type Extra = { utilization: number | null; first_time_fix: number | null; pm: number | null; backlog: number | null; aged7: number | null;
   reg_valid: number | null; ins_valid: number | null; tco_km: number | null; co2_km: number | null;
   planned: number | null; mdbf: number | null; fuel_l100: number | null; kwh_100: number | null; fuel_flags: number | null; underused: number | null; health: number | null;
-  safety: number | null; speeding: number | null; harsh: number | null; idle: number | null; geo: number | null; lic_expired: number | null };
+  safety: number | null; speeding: number | null; harsh: number | null; idle: number | null; geo: number | null; lic_expired: number | null; not_compliant: number | null };
 
 /** Network (or region) values for KPIs that are not in the monthly panel, weighted the same way as the scorecard. */
 const UNPLANNED = "'Repair', 'Collision', 'Tyres', 'Warranty'";
@@ -61,7 +61,8 @@ const extraSql = (region: string | null) => {
   (SELECT 100.0 * sum(idle_minutes) / nullif(sum(idle_minutes + driving_minutes), 0) FROM stg_trips
      WHERE start_ts >= snapshot_ts() - to_days(CAST(cfg_num('alert_window_days') AS INTEGER))${w()}) AS idle,
   (SELECT count(*) FROM mart_alerts WHERE rule = 'geofence'${w()}) AS geo,
-  (SELECT count(*) FROM mart_driver_scores WHERE is_active AND licence_status = 'Expired'${w()}) AS lic_expired`;
+  (SELECT count(*) FROM mart_driver_scores WHERE is_active AND licence_status = 'Expired'${w()}) AS lic_expired,
+  (SELECT count(*) FROM mart_driver_compliance WHERE is_active AND compliance_status = 'Not compliant'${w()}) AS not_compliant`;
 };
 
 type WallItem = { node: string } | { label: string; key: keyof Extra; unit: string; decimals: number; better: "higher" | "lower"; target?: string; hint: string };
@@ -84,6 +85,7 @@ const WALL: { title: string; sub: string; items: WallItem[] }[] = [
     { label: "Harsh driving", key: "harsh", unit: "/100 km", decimals: 2, better: "lower", hint: "Harsh braking, acceleration and cornering per 100 km, alert window" },
     { label: "Idle time", key: "idle", unit: "%", decimals: 1, better: "lower", hint: "Idle minutes as a share of engine-on time, alert window" },
     { label: "Vehicles that left their zone", key: "geo", unit: "", decimals: 0, better: "lower", hint: "Vehicles with at least the configured number of geofence exits, alert window" },
+    { label: "Drivers not compliant", key: "not_compliant", unit: "", decimals: 0, better: "lower", hint: "Active drivers with an expired licence or a licence class that does not cover their vehicle" },
     { label: "Drivers with an expired licence", key: "lic_expired", unit: "", decimals: 0, better: "lower", hint: "Active drivers whose licence expiry date has passed" },
   ] },
   { title: "Compliance", sub: "Licence to operate", items: [

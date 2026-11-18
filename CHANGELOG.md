@@ -4,6 +4,12 @@ What changed in each version of FleetOps KPI. Dates are release dates; the newes
 
 ## Unreleased
 
+### Driver compliance (2026-11-18)
+- Driver compliance status with reasons: licence class against the class the assigned vehicle needs (B, C, CE, D; worked out from the model or set with `licence_class_required`), licence validity, unpaid fines over a limit.
+- Fines are matched to a driver (named on the fine, else on a trip that day, else the assigned driver); work orders can name the driver involved (`driver_id`) and who reported them (`reported_by`).
+- New mart `mart_driver_compliance`, test t27, alert rules for a wrong licence class and unpaid fines (`alerts.unpaid_fines_amount`).
+- Drivers page: compliance columns, a driver profile (licence, driving, fines, tickets) and new headline numbers; Analytics adds "Drivers not compliant".
+
 ### Drivers, trips, alert rules and an activity log (2026-11-18)
 - New optional tables in the data contract: `drivers` (licence class and expiry, assigned vehicle) and `trips` (telematics trip or period summaries).
 - New SQL models `stg_drivers`, `stg_trips`, `mart_driver_scores` (0-100 safety score) and `mart_alerts` (rules engine: speeding, harsh driving, idling, zone exits, expired or expiring licences), with tests t25-t26 and rules v43-v44; limits under `alerts:` in fleet.yml.

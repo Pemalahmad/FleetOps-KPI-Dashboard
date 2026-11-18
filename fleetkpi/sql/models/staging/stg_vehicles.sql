@@ -29,6 +29,7 @@ SELECT
     v.in_service_date, v.out_of_service_date, v.purchase_cost,
     v.registration_expiry, v.insurance_expiry, v.insurer,
     v.vin, vin_status(v.vin) AS vin_status, v.plate_number, v.model_year, v.trim, v.configuration, v.color,
+    coalesce(licence_norm(v.licence_class_required), required_licence(v.make, v.model)) AS licence_class_required,
     v.registration_docs, v.insurance_docs, v.documents,
     (v.out_of_service_date IS NULL OR v.out_of_service_date >= snapshot_date())
         AND coalesce(v.in_service_date < snapshot_date(), TRUE)                       AS is_active,
