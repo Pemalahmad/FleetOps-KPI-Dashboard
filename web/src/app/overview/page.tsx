@@ -10,9 +10,11 @@ import { usePanel } from "@/components/use-panel";
 import { NODE } from "@/lib/metrics";
 
 type Extra = { utilization: number | null; first_time_fix: number | null; pm: number | null; backlog: number | null; aged7: number | null;
-  reg_valid: number | null; ins_valid: number | null; tco_km: number | null; co2_km: number | null };
+  reg_valid: number | null; ins_valid: number | null; tco_km: number | null; co2_km: number | null;
+  planned: number | null; mdbf: number | null; fuel_l100: number | null; kwh_100: number | null; fuel_flags: number | null; underused: number | null; health: number | null };
 
 /** Network (or region) values for KPIs that are not in the monthly panel, weighted the same way as the scorecard. */
+const UNPLANNED = "'Repair', 'Collision', 'Tyres', 'Warranty'";
 const extraSql = (region: string | null) => {
   const w = (col = "region") => regionWhere(region, "AND", col);
   return `SELECT
@@ -27,7 +29,31 @@ const extraSql = (region: string | null) => {
   (SELECT 100.0 * sum(vehicles) FILTER (WHERE document = 'Insurance' AND status IN ('Valid', 'Expiring'))
      / nullif(sum(vehicles) FILTER (WHERE document = 'Insurance' AND status <> 'Unknown'), 0) FROM mart_compliance_status WHERE true${w()}) AS ins_valid,
   (SELECT (sum(energy_cost) + sum(maintenance_cost) + sum(depreciation)) / nullif(sum(km), 0) FROM int_vehicle_month_economics WHERE true${w()}) AS tco_km,
-  (SELECT 1000 * sum(co2_kg) / nullif(sum(km), 0) FROM int_vehicle_month_economics WHERE true${w()}) AS co2_km`;
+  (SELECT 1000 * sum(co2_kg) / nullif(sum(km), 0) FROM int_vehicle_month_economics WHERE true${w()}) AS co2_km,
+  (SELECT 100.0 * count(*) FILTER (WHERE job_type = 'Preventive maintenance') / nullif(count(*), 0) FROM stg_work_orders
+     WHERE job_type <> 'Recall' AND closed_at IS NOT NULL AND date_trunc('month', closed_at)::DATE = report_month()${w("vehicle_region")}) AS planned,
+  (SELECT sum(days_in_service) FROM int_vehicle_months WHERE month_start > report_month() - INTERVAL 12 MONTH${w()})
+    / nullif((SELECT count(*) FROM stg_work_orders WHERE job_type IN (${UNPLANNED}) AND key_in_ts >= report_month() - INTERVAL 11 MONTH
+       AND key_in_ts < report_month() + INTERVAL 1 MONTH${w("vehicle_region")}), 0) AS mdbf,
+  (SELECT 100 * sum(e.q) / nullif(sum(k.km), 0) FROM (SELECT vehicle_id, month_start, sum(quantity) AS q FROM stg_energy
+     WHERE energy_type = 'fuel' AND month_start > report_month() - INTERVAL 3 MONTH GROUP BY ALL) e JOIN int_vehicle_months k USING (vehicle_id, month_start) WHERE true${w("k.region")}) AS fuel_l100,
+  (SELECT 100 * sum(e.q) / nullif(sum(k.km), 0) FROM (SELECT vehicle_id, month_start, sum(quantity) AS q FROM stg_energy
+     WHERE energy_type = 'electricity' AND month_start > report_month() - INTERVAL 3 MONTH GROUP BY ALL) e JOIN int_vehicle_months k USING (vehicle_id, month_start) WHERE true${w("k.region")}) AS kwh_100,
+  (WITH vm AS (SELECT e.vehicle_id, e.month_start, k.powertrain, 100 * sum(e.quantity) / nullif(any_value(k.km), 0) AS l100
+       FROM stg_energy e JOIN int_vehicle_months k USING (vehicle_id, month_start)
+       WHERE e.energy_type = 'fuel' AND e.month_start > report_month() - INTERVAL 3 MONTH AND k.km > 500${w("k.region")} GROUP BY e.vehicle_id, e.month_start, k.powertrain),
+     med AS (SELECT powertrain, median(l100) AS m FROM vm GROUP BY 1)
+   SELECT count(*) FROM vm JOIN med USING (powertrain) WHERE l100 > 1.5 * m) AS fuel_flags,
+  (WITH v3 AS (SELECT vehicle_id, powertrain, sum(km) AS km FROM int_vehicle_months WHERE month_start > report_month() - INTERVAL 3 MONTH${w()} GROUP BY ALL),
+     med AS (SELECT powertrain, median(km) AS m FROM v3 GROUP BY 1)
+   SELECT count(*) FROM v3 JOIN med USING (powertrain) WHERE km < 0.25 * m) AS underused,
+  (WITH u AS (SELECT vehicle_id, count(*) AS n, bool_or(is_open) AS open_now,
+       bool_or(repeat_visit AND key_in_ts >= snapshot_ts() - INTERVAL 90 DAY) AS rep
+       FROM stg_work_orders WHERE job_type IN (${UNPLANNED}) AND key_in_ts >= snapshot_ts() - INTERVAL 365 DAY GROUP BY 1)
+   SELECT avg(greatest(0, 100 - CASE WHEN u.open_now THEN 20 ELSE 0 END - CASE WHEN p.pm_state = 'Overdue' THEN 20 ELSE 0 END
+       - CASE WHEN u.rep THEN 15 ELSE 0 END - least(25, 5 * coalesce(u.n, 0)) - CASE WHEN v.age_months > 60 THEN 10 ELSE 0 END
+       - CASE WHEN v.registration_status = 'Expired' OR v.insurance_status = 'Expired' THEN 10 ELSE 0 END))
+   FROM stg_vehicles v LEFT JOIN u USING (vehicle_id) LEFT JOIN int_pm_status p USING (vehicle_id) WHERE v.is_active${w("v.region")}) AS health`;
 };
 
 type WallItem = { node: string } | { label: string; key: keyof Extra; unit: string; decimals: number; better: "higher" | "lower"; target?: string; hint: string };
@@ -37,6 +63,12 @@ const WALL: { title: string; sub: string; items: WallItem[] }[] = [
     { label: "Utilisation", key: "utilization", unit: "%", decimals: 1, better: "higher", target: "utilization_pct", hint: "Share of available vehicle time in use" },
     { node: "visits" }, { node: "first_visits" },
     { label: "PM compliance", key: "pm", unit: "%", decimals: 1, better: "higher", target: "pm_compliance_pct", hint: "Vehicles not overdue for preventive maintenance" },
+  ] },
+  { title: "Maintenance & health", sub: "Planned work, breakdowns and condition", items: [
+    { label: "Fleet health score", key: "health", unit: "", decimals: 0, better: "higher", hint: "0-100 per active vehicle, averaged: 100 minus 20 for an open unplanned job, 20 for overdue PM, 15 for a comeback in 90 days, 5 per unplanned visit in a year (up to 25), 10 if older than five years, 10 for an expired document" },
+    { label: "Planned maintenance share", key: "planned", unit: "%", decimals: 1, better: "higher", hint: "Preventive-maintenance jobs as a share of all non-recall jobs closed this month" },
+    { label: "Days between unplanned visits", key: "mdbf", unit: "days", decimals: 0, better: "higher", hint: "Vehicle-days in service over the last 12 months divided by repair, collision, tyre and warranty visits" },
+    { label: "Under-used vehicles", key: "underused", unit: "", decimals: 0, better: "lower", hint: "Vehicles that drove under a quarter of the median distance for their powertrain over the last three months: candidates to redeploy or retire" },
   ] },
   { title: "Compliance", sub: "Licence to operate", items: [
     { label: "Registration valid", key: "reg_valid", unit: "%", decimals: 1, better: "higher", target: "registration_valid_pct", hint: "Active vehicles with a valid or expiring (not expired) registration" },
@@ -57,6 +89,9 @@ const WALL: { title: string; sub: string; items: WallItem[] }[] = [
     { node: "spend" }, { node: "spend_per_visit" }, { node: "goodwill" },
     { label: "Total cost per km", key: "tco_km", unit: "$", decimals: 3, better: "lower", hint: "Energy, maintenance and depreciation over distance driven" },
     { label: "CO₂ per km", key: "co2_km", unit: "g", decimals: 0, better: "lower", hint: "Tailpipe and charging emissions over distance driven" },
+    { label: "Fuel use", key: "fuel_l100", unit: "L/100 km", decimals: 1, better: "lower", hint: "Litres bought per 100 km driven by vehicles that refuel, last three months" },
+    { label: "Electricity use", key: "kwh_100", unit: "kWh/100 km", decimals: 1, better: "lower", hint: "kWh charged per 100 km driven by vehicles that charge, last three months" },
+    { label: "Unusual fuel months", key: "fuel_flags", unit: "", decimals: 0, better: "lower", hint: "Vehicle-months using over 1.5× the median litres per 100 km for their powertrain (possible leaks, theft or wrong fuel card), last three months" },
   ] },
 ];
 

@@ -16,6 +16,7 @@ export interface CarMesh {
   /** Heights of the nose and tail faces at the ends, for lamps and grille. */
   noseY: number; tailY: number;
   bed?: [number, number, number, number]; cargo?: [number, number, number, number];
+  fifth?: [number, number]; style: BodyStyle;
 }
 
 const STATIONS = 56;
@@ -52,7 +53,7 @@ export function carMesh(style: BodyStyle): CarMesh {
     }
     floor = Math.min(floor, b - 0.08);
     const g = cabin(z) ? roof : b; // glass-house top
-    const wr = w * (style === "van" || style === "minibus" || style === "truck" ? 0.9 : 0.76);
+    const wr = w * (style === "van" || style === "minibus" || style === "truck" || style === "tractor" ? 0.92 : 0.76);
     const crown = Math.min(0.05, (g - b) * 0.15 + 0.02);
     const sideH = b - floor;
     // right half, bottom centre → top centre; [x, y, isGlassBand]
@@ -60,7 +61,7 @@ export function carMesh(style: BodyStyle): CarMesh {
       [0, floor, false], [w * 0.82, floor, false], [w * 0.96, floor + Math.min(0.07, sideH * 0.2), false],
       [w, floor + sideH * 0.38, false], [w * 0.985, floor + sideH * 0.78, false], [w * 0.94, b, false],
       [w * 0.9, b + 0.015, true],
-      [w * 0.9 - (w * 0.9 - wr) * 0.5, b + (g - b) * 0.55, true],
+      [w * 0.9 - (w * 0.9 - wr) * 0.5, p.glassTop && g > p.glassTop ? p.glassTop : b + (g - b) * 0.55, true],
       [wr, g - 0.05, false], [wr * 0.55, g - 0.005, false], [0, g + crown * 0.4, false],
     ];
     return { half: half_, w };
@@ -84,7 +85,7 @@ export function carMesh(style: BodyStyle): CarMesh {
     const a = j < nHalf - 1 ? nHalf - 1 - j : j - (nHalf - 1);
     const b = j < nHalf - 1 ? a - 1 : a + 1;
     const k = Math.min(a, b);
-    return k === 6 || k === 7;
+    return k === 6 || (k === 7 && !p.glassTop);
   };
   const roofBand = (j: number) => {
     const a = j < nHalf - 1 ? nHalf - 1 - j : j - (nHalf - 1), b = j < nHalf - 1 ? a - 1 : a + 1;
@@ -109,6 +110,6 @@ export function carMesh(style: BodyStyle): CarMesh {
     positions, paint, glass, length: p.length, width: p.width, height: p.height, belt,
     wheels: p.wheels.flatMap((z) => [{ z, x: wheelX(z) }, { z, x: -wheelX(z) }]), wheelR: p.wheelR,
     halfAt: (z: number) => ring(z).w, cowlZ: p.glass[3][0],
-    noseY: top(h - 0.02), tailY: top(-h + 0.02), bed: p.bed, cargo: p.cargo,
+    noseY: top(h - 0.02), tailY: top(-h + 0.02), bed: p.bed, cargo: p.cargo, fifth: p.fifth, style,
   };
 }

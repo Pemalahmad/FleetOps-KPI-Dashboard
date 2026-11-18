@@ -177,6 +177,16 @@ export function Garage3D({ groups, onOpen, styleFor }: { groups: Record<GarageLa
         g.add(mesh(box(rw * 1.75, 0.07, 0.05), tailM, 0, m.tailY - 0.12, rz - 0.03, false));
         g.add(mesh(box(rw * 1.6, 0.1, 0.05), trimM, 0, 0.42, rz - 0.02, false));
         if (m.bed) g.add(mesh(box(m.width - 0.3, 0.03, m.bed[1] - m.bed[0]), bedM, 0, m.bed[3] - 0.01, (m.bed[0] + m.bed[1]) / 2, false));
+        if (m.fifth) {
+          // tractor unit: fifth-wheel coupling on the deck, twin exhaust stacks behind the cab, side fuel tanks
+          const [fz5, fy] = m.fifth;
+          g.add(mesh(keep(new THREE.CylinderGeometry(0.55, 0.55, 0.1, 24)), hubM, 0, fy + 0.06, fz5, false));
+          const stack = keep(new THREE.CylinderGeometry(0.07, 0.07, 1.9, 12));
+          const cabBack = -m.length / 2 + 3.05 + 0.15;
+          for (const sx of [-1, 1]) g.add(mesh(stack, rimM, sx * (m.width / 2 - 0.12), 2.2, cabBack, false));
+          const tank = keep(new THREE.CylinderGeometry(0.28, 0.28, 1.1, 18)).rotateX(Math.PI / 2);
+          for (const sx of [-1, 1]) g.add(mesh(tank, rimM, sx * (m.width / 2 - 0.05), 0.75, cabBack + 0.8, false));
+        }
         if (m.cargo) {
           const [r0, r1, y0, y1] = m.cargo;
           g.add(mesh(box(m.width + 0.06, y1 - y0, r1 - r0), cargoM, 0, (y0 + y1) / 2, (r0 + r1) / 2));

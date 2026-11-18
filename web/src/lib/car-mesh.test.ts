@@ -10,7 +10,7 @@ describe("lofted car bodies", () => {
       for (const i of [...m.paint, ...m.glass]) { expect(i).toBeGreaterThanOrEqual(0); expect(i).toBeLessThan(n); }
       expect(m.paint.length % 3).toBe(0);
       expect(m.glass.length).toBeGreaterThan(0);
-      expect(m.wheels).toHaveLength(4);
+      expect(m.wheels.length).toBeGreaterThanOrEqual(4);
     }
   });
   it("stay within the car's footprint and taper at the nose and tail", () => {

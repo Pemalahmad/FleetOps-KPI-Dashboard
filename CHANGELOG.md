@@ -5,6 +5,8 @@ What changed in each version of FleetOps KPI. Dates are release dates; the newes
 ## Unreleased
 
 ### Garage, register and analytics design (2026-11-18)
+- Seven more KPIs in Analytics (37 in all): fleet health score, planned maintenance share, days between unplanned visits, under-used vehicles, fuel litres per 100 km, electricity kWh per 100 km and unusual fuel months.
+- Heavy vehicles in the garage: cab-over box trucks and tractor units (fifth wheel, exhaust stacks, fuel tanks, tandem rear axle); Actros, FH, Scania R and TGX models are recognised as tractors.
 - New visual language across every page: content inside a framed column with hairline section rules, small monospace section labels, headlines whose second half sits in a quieter tone, flatter panels, and panels that rise into place as you scroll (CSS only, off with reduced motion).
 - Pipeline page: a live work tree of how your files become the pages you use (sources → checks → SQL models → tests → garage, register, analytics, network) with this run's counts, animated connectors and clickable outputs.
 - Car bodies are now lofted from cross-sections: curved sides, rounded nose and tail, a cabin that narrows to the roof, real wheel arches, set-in windscreen and side glass, five-spoke alloys, corner headlights, grille and a full-width tail-light bar.

@@ -8,6 +8,8 @@ describe("car body styles", () => {
     expect(guessBodyStyle("Toyota", "Hiace")).toBe("van");
     expect(guessBodyStyle("Toyota", "Coaster")).toBe("minibus");
     expect(guessBodyStyle("Mitsubishi", "Canter")).toBe("truck");
+    expect(guessBodyStyle("Mercedes-Benz", "Actros 1845")).toBe("tractor");
+    expect(guessBodyStyle("Volvo", "FH16 tractor")).toBe("tractor");
     expect(guessBodyStyle("Toyota", "Yaris")).toBe("hatchback");
     expect(guessBodyStyle("Tesla", "Model Y")).toBe("suv");
     expect(guessBodyStyle("Tesla", "Model 3")).toBe("sedan");

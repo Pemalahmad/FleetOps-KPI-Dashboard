@@ -5,7 +5,7 @@
  */
 import { cleanName } from "./names";
 
-export type BodyStyle = "sedan" | "hatchback" | "suv" | "pickup" | "van" | "minibus" | "truck";
+export type BodyStyle = "sedan" | "hatchback" | "suv" | "pickup" | "van" | "minibus" | "truck" | "tractor";
 
 export const BODY_STYLES: { id: BodyStyle; label: string; examples: string }[] = [
   { id: "sedan", label: "Sedan", examples: "Camry, Corolla, Model 3, Accent" },
@@ -14,7 +14,8 @@ export const BODY_STYLES: { id: BodyStyle; label: string; examples: string }[] =
   { id: "pickup", label: "Pickup", examples: "Hilux, Ranger, Navara, F-150" },
   { id: "van", label: "Van", examples: "Hiace, Transit, Sprinter, H-1" },
   { id: "minibus", label: "Minibus", examples: "Coaster, Rosa, Civilian" },
-  { id: "truck", label: "Box truck", examples: "Canter, NPR, Dyna, Actros" },
+  { id: "truck", label: "Box truck (cab-over)", examples: "Canter, Hino 300, NPR, Dyna" },
+  { id: "tractor", label: "Tractor unit (semi)", examples: "Actros, Volvo FH, Scania R, MAN TGX" },
 ];
 export const isBodyStyle = (v: unknown): v is BodyStyle => BODY_STYLES.some((s) => s.id === v);
 
@@ -24,6 +25,7 @@ export function modelKey(make: string | null | undefined, model: string | null |
 }
 
 const RULES: [RegExp, BodyStyle][] = [
+  [/\b(tractor|tractor head|prime mover|semi|semi-?truck|head truck|volvo fh\d*|fh16|scania [rsg]\d*|tgx|daf xf|cascadia|t680|actros 1[89]\d*|actros 2\d+)\b/, "tractor"],
   [/\b(box ?truck|truck|lorry|canter|npr|nqr|elf|dyna|actros|atego|forward|fuso|tipper|chassis cab)\b/, "truck"],
   [/\b(minibus|mini bus|bus|coaster|rosa|civilian|county|school)\b/, "minibus"],
   [/\b(pick ?up|pickup|hilux|ranger|navara|d-?max|l200|triton|tacoma|tundra|f-?150|silverado|ram 1500|gladiator|amarok|bt-?50|double cab|single cab|cybertruck)\b/, "pickup"],
@@ -62,10 +64,14 @@ export interface CarProfile {
   wheels: number[]; wheelR: number; length: number; width: number; height: number; belt: number;
   /** Extra parts: an open pickup bed or a cargo box, as [rearZ, frontZ, bottomY, topY]. */
   bed?: [number, number, number, number]; cargo?: [number, number, number, number];
+  /** Glass stops here on tall cabs (cab-over trucks), with painted cab above. */
+  glassTop?: number;
+  /** Fifth-wheel coupling on a tractor unit, as [z, deck height]. */
+  fifth?: [number, number];
 }
 
 interface Spec { L: number; W: number; H: number; belt: number; clear: number; hood: number; deck: number; fr: number; rr: number;
-  nose: number; tail: number; R: number; wf: number; wr: number }
+  nose: number; tail: number; R: number; wf: number; wr: number; axle2?: number; glassTop?: number; cargoTop?: number }
 
 const SPECS: Record<BodyStyle, Spec> = {
   sedan: { L: 4.75, W: 1.84, H: 1.45, belt: 0.98, clear: 0.2, hood: 1.22, deck: 0.92, fr: 0.78, rr: 0.62, nose: 0.78, tail: 0.92, R: 0.34, wf: 0.95, wr: 1.0 },
@@ -74,7 +80,8 @@ const SPECS: Record<BodyStyle, Spec> = {
   pickup: { L: 5.35, W: 1.9, H: 1.84, belt: 1.15, clear: 0.32, hood: 1.18, deck: 1.62, fr: 0.58, rr: 0.06, nose: 1.02, tail: 1.12, R: 0.4, wf: 0.95, wr: 0.98 },
   van: { L: 5.3, W: 2.0, H: 2.32, belt: 1.18, clear: 0.24, hood: 0.52, deck: 0, fr: 0.82, rr: 0.05, nose: 0.98, tail: 1.18, R: 0.36, wf: 0.82, wr: 1.05 },
   minibus: { L: 6.6, W: 2.05, H: 2.62, belt: 1.3, clear: 0.26, hood: 0.5, deck: 0, fr: 0.5, rr: 0.04, nose: 1.06, tail: 1.3, R: 0.4, wf: 0.95, wr: 1.55 },
-  truck: { L: 6.6, W: 2.1, H: 2.45, belt: 1.45, clear: 0.42, hood: 0.32, deck: 4.2, fr: 0.28, rr: 0.04, nose: 1.15, tail: 0.9, R: 0.45, wf: 1.0, wr: 1.25 },
+  truck: { L: 7.2, W: 2.3, H: 2.7, belt: 1.5, clear: 0.45, hood: 0.04, deck: 4.9, fr: 0.2, rr: 0.04, nose: 1.45, tail: 1.05, R: 0.48, wf: 1.15, wr: 1.6, glassTop: 2.45, cargoTop: 3.4 },
+  tractor: { L: 6.2, W: 2.5, H: 3.35, belt: 1.6, clear: 0.5, hood: 0.04, deck: 3.05, fr: 0.18, rr: 0.04, nose: 1.5, tail: 1.2, R: 0.52, wf: 1.25, wr: 0.95, axle2: 1.4, glassTop: 2.6 },
 };
 
 function arch(z: number, R: number, clear: number): [number, number][] {
@@ -93,24 +100,26 @@ const lerp = (a: [number, number], b: [number, number], y: number): [number, num
 export function carProfile(style: BodyStyle): CarProfile {
   const s = SPECS[style], h = s.L / 2;
   const fz = h - s.wf, rz = -h + s.wr;
-  const deckEnd: [number, number] = [-h + s.deck, style === "truck" ? s.tail : s.belt];
+  const heavy = style === "truck" || style === "tractor";
+  const deckEnd: [number, number] = [-h + s.deck, heavy ? s.tail : s.belt];
   const roofRear: [number, number] = [-h + s.deck + s.rr, s.H], roofFront: [number, number] = [h - s.hood - s.fr, s.H];
   const screen: [number, number] = [h - s.hood, s.belt];
   const outline: [number, number][] = [
     [-h, s.clear + 0.06], [-h, s.tail], [-h + 0.06, s.tail + 0.02], deckEnd,
-    ...(style === "truck" ? [[-h + s.deck, s.tail] as [number, number], [-h + s.deck + 0.02, s.H - 0.25] as [number, number]] : []),
+    ...(heavy ? [[-h + s.deck, s.tail] as [number, number], [-h + s.deck + 0.02, s.H - 0.25] as [number, number]] : []),
     roofRear, roofFront, screen, [h - 0.08, s.nose], [h, s.nose - 0.08], [h, s.clear + 0.1],
     ...arch(fz, s.R, s.clear), ...arch(rz, s.R, s.clear),
   ];
-  const lo = s.belt + 0.06, hi = s.H - 0.08;
-  const rearA = style === "truck" ? [-h + s.deck + 0.02, s.H - 0.25] as [number, number] : deckEnd;
+  const lo = s.belt + 0.06, hi = Math.min(s.H - 0.08, s.glassTop ?? Infinity);
+  const rearA = heavy ? [-h + s.deck + 0.02, s.H - 0.25] as [number, number] : deckEnd;
   const glass: [number, number][] = [
     lerp(rearA, roofRear, lo), lerp(rearA, roofRear, hi), lerp(screen, roofFront, hi), lerp(screen, roofFront, lo),
   ];
   return {
-    outline, glass, wheels: [fz, rz], wheelR: s.R, length: s.L, width: s.W, height: s.H, belt: s.belt,
+    outline, glass, wheels: s.axle2 ? [fz, rz + s.axle2, rz] : [fz, rz], wheelR: s.R, glassTop: s.glassTop, length: s.L, width: s.W, height: s.H, belt: s.belt,
     bed: style === "pickup" ? [-h + 0.08, -h + s.deck - 0.04, s.belt - 0.35, s.belt] : undefined,
-    cargo: style === "truck" ? [-h, -h + s.deck - 0.05, s.tail - 0.02, 3.2] : undefined,
+    cargo: style === "truck" ? [-h, -h + s.deck - 0.05, s.tail - 0.02, s.cargoTop ?? 3.2] : undefined,
+    fifth: style === "tractor" ? [-h + s.wr + s.axle2! / 2, s.tail] : undefined,
   };
 }
 

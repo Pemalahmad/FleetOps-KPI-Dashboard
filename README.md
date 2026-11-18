@@ -30,7 +30,7 @@ card renews the expired one.
 
 ## The visual garage
 
-The home page is a 3D garage floor with six work zones: Road ready, Repair bays, Renewal desk, Accident intake, Dispatch review and Safety checks. Each car is drawn in its registered colour and body style (sedan, hatchback, SUV, pickup, van, minibus or box truck); accident holds flash, repair bays lift the car. Drag to turn the floor, zoom in, hover a car for its stage and gates, click it to open it. The zone list below the scene is the keyboard and screen-reader route to the same vehicles.
+The home page is a 3D garage floor with six work zones: Road ready, Repair bays, Renewal desk, Accident intake, Dispatch review and Safety checks. Each car is drawn in its registered colour and body style (sedan, hatchback, SUV, pickup, van, minibus, cab-over box truck or tractor unit); accident holds flash, repair bays lift the car. Drag to turn the floor, zoom in, hover a car for its stage and gates, click it to open it. The zone list below the scene is the keyboard and screen-reader route to the same vehicles.
 
 Open a car for recorded repair milestones, registration and insurance stages, source blockers, a release checklist, a named owner and a target return date.
 
@@ -42,7 +42,7 @@ Report an accident to hold the vehicle and track assessment, repair, quality che
 
 ![The fleet register: headline numbers, models split by trim, and a car shape per model](docs/web-register.gif)
 
-**Analytics** opens with the north star (off-road hours per vehicle per month) and eight headline KPIs, then 30 indicators in five groups (fleet and uptime, compliance, workshop, customer clock, cost), each with its target, trend and change on last month, and a scorecard of every region against every target. A value turns amber or red only when it is off target.
+**Analytics** opens with the north star (off-road hours per vehicle per month) and eight headline KPIs, then 37 indicators in six groups (fleet and uptime, compliance, maintenance and health, workshop, customer clock, cost), each with its target, trend and change on last month, and a scorecard of every region against every target. A value turns amber or red only when it is off target.
 
 ![Analytics: north star, headline KPIs, every KPI and the region scorecard](docs/web-overview.gif)
 
