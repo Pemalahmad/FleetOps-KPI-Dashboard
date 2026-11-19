@@ -1,3 +1,4 @@
+import { CircuitBreaker, CircuitOpenError, RateLimiter } from "./resilience";
 /**
  * VINs in the browser. The offline rules mirror the SQL macros in fleetkpi/sql/macros/01_vin.sql
  * (format, ISO 3779 check digit, model-year code); the optional online decode asks NHTSA's public vPIC
@@ -101,14 +102,29 @@ export function specFromVpic(r: Record<string, string>): VinSpec {
 
 export const VPIC_URL = "https://vpic.nhtsa.dot.gov/api/vehicles/DecodeVINValuesBatch/";
 
+/**
+ * Guards for the one outside service FleetOps calls. The rate limiter keeps batches polite (a burst of 3, then one every
+ * 1.5 s); the circuit breaker stops after 3 failed batches in a row and pauses the decoder for 30 s, so a down or blocked
+ * service is not hammered and the owner gets a clear message instead of a stream of errors.
+ */
+export const vpicLimiter = new RateLimiter({ capacity: 3, refillPerSec: 1 / 1.5 });
+export const vpicBreaker = new CircuitBreaker({ failureThreshold: 3, coolDownMs: 30_000 });
+
 /** Decode up to 50 VINs per request with NHTSA vPIC. Sends only the VINs. */
 export async function decodeVins(vins: string[], onProgress?: (done: number) => void): Promise<VinSpec[]> {
   const out: VinSpec[] = [];
   for (let i = 0; i < vins.length; i += 50) {
     const body = new URLSearchParams({ format: "json", data: vins.slice(i, i + 50).join(";") });
-    const res = await fetch(VPIC_URL, { method: "POST", body });
-    if (!res.ok) throw new Error(`vPIC answered ${res.status}`);
-    const json = (await res.json()) as { Results: Record<string, string>[] };
+    if (vpicBreaker.state === "open") throw new Error(`The VIN decoder is paused after repeated failures. Try again in ${Math.max(1, Math.ceil(vpicBreaker.retryInMs() / 1000))} seconds.`);
+    await vpicLimiter.take();
+    const json = await vpicBreaker.call(async () => {
+      const res = await fetch(VPIC_URL, { method: "POST", body });
+      if (!res.ok) throw new Error(`vPIC answered ${res.status}`);
+      return (await res.json()) as { Results: Record<string, string>[] };
+    }).catch((e: unknown) => {
+      if (e instanceof CircuitOpenError) throw new Error(`The VIN decoder is paused after repeated failures. Try again in ${Math.max(1, Math.ceil(e.retryInMs / 1000))} seconds.`);
+      throw e;
+    });
     out.push(...json.Results.map(specFromVpic));
     onProgress?.(Math.min(i + 50, vins.length));
   }

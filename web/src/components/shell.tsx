@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
 import {
   BookOpenText, Car, ChartPieSlice, CircleNotch, FileArrowUp, Garage, Graph, IdentificationCard, Moon, ShieldCheck, Smiley, Sun,
-  TreeStructure, WifiSlash, Wrench,
+  HardDrives, TreeStructure, WifiSlash, Wrench,
   SteeringWheel,
 } from "@phosphor-icons/react";
 import { useTheme } from "./chart";
@@ -33,6 +33,7 @@ const NAV = [
   ] },
   { group: "Govern", items: [
     { href: "/pipeline/", label: "Pipeline & your data", icon: TreeStructure },
+    { href: "/system/", label: "System design", icon: HardDrives },
     { href: "/doctrine/", label: "Doctrine & SOPs", icon: BookOpenText },
   ] },
 ];

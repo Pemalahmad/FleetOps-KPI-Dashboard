@@ -5,13 +5,17 @@ import { useMemo, useState } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 import { MagnifyingGlass, Warning, WarningCircle, Info, X } from "@phosphor-icons/react";
 import { Chart, PALETTE, STATUS } from "@/components/chart";
-import { LivePanel } from "@/components/live";
+import { DriverStatusBoard, LivePanel } from "@/components/live";
 import { Emoji, emojiFor } from "@/components/art";
 import { GaugeRow } from "@/components/gauges";
 import { regionWhere, useEngine, useSql } from "@/components/engine-provider";
 import { attention, Card, KpiRow, PageHeader, SectionTitle, Skeleton, StatStrip, type Rag } from "@/components/ui";
 
+/** Employment status from the driver file, with its emoji and colour. */
+const EMPLOY: Record<string, [string, string]> = { Active: ["🟢", "var(--good)"], "On leave": ["🏖️", "#94a3b8"], Suspended: ["⛔", "var(--bad)"], Inactive: ["⚪", "var(--faint)"] };
+
 interface DriverRow {
+  driver_status: string;
   driver_id: string; driver_name: string; region: string | null; site_name: string | null; plate: string | null; vehicle_id: string | null;
   licence_class: string | null; licence_expiry: string | null; licence_status: string; licence_days_left: number | null; is_active: boolean;
   km: number; trips: number; idle_pct: number | null; speeding_per_100km: number | null; harsh_per_100km: number | null;
@@ -39,8 +43,9 @@ export default function DriversPage() {
   const { region, status } = useEngine();
   const drivers = useSql<DriverRow>(`SELECT d.*, s.site_name, v.plate_number AS plate, c.licence_number, c.licence_class_held, c.licence_class_required,
     c.class_ok, c.fines, c.fines_12m, c.fines_amount, c.unpaid_amount, c.tickets_on, c.collisions, c.open_tickets_on, c.tickets_by,
-    c.compliance_status, array_to_string(c.issues, ' · ') AS issues_text
+    c.compliance_status, array_to_string(c.issues, ' · ') AS issues_text, coalesce(dd.driver_status, 'Active') AS driver_status
     FROM mart_driver_scores d LEFT JOIN mart_driver_compliance c USING (driver_id)
+    LEFT JOIN (SELECT driver_id, status AS driver_status FROM stg_drivers) dd USING (driver_id)
     LEFT JOIN stg_sites s ON s.site_id = d.home_site_id LEFT JOIN stg_vehicles v ON v.vehicle_id = d.vehicle_id${regionWhere(region, "WHERE", "d.region")}`);
   const alerts = useSql<AlertRow>(`SELECT a.*, d.driver_name AS name, v.plate_number AS plate FROM mart_alerts a
     LEFT JOIN stg_drivers d ON a.subject_type = 'driver' AND d.driver_id = a.subject_id
@@ -153,6 +158,7 @@ export default function DriversPage() {
       ]} />
 
       <div className="mt-4"><LivePanel focus="drivers" /></div>
+      <DriverStatusBoard />
       <GaugeRow label="Driver gauges" items={[
         { label: "Drivers compliant", value: k.compliant, target: 98, near: 8 },
         { label: "Average safety score", value: k.score, target: 80, near: 10, detail: "Score out of 100" },
@@ -353,13 +359,14 @@ export default function DriversPage() {
         {drivers.data ? (
           <>
             <div className="overflow-x-auto">
-              <table className="tnum w-full min-w-[1040px] text-[12.5px]">
+              <table className="tnum w-full min-w-[1140px] text-[12.5px]">
                 <thead className="text-left text-faint"><tr className="[&>th]:py-1.5 [&>th]:font-medium">
-                  <th>Driver</th><th>Vehicle</th><th>Compliance</th><th>Licence</th><th className="text-right">Score</th>
+                  <th>Driver</th><th>Status</th><th>Vehicle</th><th>Compliance</th><th>Licence</th><th className="text-right">Score</th>
                   <th className="text-right">Fines</th><th className="text-right">Tickets on · by</th><th className="text-right">Speeding</th><th className="text-right">Idle</th></tr></thead>
                 <tbody>{register.slice(page * PAGE, (page + 1) * PAGE).map((r) => (
                   <tr key={r.driver_id} onClick={() => setOpen(r)} className="cursor-pointer border-t border-border transition hover:bg-panel-2 [&>td]:py-2">
                     <td><b className="font-semibold">{r.driver_name}</b><span className="block text-[11px] text-faint">{r.driver_id}{r.site_name ? ` · ${r.site_name}` : ""}</span></td>
+                    <td><span className="duty-chip" style={{ color: EMPLOY[r.driver_status]?.[1] ?? "var(--muted)", background: `color-mix(in srgb, ${EMPLOY[r.driver_status]?.[1] ?? "var(--muted)"} 13%, transparent)` }}>{EMPLOY[r.driver_status]?.[0] ?? "•"} {r.driver_status}</span></td>
                     <td>{r.plate ?? r.vehicle_id ?? "–"}</td>
                     <td><span className="font-medium" style={{ color: STATUS_TONE[r.compliance_status] }}>{r.compliance_status ?? "–"}</span>
                       {r.issues_text && <span className="block max-w-[220px] truncate text-[11px] text-faint" title={r.issues_text}>{r.issues_text}</span>}</td>

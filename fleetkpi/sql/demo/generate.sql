@@ -555,7 +555,10 @@ SELECT 'D' || lpad(k::VARCHAR, 6, '0') AS driver_id,
        CASE WHEN rnd(vehicle_id || 'cls') < 0.01 THEN 'A' WHEN rnd(vehicle_id || 'cls') < 0.016 THEN NULL ELSE 'B' END AS licence_class,
        CASE WHEN rnd(vehicle_id || 'dle') < 0.008 THEN DATE '2026-10-01' - to_days(CAST(1 + floor(rnd(vehicle_id || 'dld') * 60) AS INTEGER))
             ELSE DATE '2026-10-01' + to_days(CAST(1 + floor(rnd(vehicle_id || 'dld') * 1400) AS INTEGER)) END::DATE AS licence_expiry,
-       home_site_id, vehicle_id, 'Active' AS status
+       home_site_id, vehicle_id,
+       -- most drivers work; a few are on leave, suspended pending a review, or have left
+       CASE WHEN rnd(vehicle_id || 'dst') < 0.022 THEN 'On leave' WHEN rnd(vehicle_id || 'dst') < 0.030 THEN 'Suspended'
+            WHEN rnd(vehicle_id || 'dst') < 0.036 THEN 'Inactive' ELSE 'Active' END AS status
 FROM v, fl, ll;
 
 -- ------------------------------------------------------------------ trips
@@ -589,3 +592,82 @@ SELECT w.*,
             WHEN w.job_type = 'Preventive maintenance' THEN 'Scheduler' END AS reported_by
 FROM work_orders w LEFT JOIN drivers d USING (vehicle_id);
 
+
+
+-- ------------------------------------------------- add-ons, warranties and service-centre contacts
+-- Equipment beyond the base trim. About a fifth of the electric cars (and a few others) carry a self-driving package.
+CREATE OR REPLACE TABLE vehicle_addons AS
+WITH cat(addon, category, applies, share, cost, supplier, life_years, software) AS (VALUES
+    ('Depot wall charger, 22 kW', 'Charging', 'plug', 0.35, 1800, 'Sahra Energy', 3, NULL),
+    ('Vehicle-to-load outlet', 'Charging', 'plug', 0.20, 450, 'Sahra Motors', 2, NULL),
+    ('Heat pump', 'Battery & thermal', 'BEV', 0.55, 1200, 'Sahra Motors', 4, NULL),
+    ('Battery pre-conditioning pack', 'Battery & thermal', 'BEV', 0.40, 600, 'Sahra Motors', 4, NULL),
+    ('Extended-range battery, 82 kWh', 'Battery & thermal', 'BEV', 0.22, 6500, 'Sahra Motors', 8, NULL),
+    ('Self-driving computer (HW4)', 'Self-driving', 'sd', 1.00, 3500, 'Sahra Autonomy', 4, 'sw'),
+    ('Surround cameras, 8x', 'Self-driving', 'sd', 1.00, 1100, 'Sahra Autonomy', 4, NULL),
+    ('Imaging radar', 'Self-driving', 'sd', 0.70, 900, 'Sahra Autonomy', 4, NULL),
+    ('Lidar unit', 'Self-driving', 'sd', 0.45, 4200, 'Lumen Sensing', 3, 'fw'),
+    ('Driver-monitoring camera', 'Safety', 'all', 0.60, 300, 'Sahra Motors', 2, NULL),
+    ('Dashcam, front and cabin', 'Safety', 'all', 0.50, 250, 'Roadeye', 2, NULL),
+    ('Telematics unit', 'Telematics', 'all', 0.92, 200, 'Geotab', 3, 'fw'),
+    ('Tow bar', 'Body', 'suv', 0.18, 700, 'Sahra Motors', 2, NULL),
+    ('Cargo shelving', 'Body', 'van', 0.85, 1500, 'Fleet Fitouts', 2, NULL),
+    ('Partition screen', 'Body', 'ridehail', 0.30, 400, 'Fleet Fitouts', 1, NULL)
+),
+v AS (
+    SELECT vehicle_id, powertrain, model, use_case, in_service_date,
+           rnd(vehicle_id || 'sd') < CASE powertrain WHEN 'BEV' THEN 0.22 WHEN 'PHEV' THEN 0.08 ELSE 0.03 END AS self_driving
+    FROM vehicles
+)
+SELECT v.vehicle_id, c.addon, c.category,
+       (v.in_service_date + to_days(CAST(floor(rnd(v.vehicle_id || c.addon || 'd') * 20) AS INTEGER)))::DATE AS installed_date,
+       c.supplier,
+       upper(substr(md5(v.vehicle_id || c.addon), 1, 3)) || '-' || lpad(CAST(floor(rnd(v.vehicle_id || c.addon || 's') * 9999999) AS INTEGER)::VARCHAR, 7, '0') AS serial_number,
+       CASE c.software WHEN 'sw' THEN 'SD ' || (12 + CAST(floor(rnd(v.vehicle_id || 'swv') * 3) AS INTEGER)) || '.' || CAST(floor(rnd(v.vehicle_id || 'swm') * 6) AS INTEGER)
+                       WHEN 'fw' THEN 'FW ' || (3 + CAST(floor(rnd(v.vehicle_id || c.addon || 'f') * 2) AS INTEGER)) || '.' || CAST(floor(rnd(v.vehicle_id || c.addon || 'g') * 9) AS INTEGER) END AS software_version,
+       round(c.cost * (0.9 + 0.2 * rnd(v.vehicle_id || c.addon || 'c')), -1) AS cost,
+       (v.in_service_date + to_years(c.life_years))::DATE AS warranty_end
+FROM v CROSS JOIN cat c
+WHERE CASE c.applies
+        WHEN 'plug' THEN v.powertrain IN ('BEV', 'PHEV') WHEN 'BEV' THEN v.powertrain = 'BEV' WHEN 'sd' THEN v.self_driving
+        WHEN 'suv' THEN v.model LIKE '%SUV%' WHEN 'van' THEN v.model LIKE '%Van%' WHEN 'ridehail' THEN v.use_case = 'Ride-hail'
+        ELSE TRUE END
+  AND rnd(v.vehicle_id || c.addon) < c.share;
+
+-- The maker's warranties run from the in-service date: basic 3 years / 100,000 km, powertrain 5 / 150,000,
+-- the high-voltage battery 8 / 160,000 on electrified cars, self-driving hardware 4 / 120,000; 30% bought an extended plan.
+CREATE OR REPLACE TABLE warranties AS
+WITH cov(coverage, years, km_limit, applies) AS (VALUES
+    ('Basic (bumper to bumper)', 3, 100000, 'all'), ('Powertrain', 5, 150000, 'all'),
+    ('HV battery and drive unit', 8, 160000, 'ev'), ('Corrosion', 8, NULL, 'all'),
+    ('Self-driving hardware', 4, 120000, 'sd'), ('Extended service plan', 6, 200000, 'ext')
+),
+sd AS (SELECT DISTINCT vehicle_id FROM vehicle_addons WHERE category = 'Self-driving')
+SELECT v.vehicle_id, c.coverage,
+       CASE WHEN c.coverage = 'Extended service plan' THEN 'Sahra Care' ELSE 'Sahra Motors' END AS provider,
+       v.in_service_date AS start_date, (v.in_service_date + to_years(c.years))::DATE AS end_date,
+       CAST(c.km_limit AS DOUBLE) AS km_limit,
+       'W-' || strftime(v.in_service_date, '%Y') || '-' || substr(v.vehicle_id, 2) || '-' || upper(substr(c.coverage, 1, 2)) AS contract_number,
+       CASE WHEN rnd(v.vehicle_id || c.coverage || 'void') < 0.004 THEN 'Void' ELSE 'Active' END AS status
+FROM vehicles v CROSS JOIN cov c LEFT JOIN sd USING (vehicle_id)
+WHERE CASE c.applies WHEN 'ev' THEN v.powertrain IN ('BEV', 'PHEV', 'HEV') WHEN 'sd' THEN sd.vehicle_id IS NOT NULL
+                     WHEN 'ext' THEN rnd(v.vehicle_id || 'ext') < 0.3 ELSE TRUE END;
+
+-- One manufacturer service centre per region, with a named contact for each desk.
+-- Phone numbers use the 555 range and e-mails the reserved .example domain: they are fictional.
+CREATE OR REPLACE TABLE service_contacts AS
+WITH r(region, city, cc, area) AS (VALUES ('UAE', 'Dubai', '+971', '4'), ('KSA', 'Riyadh', '+966', '11'), ('Qatar', 'Doha', '+974', '44'),
+        ('Kuwait', 'Kuwait City', '+965', '22'), ('Bahrain', 'Manama', '+973', '17'), ('Oman', 'Muscat', '+968', '24'), ('Türkiye', 'Istanbul', '+90', '212')),
+     roles(role, k, hours) AS (VALUES ('Service advisor', 1, 'Sun-Thu 7:30-19:00, Sat 9:00-14:00'), ('Warranty desk', 2, 'Sun-Thu 8:00-17:00'),
+        ('EV and high-voltage specialist', 3, 'Sun-Thu 8:00-17:00'), ('Self-driving calibration', 4, 'By appointment'),
+        ('Parts desk', 5, 'Sun-Thu 7:30-18:00'), ('Roadside assistance', 6, '24/7')),
+     fl AS (SELECT ['Layla', 'Omar', 'Nadia', 'Karim', 'Sara', 'Yusuf', 'Huda', 'Elif', 'Rami', 'Mona', 'Burak', 'Aisha'] AS f),
+     ll AS (SELECT ['Haddad', 'Al Mansoori', 'Yilmaz', 'Kaya', 'Al Harthy', 'Rahman', 'Saleh', 'Nair', 'Al Kuwari', 'Aziz'] AS l)
+SELECT 'SC' || lpad(row_number() OVER (ORDER BY r.region, roles.k)::VARCHAR, 4, '0') AS contact_id, 'Sahra' AS make,
+       'Sahra Service Centre ' || r.city AS service_centre, r.region, roles.role,
+       CASE WHEN roles.role = 'Roadside assistance' THEN 'Sahra Assist (24/7 line)'
+            ELSE f[1 + CAST(floor(rnd(r.region || roles.role || 'f') * len(f)) AS INTEGER)] || ' ' || l[1 + CAST(floor(rnd(r.region || roles.role || 'l') * len(l)) AS INTEGER)] END AS name,
+       r.cc || ' ' || r.area || ' 555 0' || lpad((100 + roles.k * 7 + CAST(floor(rnd(r.region) * 80) AS INTEGER))::VARCHAR, 3, '0') AS phone,
+       lower(replace(split_part(roles.role, ' ', 1), '-', '')) || '.' || lower(replace(r.city, ' ', '')) || '@service.sahra.example' AS email,
+       roles.hours
+FROM r CROSS JOIN roles, fl, ll;

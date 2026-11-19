@@ -4,6 +4,12 @@ What changed in each version of FleetOps KPI. Dates are release dates; the newes
 
 ## Unreleased
 
+### Warranty, add-ons, service contacts, driver status and system design (2026-11-19)
+- Every VIN: warranty cover by coverage (status by date and kilometres, days and km left, contract), add-on equipment (EV chargers and battery packs, self-driving hardware and software, cameras, telematics, fit-outs) and the maker's service-centre contacts per desk, in the vehicle sheet; a fleet-wide warranty and add-ons section on the register. New optional sheets `warranties`, `vehicle_addons`, `service_contacts`; 4 new SQL models, 1 test, 3 rules.
+- Drivers: employment status (Active, On leave, Suspended, Inactive) in the driver file and register; a live "Driver status now" board (on a trip, available, on a break, off duty, on leave, suspended) with a moving roster; live counters open on the day so far and the feed opens pre-filled.
+- New System design page: DNS, CDNs, load balancing, caching, rate limiting, SQL vs NoSQL, indexing, replication, sharding, CAP, microservices, circuit breakers, messages and queues, each with how a fleet platform uses it and where FleetOps stands; animated architecture, CAP and sharding diagrams; live circuit-breaker, rate-limiter and queue demos. Also in docs/SYSTEM_DESIGN.md.
+- The VIN decoder is guarded by a rate limiter (burst of 3, then one batch every 1.5 s) and a circuit breaker (30 s pause after 3 failed batches) from the new lib/resilience.ts, with 8 tests.
+
 ### Illustrations, emoji and Arc UI (2026-11-18)
 - A vector illustration on every page header, drawn in code and coloured from the theme: the garage with a car driving in, charts for Analytics, a steering wheel on the road for Drivers, a car on a lift for Workshop, clocks, invoices, ID cards, a spreadsheet flowing into the database, and more. Wheels turn, roads move and badges float; all still for reduced motion.
 - Emoji beside section titles, on every KPI group and on every live event (🚗 trip, 🔧 check-in, ✅ ready, ⚡ charged, ⛽ refuelled, 🧾 fine, ⚠️ alert).

@@ -313,3 +313,19 @@ button:disabled { cursor: not-allowed; }
 /* Arc gauge rows */
 .gauge-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 1px; margin: 16px 0 8px; overflow: hidden; border: 1px solid var(--border); border-radius: 10px; background: var(--border); }
 .gauge-row > figure { padding: 18px 10px 16px; background: var(--panel); }
+
+/* Warranty bars grow in from the left */
+@keyframes warranty-grow { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+.warranty-bar { transform-origin: left; animation: warranty-grow 700ms cubic-bezier(.16, 1, .3, 1) both; }
+@media (prefers-reduced-motion: reduce) { .warranty-bar { animation: none; } }
+
+/* Driver status board */
+.duty-bar { display: flex; height: 10px; overflow: hidden; border-radius: 999px; background: var(--panel-2); gap: 2px; }
+.duty-bar > span { display: block; height: 100%; transition: width 600ms cubic-bezier(.22, 1, .36, 1); }
+.duty-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 1px; overflow: hidden; border-radius: 8px; background: var(--border); }
+.duty-cell { display: flex; flex-direction: column; gap: 6px; padding: 10px 12px; background: var(--panel); }
+.duty-roster { display: grid; gap: 4px 18px; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); }
+.duty-person { display: flex; align-items: center; gap: 10px; padding: 6px 2px; border-bottom: 1px solid var(--border); }
+.duty-avatar { display: grid; width: 30px; height: 30px; flex-shrink: 0; place-items: center; border-radius: 50%; background: var(--accent-soft); color: var(--accent); font-size: 11px; font-weight: 700; }
+.duty-chip { flex-shrink: 0; padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 600; white-space: nowrap; animation: live-in 360ms cubic-bezier(.2,.8,.2,1) both; }
+@media (prefers-reduced-motion: reduce) { .duty-bar > span, .duty-chip { transition: none; animation: none; } }

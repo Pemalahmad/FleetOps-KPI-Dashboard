@@ -6,14 +6,14 @@
 [![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/Pemalahmad/FleetOps-KPI-Dashboard/badge)](https://securityscorecards.dev/viewer/?uri=github.com/Pemalahmad/FleetOps-KPI-Dashboard)
 ![TypeScript](https://img.shields.io/badge/TypeScript-Next.js-3178C6?logo=typescript&logoColor=white)
 ![SQL](https://img.shields.io/badge/SQL-DuckDB_(WASM)-FFF000?logo=duckdb&logoColor=black)
-![Models](https://img.shields.io/badge/SQL_models-64-6366F1)
-![Tests](https://img.shields.io/badge/SQL_tests-27-10B981)
-![Rules](https://img.shields.io/badge/validation_rules-44-F59E0B)
+![Models](https://img.shields.io/badge/SQL_models-68-6366F1)
+![Tests](https://img.shields.io/badge/SQL_tests-28-10B981)
+![Rules](https://img.shields.io/badge/validation_rules-47-F59E0B)
 [![License](https://img.shields.io/badge/license-FSL--1.1--MIT-blue)](LICENSE.md)
 
 ### ▶ [Open the live dashboard](https://pemalahmad.github.io/FleetOps-KPI-Dashboard/)
 
-No install, no server, no upload: DuckDB-WASM runs the 64 SQL models and 27 tests on a 6,500-vehicle demo fleet in about 2 seconds, in the page.
+No install, no server, no upload: DuckDB-WASM runs the 68 SQL models and 28 tests on a 6,500-vehicle demo fleet in about 2 seconds, in the page.
 
 **For fleet owners.** Import your vehicle list from Excel (VINs, plates, trims, configurations; exports from Fleetio, Samsara, Motive, Geotab or Verizon Connect are recognised), photograph your registration cards and insurance policies, and get a fleet register with one next action per vehicle. VINs are validated and decoded, documents are read in English and Arabic and matched by VIN or plate, and their expiries drive compliance. Your data stays in your browser. See [FleetOps as fleet software](docs/FLEET_SOFTWARE.md).
 
@@ -87,8 +87,29 @@ The statistics are written from first principles in [`web/src/lib/stats.ts`](web
 
 The dashboards move as data comes in. A **LIVE** badge in the top bar shows the latest event, and the Garage, Analytics and Drivers pages carry a live panel: vehicles on the road and in the workshop, open jobs, kilometres and trips today, alerts and events per minute, a streaming chart and a feed of the latest events sliding in. In the 3D garage, road-ready cars drive out and back as trips and handovers come in.
 
+- **Driver status now** (Drivers page): every driver on a trip 🚗, available 🟢, on a break ☕, off duty 🌙, on leave 🏖️ or suspended ⛔, with a roster that changes as the feed moves; leave and suspensions come from the driver file, and drivers who are not compliant count as suspended. The counters open on the day so far rather than at zero.
 - **Demo:** a simulated feed generated in the browser from the demo fleet's own vehicles, drivers and sites, labelled as simulated wherever it shows. Pause it any time.
 - **Your fleet:** FleetOps has no server, so live data comes from your own files. On **Import**, *Follow a file* watches an export your telematics or fleet system keeps updating; when it changes, it is re-imported with the mapping you already confirmed and every dashboard rebuilds (Chrome and Edge). The file never leaves your computer.
+
+## Warranty, add-ons and service contacts for every VIN
+
+Open any vehicle in the **Fleet register** and its sheet shows:
+
+- **Warranty** 🛡️: every coverage (basic, powertrain, the high-voltage battery and drive unit, corrosion, self-driving hardware, extended plans) with its status (Active, Expiring, Expired, Expired by kilometres, Void), days and kilometres left, and a bar for how much of the cover is used, by date or by distance, whichever comes first.
+- **Add-ons** 🧩: equipment beyond the base trim, grouped by kind: chargers and vehicle-to-load ⚡, battery and thermal packs 🔋, self-driving computers, cameras, radar and lidar with their software version 🤖, safety cameras 🛡️, telematics 📡 and body fit-outs 🧰, each with supplier, serial number, cost and its own warranty.
+- **Service centre contacts** 📞: the maker's service centre for the vehicle's region, with a named contact per desk (service advisor, warranty desk, EV and high-voltage specialist, self-driving calibration, parts, 24/7 roadside), phone and e-mail one click away.
+
+![A vehicle sheet: warranty cover, add-ons and service contacts](docs/web-vehicle-sheet.gif)
+
+Across the fleet, the register adds a warranty and add-ons section: share under basic warranty, cover ending in the next 90 days, partly covered and void, self-driving equipped vehicles by software version, and add-ons by category. Three optional sheets feed it (`warranties`, `vehicle_addons`, `service_contacts`); the demo's contacts use fictional 555 numbers and `.example` addresses.
+
+## System design
+
+The **System design** page (and [docs/SYSTEM_DESIGN.md](docs/SYSTEM_DESIGN.md)) walks through DNS, CDNs, load balancing, caching, rate limiting, SQL vs NoSQL, indexing, replication, sharding, CAP, microservices, circuit breakers, messages and queues: what each is, how a hosted fleet platform would use it, and honestly where FleetOps stands, since it runs in your browser with no servers of its own. An animated reference architecture, a CAP triangle and a sharding diagram explain the ideas; three live demos run on the real classes.
+
+![The System design page: the reference architecture and live demos](docs/web-system.gif)
+
+The one outside service FleetOps can call, NHTSA's VIN decoder (only on your click), now sits behind a token-bucket rate limiter (a burst of 3 batches, then one every 1.5 s) and a circuit breaker that pauses it for 30 s after 3 failed batches, with a clear message instead of a stream of errors ([`web/src/lib/resilience.ts`](web/src/lib/resilience.ts)).
 
 ## Drivers, trips and alert rules
 
@@ -116,7 +137,7 @@ flowchart LR
     T["Telematics exports<br/>trips · idle · speeding"] --> I
     X["Excel / CSV / Parquet<br/>vehicles · work orders · fuel"] --> I
     P["Photos & PDFs<br/>registration · insurance"] --> O["OCR in the browser"] --> I
-    I["Ingest + 44 rules"] --> D[("DuckDB-WASM<br/>64 SQL models")]
+    I["Ingest + 47 rules"] --> D[("DuckDB-WASM<br/>68 SQL models")]
     D --> R["Alert rules<br/>mart_alerts"] --> G["Garage · Drivers · Register"]
     D --> K["KPIs · metric network"] --> A["Analytics"]
     D -. sealed .-> V[("IndexedDB<br/>AES-256 when protected")]
@@ -237,7 +258,7 @@ fleetkpi/sql/
 |---|---|
 | **Your files, your column names** | CSV, Excel, Parquet or JSON. 317 column synonyms are recognised (`Plate No` → `vehicle_id`, `Date In` → `opened_at`, `Mulkiya Expiry` → `registration_expiry`); map anything else once in `fleet.yml`. |
 | **Your codes, normalised** | `Electric`, `EV`, `Plug-in Hybrid`, `Petrol`, `Diesel` → BEV / PHEV / HEV / ICE (diesel kept for CO₂). `Oil service`, `Breakdown`, `Accident repair` → standard job types. `dd/mm/yyyy` dates and `1,250.00` amounts just work. |
-| **Four tables required, seven optional** | `sites`, `vehicles`, `work_orders`, `usage` are required; add `energy`, `feedback`, `parts_orders`, `fines`, `recalls`, `recall_vehicles`, `budgets` when you have them. Missing tables hide their sections; nothing breaks. |
+| **Four tables required, thirteen optional** | `sites`, `vehicles`, `work_orders`, `usage` are required; add `energy`, `feedback`, `parts_orders`, `fines`, `documents`, `recalls`, `recall_vehicles`, `budgets`, `drivers`, `trips`, `warranties`, `vehicle_addons`, `service_contacts` when you have them. Missing tables hide their sections; nothing breaks. |
 | **One settings file** | Currency, operating and productive hours, prices and CO₂ factors by region, PM intervals per powertrain, depreciation method and residual, renewal window, targets, scoring weights. |
 
 ```bash
@@ -270,7 +291,7 @@ Built in TypeScript with Next.js (static export), Tailwind, ECharts, KaTeX and D
 
 - **24 SQL data tests** and **41 SQL validation rules** run inside every build, in Python and in the browser alike, including the clock identity on every work order (`t18`) and the metric-network identities on every region-month (`t21`).
 - **Security and garage end-to-end tests** (Playwright, production build in a real browser): strict CSP with no violations on every page, an injected script refused, a hostile workbook (XSS and SQL injection) rendered as text, a clickjacking guard, encryption at rest (fleet data and SOP notes) with wrong and right passphrases, and the document reader under the policy, with every request staying on the app's own site.
-- **116 TypeScript tests** (Vitest), including **property-based fuzzing** (fast-check) of every parser that reads untrusted input: encryption at rest (round trip, wrong passphrase, tamper detection, fresh IVs); licence keys signed in Python and verified in the browser (forged and expired keys rejected); calendar and Excel exports (formula injection neutralised); every statistical routine against R / scipy / statsmodels reference values; the metric network's identities and propagation; VIN rules and vPIC mapping; workbook reading (title rows, Excel dates, many sheets) and table / column recognition for common fleet-platform exports; document reading (day-first and Arabic-Indic dates, plates, VINs, weighted document typing); vehicle-name cleaning, car-shape guessing and the 3D car bodies (finite, inside the footprint, glass on every style).
+- **126 TypeScript tests** (Vitest), including **property-based fuzzing** (fast-check) of every parser that reads untrusted input: encryption at rest (round trip, wrong passphrase, tamper detection, fresh IVs); licence keys signed in Python and verified in the browser (forged and expired keys rejected); calendar and Excel exports (formula injection neutralised); every statistical routine against R / scipy / statsmodels reference values; the metric network's identities and propagation; VIN rules and vPIC mapping; workbook reading (title rows, Excel dates, many sheets) and table / column recognition for common fleet-platform exports; document reading (day-first and Arabic-Indic dates, plates, VINs, weighted document typing); vehicle-name cleaning, car-shape guessing and the 3D car bodies (finite, inside the footprint, glass on every style).
 - **26 Python tests** (`pytest`): licence signing; the demo end to end; the fleet register and documents (matched by plate, VIN or id; renewed cards move the expiry); VIN macros against reference VINs; a foreign-format fleet (Excel, its own column names, `dd/mm` dates, monthly usage, no optional tables) that must plug in with mapping only; bad data blocked with the right reasons; dependency order and layer rules; the web export runs exactly the package's SQL.
 - **CI** on Python 3.11 and 3.13, the web app (lint, type-check, tests, build), and a Docker build that runs the demo inside the image.
 

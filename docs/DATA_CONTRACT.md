@@ -195,7 +195,7 @@ Drivers and their licences, optionally with the vehicle each one usually drives.
 | `licence_expiry` | DATE |  | Licence expiry date | license_expiry, licence_expiry_date, license_expiry_date, dl_expiry, expiry |
 | `home_site_id` | VARCHAR |  | Depot or site the driver works from | site_id, depot_id, base, branch, home_site |
 | `vehicle_id` | VARCHAR |  | Vehicle usually assigned | assigned_vehicle, vehicle, plate, plate_no, unit_number |
-| `status` | VARCHAR |  | Active | Inactive (default Active) | driver_status, state, employment_status |
+| `status` | VARCHAR |  | Active | On leave | Suspended | Inactive (default Active) | driver_status, state, employment_status |
 
 ## `trips` (optional)
 
@@ -215,3 +215,50 @@ Trips or period summaries exported from telematics (Geotab, Webfleet, Samsara, M
 | `speeding_events` | INTEGER |  | Times over the speed limit | speeding, overspeed, over_speed_events, speeding_count |
 | `harsh_events` | INTEGER |  | Harsh braking, acceleration and cornering | harsh, harsh_driving, harsh_braking, events |
 | `geofence_exits` | INTEGER |  | Times the vehicle left its permitted zone | geofence, zone_exits, geofence_violations |
+
+## `warranties` (optional)
+
+Warranty cover per vehicle: the manufacturer's basic, powertrain and battery warranties, and any extended plan. One row per vehicle and coverage.
+
+| Column | Type | Required | Description | Also recognised as |
+|---|---|---|---|---|
+| `vehicle_id` | VARCHAR | yes | Vehicle | vehicle, plate, plate_no, vin, asset_id |
+| `coverage` | VARCHAR | yes | What is covered: Basic, Powertrain, HV battery, Corrosion, Self-driving hardware, Extended plan... | warranty, warranty_type, cover, coverage_type, plan |
+| `provider` | VARCHAR |  | Who gives the warranty: the manufacturer, the dealer or a third party | warrantor, issuer, underwriter, company |
+| `start_date` | DATE | yes | Cover starts (usually the first registration or delivery date) | start, from, warranty_start, effective_date |
+| `end_date` | DATE | yes | Cover ends by date | end, to, expiry, expiry_date, warranty_end |
+| `km_limit` | DOUBLE |  | Cover ends at this odometer reading, whichever comes first | km, mileage_limit, distance_limit, max_km |
+| `contract_number` | VARCHAR |  | Warranty or plan number | contract, policy, warranty_number, reference |
+| `status` | VARCHAR |  | Active | Void (default Active): void when the maker has refused cover | warranty_status, state |
+
+## `vehicle_addons` (optional)
+
+Equipment added to each vehicle beyond the base trim: chargers, battery and thermal packs, self-driving hardware and software, cameras, telematics, body fit-outs.
+
+| Column | Type | Required | Description | Also recognised as |
+|---|---|---|---|---|
+| `vehicle_id` | VARCHAR | yes | Vehicle | vehicle, plate, plate_no, vin, asset_id |
+| `addon` | VARCHAR | yes | The component or package | option, component, accessory, equipment, package |
+| `category` | VARCHAR |  | Charging, Battery & thermal, Self-driving, Safety, Telematics, Body... (free text is normalised) | type, group, system |
+| `installed_date` | DATE |  | When it was fitted | installed, fitted, install_date, date |
+| `supplier` | VARCHAR |  | Who supplied or fitted it | vendor, fitter, installer, brand |
+| `serial_number` | VARCHAR |  | Serial or part number | serial, part_number, sn |
+| `software_version` | VARCHAR |  | Software or firmware version, for computers and self-driving packages | software, firmware, version |
+| `cost` | DOUBLE |  | Price paid | price, amount |
+| `warranty_end` | DATE |  | The component's own warranty end | warranty, warranty_until, guarantee_end |
+
+## `service_contacts` (optional)
+
+Points of contact at the manufacturer's service centres: who to call for service, warranty claims, high-voltage work and self-driving calibration.
+
+| Column | Type | Required | Description | Also recognised as |
+|---|---|---|---|---|
+| `contact_id` | VARCHAR |  | Contact id (numbered automatically when absent) | id, contact |
+| `make` | VARCHAR | yes | Brand the centre services | brand, manufacturer, oem |
+| `service_centre` | VARCHAR | yes | Service centre or dealer | centre, center, dealer, workshop, branch |
+| `region` | VARCHAR |  | Region or country it serves | market, country |
+| `role` | VARCHAR | yes | Service advisor, Warranty desk, EV specialist, Self-driving calibration, Parts, Roadside... | department, function, desk, title |
+| `name` | VARCHAR | yes | Contact person | contact_name, person, full_name |
+| `phone` | VARCHAR |  | Phone | telephone, mobile, tel, phone_number |
+| `email` | VARCHAR |  | Email | e_mail, mail, email_address |
+| `hours` | VARCHAR |  | Opening hours | opening_hours, working_hours, availability |

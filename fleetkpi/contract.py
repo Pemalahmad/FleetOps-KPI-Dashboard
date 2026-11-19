@@ -191,7 +191,7 @@ TABLES: dict[str, Table] = {t.name: t for t in [
         C("licence_expiry", "DATE", False, "Licence expiry date", ("license_expiry", "licence_expiry_date", "license_expiry_date", "dl_expiry", "expiry"), "2027-05-31"),
         C("home_site_id", "VARCHAR", False, "Depot or site the driver works from", ("site_id", "depot_id", "base", "branch", "home_site"), "WS01"),
         C("vehicle_id", "VARCHAR", False, "Vehicle usually assigned", ("assigned_vehicle", "vehicle", "plate", "plate_no", "unit_number"), "V0100001"),
-        C("status", "VARCHAR", False, "Active | Inactive (default Active)", ("driver_status", "state", "employment_status"), "Active"),
+        C("status", "VARCHAR", False, "Active | On leave | Suspended | Inactive (default Active)", ("driver_status", "state", "employment_status"), "Active"),
     ), key=("driver_id",)),
 
     Table("trips", False, "Trips or period summaries exported from telematics (Geotab, Webfleet, Samsara, Motive...): one row per "
@@ -210,6 +210,45 @@ TABLES: dict[str, Table] = {t.name: t for t in [
         C("geofence_exits", "INTEGER", False, "Times the vehicle left its permitted zone", ("geofence", "zone_exits", "geofence_violations"), "0"),
     ), key=("trip_id",)),
 
+    Table("warranties", False, "Warranty cover per vehicle: the manufacturer's basic, powertrain and battery warranties, "
+          "and any extended plan. One row per vehicle and coverage.", (
+        C("vehicle_id", "VARCHAR", True, "Vehicle", ("vehicle", "plate", "plate_no", "vin", "asset_id", "unit_id"), "V0100001"),
+        C("coverage", "VARCHAR", True, "What is covered: Basic, Powertrain, HV battery, Corrosion, Self-driving hardware, Extended plan...",
+          ("warranty", "warranty_type", "cover", "coverage_type", "plan"), "HV battery and drive unit"),
+        C("provider", "VARCHAR", False, "Who gives the warranty: the manufacturer, the dealer or a third party", ("warrantor", "issuer", "underwriter", "company"), "Sahra Motors"),
+        C("start_date", "DATE", True, "Cover starts (usually the first registration or delivery date)", ("start", "from", "warranty_start", "effective_date"), "2024-03-01"),
+        C("end_date", "DATE", True, "Cover ends by date", ("end", "to", "expiry", "expiry_date", "warranty_end", "valid_until"), "2032-03-01"),
+        C("km_limit", "DOUBLE", False, "Cover ends at this odometer reading, whichever comes first", ("km", "mileage_limit", "distance_limit", "max_km"), "160000"),
+        C("contract_number", "VARCHAR", False, "Warranty or plan number", ("contract", "policy", "warranty_number", "reference"), "W-2024-001234"),
+        C("status", "VARCHAR", False, "Active | Void (default Active): void when the maker has refused cover", ("warranty_status", "state"), "Active"),
+    ), key=("vehicle_id", "coverage")),
+
+    Table("vehicle_addons", False, "Equipment added to each vehicle beyond the base trim: chargers, battery and thermal packs, "
+          "self-driving hardware and software, cameras, telematics, body fit-outs.", (
+        C("vehicle_id", "VARCHAR", True, "Vehicle", ("vehicle", "plate", "plate_no", "vin", "asset_id", "unit_id"), "V0100001"),
+        C("addon", "VARCHAR", True, "The component or package", ("option", "component", "accessory", "equipment", "package", "item"), "Self-driving computer (HW4)"),
+        C("category", "VARCHAR", False, "Charging, Battery & thermal, Self-driving, Safety, Telematics, Body... (free text is normalised)", ("type", "group", "system"), "Self-driving"),
+        C("installed_date", "DATE", False, "When it was fitted", ("installed", "fitted", "install_date", "date"), "2024-03-01"),
+        C("supplier", "VARCHAR", False, "Who supplied or fitted it", ("vendor", "fitter", "installer", "brand"), "Sahra Motors"),
+        C("serial_number", "VARCHAR", False, "Serial or part number", ("serial", "part_number", "sn"), "SD4-0012345"),
+        C("software_version", "VARCHAR", False, "Software or firmware version, for computers and self-driving packages", ("software", "firmware", "version"), "SD 13.2"),
+        C("cost", "DOUBLE", False, "Price paid", ("price", "amount"), "3500"),
+        C("warranty_end", "DATE", False, "The component's own warranty end", ("warranty", "warranty_until", "guarantee_end"), "2028-03-01"),
+    ), key=("vehicle_id", "addon")),
+
+    Table("service_contacts", False, "Points of contact at the manufacturer's service centres: who to call for service, "
+          "warranty claims, high-voltage work and self-driving calibration.", (
+        C("contact_id", "VARCHAR", False, "Contact id (numbered automatically when absent)", ("id", "contact"), "SC0001"),
+        C("make", "VARCHAR", True, "Brand the centre services", ("brand", "manufacturer", "oem"), "Sahra"),
+        C("service_centre", "VARCHAR", True, "Service centre or dealer", ("centre", "center", "dealer", "workshop", "branch"), "Sahra Service Centre Dubai"),
+        C("region", "VARCHAR", False, "Region or country it serves", ("market", "country"), "UAE"),
+        C("role", "VARCHAR", True, "Service advisor, Warranty desk, EV specialist, Self-driving calibration, Parts, Roadside...", ("department", "function", "desk", "title"), "Warranty desk"),
+        C("name", "VARCHAR", True, "Contact person", ("contact_name", "person", "full_name"), "Layla Haddad"),
+        C("phone", "VARCHAR", False, "Phone", ("telephone", "mobile", "tel", "phone_number"), "+971 4 555 0142"),
+        C("email", "VARCHAR", False, "Email", ("e_mail", "mail", "email_address"), "warranty.dubai@service.example"),
+        C("hours", "VARCHAR", False, "Opening hours", ("opening_hours", "working_hours", "availability"), "Sun-Thu 8:00-18:00"),
+    ), key=("contact_id",)),
+
     Table("budgets", False, "Fleet-paid maintenance budget per region and month. If absent, fleet.yml rates are used.", (
         C("region", "VARCHAR", True, "Region", ("market", "country"), "UAE"),
         C("month", "DATE", True, "First day of the month", ("period", "date"), "2026-03-01"),
@@ -218,7 +257,7 @@ TABLES: dict[str, Table] = {t.name: t for t in [
 ]}
 
 LOAD_ORDER = ["sites", "vehicles", "work_orders", "usage", "energy", "feedback", "parts_orders", "fines", "documents",
-              "recalls", "recall_vehicles", "budgets", "drivers", "trips"]
+              "recalls", "recall_vehicles", "budgets", "drivers", "trips", "warranties", "vehicle_addons", "service_contacts"]
 
 
 def contract_markdown() -> str:

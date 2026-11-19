@@ -9,7 +9,7 @@ import { profilePath, type BodyStyle } from "@/lib/car-styles";
  */
 export type ArtKind =
   | "garage" | "analytics" | "network" | "drivers" | "workshop" | "customer" | "ledger" | "documents"
-  | "fleet" | "import" | "pipeline" | "plan" | "licence" | "doctrine" | "legal";
+  | "fleet" | "import" | "pipeline" | "plan" | "licence" | "doctrine" | "legal" | "system";
 
 const A = "var(--accent)", SOFT = "var(--accent-soft)", PANEL = "var(--panel)", P2 = "var(--panel-2)", LINE = "var(--border)",
   MUTED = "var(--muted)", FAINT = "var(--faint)", GOOD = "var(--good)";
@@ -202,6 +202,28 @@ const SCENES: Record<ArtKind, () => ReactNode> = {
     <text x={78} y={162} textAnchor="middle" fontSize={11} fill={MUTED}>workshop</text><text x={160} y={158} textAnchor="middle" fontSize={11} fill={MUTED}>customer</text><text x={244} y={162} textAnchor="middle" fontSize={11} fill={MUTED}>road</text>
     <Chip x={292} y={40} e="📘" />
   </>),
+  system: () => {
+    const servers: [number, number][] = [[196, 46], [196, 92], [196, 138]];
+    return (<>
+      <g className="art-float"><circle cx={46} cy={92} r={22} fill={PANEL} stroke={LINE} strokeWidth={2} /><text x={46} y={99} textAnchor="middle" fontSize={20}>🌐</text></g>
+      <rect x={96} y={74} width={50} height={36} rx={9} fill={A} /><text x={121} y={98} textAnchor="middle" fontSize={17}>⚖️</text>
+      <path d="M68 92 H96" stroke={A} strokeWidth={3} strokeDasharray="6 6" className="art-road" />
+      {servers.map(([x, y], i) => (
+        <g key={i}>
+          <path d={`M146 92 C170 92 170 ${y + 14} ${x} ${y + 14}`} fill="none" stroke={A} strokeOpacity={0.5} strokeWidth={2.5} strokeDasharray="6 6" className="art-road" />
+          <rect x={x} y={y} width={56} height={28} rx={6} fill={PANEL} stroke={LINE} />
+          {[0, 1].map((k) => <circle key={k} className="art-twinkle" style={{ animationDelay: `${i * 0.4 + k * 0.2}s` }} cx={x + 10 + k * 9} cy={y + 14} r={2.6} fill={GOOD} />)}
+          <rect x={x + 30} y={y + 11} width={18} height={6} rx={3} fill={LINE} />
+        </g>
+      ))}
+      <g className="art-float" style={{ animationDelay: ".5s" }}>
+        <ellipse cx={286} cy={70} rx={22} ry={7} fill={SOFT} stroke={A} strokeWidth={2} />
+        <path d="M264 70 V112 a22 7 0 0 0 44 0 V70" fill={PANEL} stroke={A} strokeWidth={2} />
+      </g>
+      <path d="M252 106 H262" stroke={A} strokeWidth={2.5} strokeDasharray="4 4" className="art-road" />
+      <Chip x={286} y={160} e="📨" d={0.9} /><Chip x={52} y={160} e="🔌" d={1.4} />
+    </>);
+  },
   legal: () => (<>
     <Card x={92} y={34} w={120} h={140}><Lines x={110} y={56} n={8} w={84} gap={13} /></Card>
     <g className="art-float"><path d="M226 74 L262 88 V116 C262 140 246 152 226 158 C206 152 190 140 190 116 V88Z" fill={PANEL} stroke={A} strokeWidth={4} /><text x={226} y={126} textAnchor="middle" fontSize={22}>🔒</text></g>
@@ -222,7 +244,7 @@ export function PageArt({ kind, className = "" }: { kind: ArtKind; className?: s
 /** A matching emoji for a section or group title, so long pages scan by picture as well as by text. */
 const EMOJI: [RegExp, string][] = [
   [/every kpi|indicator/i, "📊"], [/scorecard/i, "🏁"], [/league/i, "🏆"], [/driver kpi|driver register/i, "🧑‍✈️"], [/trend/i, "📈"],
-  [/alert/i, "🚨"], [/compliance|licen[cs]e/i, "🪪"], [/fine|ticket/i, "🧾"], [/score band/i, "🎯"], [/safety/i, "🛡️"], [/activity log/i, "🗒️"],
+  [/warranty|add-ons?/i, "🛡️"], [/system|architecture/i, "🏗️"], [/alert/i, "🚨"], [/compliance|licen[cs]e/i, "🪪"], [/fine|ticket/i, "🧾"], [/score band/i, "🎯"], [/safety/i, "🛡️"], [/activity log/i, "🗒️"],
   [/activity/i, "🛣️"], [/backlog|productivity/i, "⚙️"], [/budget|economics|cost/i, "💰"], [/car shape/i, "🚙"], [/column mapping/i, "🧭"],
   [/composition/i, "🧩"], [/data quality/i, "🧪"], [/fix it once/i, "🔁"], [/goodwill/i, "🤝"], [/lineage|work tree/i, "🌳"], [/my fleet data/i, "🗂️"],
   [/next action/i, "👉"], [/offline/i, "📴"], [/parts/i, "📦"], [/privacy/i, "🔒"], [/recall/i, "📣"], [/satisfaction|customer/i, "😊"],

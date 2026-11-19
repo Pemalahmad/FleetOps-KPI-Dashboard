@@ -11,8 +11,10 @@ import { decodeVins } from "@/lib/vin";
 import { renewalsIcs, safeRows } from "@/lib/exporters";
 import { cleanName, withoutPrefix } from "@/lib/names";
 import { CarShapes } from "@/components/garage/car-shapes";
+import { VehicleExtras, WarrantyOverview, WARRANTY_COLOR } from "@/components/vehicle-extras";
 
 export interface RegistryRow {
+  warranty_position: string | null; self_driving: boolean | null; addons: number | null;
   vehicle_id: string; vin: string | null; vin_status: string; plate_number: string | null; make: string | null; model: string | null;
   model_year: number | null; trim: string | null; configuration: string | null; color: string | null; powertrain: string | null;
   region: string | null; home_site_id: string | null; use_case: string | null; is_active: boolean; in_service_date: string | null;
@@ -29,7 +31,7 @@ const PAGE = 40;
 
 export default function FleetPage() {
   const { region, dataset, workspace, status, log } = useEngine();
-  const reg = useSql<RegistryRow>(`SELECT * FROM mart_fleet_registry${regionWhere(region)} ORDER BY vehicle_id`);
+  const reg = useSql<RegistryRow>(`SELECT r.*, w.warranty_position, w.self_driving, w.addons FROM (SELECT * FROM mart_fleet_registry${regionWhere(region)}) r LEFT JOIN mart_vehicle_warranty w USING (vehicle_id) ORDER BY vehicle_id`);
   const [q, setQ] = useState("");
   const [action, setAction] = useState<string | null>(null);
   const [page, setPage] = useState(0);
@@ -142,6 +144,9 @@ export default function FleetPage() {
         </Card>
       </div>
 
+      <SectionTitle sub="Every VIN's warranty cover from the maker, the extra equipment fitted (chargers, battery packs, self-driving hardware) and who to call at the service centre. Open any vehicle below for its full sheet.">Warranty and add-ons</SectionTitle>
+      <WarrantyOverview region={region} />
+
       <div id="car-shapes" className="scroll-mt-28">
         <SectionTitle sub="The 3D garage draws each model in this shape and in its registered colour. Change any that look wrong.">Car shapes in the garage</SectionTitle>
       </div>
@@ -192,11 +197,11 @@ export default function FleetPage() {
         {reg.data ? (
           <>
             <div className="overflow-x-auto">
-              <table className="tnum w-full min-w-[980px] text-[12.5px]">
+              <table className="tnum w-full min-w-[1120px] text-[12.5px]">
                 <thead className="text-left text-faint">
                   <tr><th className="py-1 font-medium">Vehicle</th><th className="font-medium">Plate</th><th className="font-medium">VIN</th>
                     <th className="font-medium">Make · model</th><th className="font-medium">Year</th><th className="font-medium">Trim</th>
-                    <th className="font-medium">Registration</th><th className="font-medium">Insurance</th><th className="font-medium">Next action</th></tr>
+                    <th className="font-medium">Registration</th><th className="font-medium">Insurance</th><th className="font-medium">Warranty</th><th className="font-medium">Add-ons</th><th className="font-medium">Next action</th></tr>
                 </thead>
                 <tbody>{filtered.slice(page * PAGE, (page + 1) * PAGE).map((r) => (
                   <tr key={r.vehicle_id} onClick={() => setOpen(r)} className="cursor-pointer border-t border-border transition hover:bg-panel-2">
@@ -208,6 +213,8 @@ export default function FleetPage() {
                     <td className="max-w-[140px] truncate">{cleanName(r.trim) ?? "–"}</td>
                     <td style={{ color: STATUS_COLOR[r.registration_status] }}>{r.registration_status}{r.registration_docs ? "" : " ·  no card"}</td>
                     <td style={{ color: STATUS_COLOR[r.insurance_status] }}>{r.insurance_status}</td>
+                    <td style={{ color: WARRANTY_COLOR[r.warranty_position ?? "Unknown"] }}>{r.warranty_position ?? "Unknown"}</td>
+                    <td className="whitespace-nowrap">{r.addons ? <>{r.self_driving ? <span title="Self-driving equipped">🤖 </span> : null}{r.addons}</> : "–"}</td>
                     <td className="text-muted">{r.next_action ?? "–"}</td>
                   </tr>
                 ))}</tbody>
@@ -391,6 +398,7 @@ function VehicleDrawer({ row, onClose }: { row: RegistryRow | null; onClose: () 
               <F k="Registration" v={<span style={{ color: STATUS_COLOR[row.registration_status] }}>{row.registration_status}{row.registration_expiry ? ` · ${row.registration_expiry}` : ""}</span>} />
               <F k="Insurance" v={<span style={{ color: STATUS_COLOR[row.insurance_status] }}>{row.insurance_status}{row.insurance_expiry ? ` · ${row.insurance_expiry}` : ""}{row.insurer ? ` · ${row.insurer}` : ""}</span>} />
               <F k="Fines" v={row.fines ? `${row.fines}${row.unpaid_fines ? ` · $${Math.round(row.unpaid_fines).toLocaleString()} unpaid` : ""}` : "None"} />
+              <VehicleExtras vehicleId={row.vehicle_id} region={row.region} make={row.make} />
               <h3 className="mb-1 mt-5 text-[13px] font-semibold">Documents on file</h3>
               {docs.data?.length ? docs.data.map((d, i) => (
                 <F key={i} k={`${d.doc_type}${d.issuer ? ` · ${d.issuer}` : ""}`} v={<span style={{ color: STATUS_COLOR[d.status] }}>{d.expiry_date ?? "no expiry"} · {d.status}</span>} />

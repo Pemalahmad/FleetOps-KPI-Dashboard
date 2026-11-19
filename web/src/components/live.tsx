@@ -6,7 +6,7 @@ import NumberFlow from "@number-flow/react";
 import { Chart } from "./chart";
 import Button from "./arc/button";
 import { useEngine, useSql } from "./engine-provider";
-import { fileEvent, liveStore, nextEvent, seed, type Cast, type LiveState } from "@/lib/live";
+import { backfill, DUTY_STATES, fileEvent, liveStore, nextEvent, seed, type Cast, type DutyState, type LiveState } from "@/lib/live";
 import { readFile, toCsv } from "@/lib/sheets";
 import { uid, type SavedInput } from "@/lib/workspace";
 
@@ -38,18 +38,34 @@ export function LiveDriver() {
   const demo = dataset === "demo" && status === "ready";
   const vehicles = useSql<Cast["vehicles"][number]>(demo ? `SELECT v.vehicle_id AS id, coalesce(v.plate_number, v.vehicle_id) AS plate, coalesce(v.model, 'Vehicle') AS model,
       coalesce(s.site_name, v.region) AS site, v.powertrain FROM stg_vehicles v LEFT JOIN stg_sites s ON s.site_id = v.home_site_id WHERE v.is_active USING SAMPLE 400 ROWS` : null);
-  const drivers = useSql<Cast["drivers"][number]>(demo ? `SELECT d.driver_id AS id, d.driver_name AS name, v.plate_number AS plate FROM stg_drivers d
-      LEFT JOIN stg_vehicles v USING (vehicle_id) WHERE d.is_active USING SAMPLE 400 ROWS` : null);
-  const totals = useSql<{ active: number; open_jobs: number }>(demo ? `SELECT (SELECT count(*) FROM stg_vehicles WHERE is_active) AS active,
-      (SELECT count(*) FROM stg_work_orders WHERE is_open) AS open_jobs` : null);
+  const drivers = useSql<Cast["drivers"][number]>(demo ? `SELECT d.driver_id AS id, d.driver_name AS name, v.plate_number AS plate, coalesce(s.site_name, d.region) AS site, d.status
+      FROM stg_drivers d LEFT JOIN stg_vehicles v USING (vehicle_id) LEFT JOIN stg_sites s ON s.site_id = d.home_site_id WHERE d.is_active USING SAMPLE 400 ROWS` : null);
+  const away = useSql<Cast["drivers"][number]>(demo ? `SELECT d.driver_id AS id, d.driver_name AS name, v.plate_number AS plate, coalesce(s.site_name, d.region) AS site, d.status
+      FROM stg_drivers d LEFT JOIN stg_vehicles v USING (vehicle_id) LEFT JOIN stg_sites s ON s.site_id = d.home_site_id
+      WHERE d.status IN ('Suspended', 'On leave') QUALIFY row_number() OVER (PARTITION BY d.status ORDER BY d.driver_id) = 1` : null);
+  const totals = useSql<{ active: number; open_jobs: number; km_day: number | null; alerts_day: number | null; staff_active: number; on_leave: number; suspended: number }>(demo ? `SELECT
+      (SELECT count(*) FROM stg_vehicles WHERE is_active) AS active,
+      (SELECT count(*) FROM stg_work_orders WHERE is_open) AS open_jobs,
+      (SELECT sum(km) / nullif(date_diff('day', min(start_ts), max(start_ts)) + 7, 0) FROM stg_trips) AS km_day,
+      (SELECT sum(speeding_events + harsh_events + geofence_exits) / nullif(date_diff('day', min(start_ts), max(start_ts)) + 7, 0) * 0.04 FROM stg_trips) AS alerts_day,
+      (SELECT count(*) FROM stg_drivers d LEFT JOIN mart_driver_compliance c USING (driver_id) WHERE d.status = 'Active' AND coalesce(c.compliance_status, '') <> 'Not compliant') AS staff_active,
+      (SELECT count(*) FROM stg_drivers WHERE status = 'On leave') AS on_leave,
+      (SELECT count(*) FROM stg_drivers d LEFT JOIN mart_driver_compliance c USING (driver_id) WHERE d.status = 'Suspended' OR (d.status = 'Active' AND c.compliance_status = 'Not compliant')) AS suspended` : null);
   const cast = useRef<Cast | null>(null);
 
   // demo feed
   useEffect(() => {
-    if (!demo || !vehicles.data || !drivers.data || !totals.data?.[0]) return;
+    if (!demo || !vehicles.data || !drivers.data || !away.data || !totals.data?.[0]) return;
     if (liveStore.get().source === "file") return;
-    cast.current = { vehicles: vehicles.data, drivers: drivers.data, active: Number(totals.data[0].active), openJobs: Number(totals.data[0].open_jobs) };
+    const t = totals.data[0], km = Number(t.km_day ?? 0);
+    // two drivers who are away (on leave, suspended) sit in the roster among the working ones
+    const list = drivers.data.slice();
+    away.data.forEach((d, i) => list.splice(4 + i * 5, 0, d));
+    cast.current = { vehicles: vehicles.data, drivers: list, active: Number(t.active), openJobs: Number(t.open_jobs),
+      perDay: { km, trips: km / 32, alerts: Number(t.alerts_day ?? 0) },
+      staff: { active: Number(t.staff_active), onLeave: Number(t.on_leave), suspended: Number(t.suspended) } };
     liveStore.set(seed(cast.current));
+    liveStore.set(backfill(liveStore.get(), cast.current));
     let timer = 0;
     const tick = () => {
       const s = liveStore.get();
@@ -58,7 +74,7 @@ export function LiveDriver() {
     };
     timer = window.setTimeout(tick, 900);
     return () => { window.clearTimeout(timer); if (liveStore.get().source === "demo") liveStore.reset(); };
-  }, [demo, vehicles.data, drivers.data, totals.data, runId]);
+  }, [demo, vehicles.data, drivers.data, away.data, totals.data, runId]);
 
   // followed file
   const ref = useRef({ engine, workspace, commit });
@@ -129,6 +145,7 @@ function eventEmoji(e: LiveState["events"][number]): string {
     case "handover": return "🛣️";
     case "energy": return e.text.endsWith("charged") ? "⚡" : "⛽";
     case "fine": return "🧾";
+    case "shift": return e.text.includes("break") ? "☕" : e.text.includes("ended") ? "🌙" : "🟢";
     case "alert": return e.text.startsWith("Left") ? "📍" : e.text.startsWith("Long") ? "⏳" : "⚠️";
     default: return "📄";
   }
@@ -210,6 +227,57 @@ function FollowCard({ s }: { s: LiveState }) {
       </header>
       {f.error && <p role="alert" className="mt-2 text-[12.5px] text-bad">{f.error}</p>}
       {s.events[0] && <p className="mt-2 text-[12.5px] text-muted">{s.events[0].text} · {s.events[0].detail}</p>}
+    </section>
+  );
+}
+
+/* ----------------------------------------------------------------------------------------------- driver status */
+export const DUTY_META: Record<DutyState, { emoji: string; color: string; note: string }> = {
+  "On a trip": { emoji: "🚗", color: "var(--accent)", note: "Driving a job now" },
+  Available: { emoji: "🟢", color: "var(--good)", note: "On shift, waiting for a job" },
+  "On a break": { emoji: "☕", color: "var(--warn)", note: "Paused mid-shift" },
+  "Off duty": { emoji: "🌙", color: "var(--faint)", note: "Not on shift" },
+  "On leave": { emoji: "🏖️", color: "#94a3b8", note: "On leave in the driver file" },
+  Suspended: { emoji: "⛔", color: "var(--bad)", note: "Suspended in the driver file, or not compliant (licence expired or wrong class)" },
+};
+const since = (t: number, now: number) => { const m = Math.max(0, Math.round((now - t) / 60000)); return m < 60 ? `${m} min` : `${Math.floor(m / 60)} h ${m % 60} min`; };
+
+/** Who is doing what right now: the duty split across all drivers, and a roster that moves with the feed. */
+export function DriverStatusBoard() {
+  const s = useLive();
+  if (s.source !== "demo" || !s.duty) return null;
+  const total = DUTY_STATES.reduce((n, k) => n + s.duty![k], 0) || 1;
+  const now = s.series.at(-1)?.t ?? s.events[0]?.at ?? 0;
+  return (
+    <section className="live-panel" aria-label="Driver status now">
+      <header className="flex flex-wrap items-center justify-between gap-2">
+        <span className="flex items-center gap-2"><span className="live-dot" data-paused={s.paused || undefined} aria-hidden="true" /><b className="mono-label">Driver status now</b>
+          <span className="text-[11.5px] text-faint">Simulated from the demo drivers; leave and suspensions come from the driver file</span></span>
+      </header>
+      <div className="duty-bar mt-3" role="img" aria-label={DUTY_STATES.map((k) => `${k}: ${s.duty![k]}`).join(", ")}>
+        {DUTY_STATES.map((k) => <span key={k} style={{ width: `${(100 * s.duty![k]) / total}%`, background: DUTY_META[k].color }} title={`${k}: ${s.duty![k].toLocaleString()}`} />)}
+      </div>
+      <div className="duty-grid mt-3">
+        {DUTY_STATES.map((k) => (
+          <div key={k} className="duty-cell" title={DUTY_META[k].note}>
+            <span className="flex items-center gap-1.5 text-[11.5px] text-muted"><span aria-hidden="true">{DUTY_META[k].emoji}</span>{k}</span>
+            <span className="tnum text-[20px] font-semibold leading-none"><NumberFlow value={s.duty![k]} /></span>
+            <span className="tnum text-[11px] text-faint">{((100 * s.duty![k]) / total).toFixed(1)}%</span>
+          </div>
+        ))}
+      </div>
+      <ul className="duty-roster mt-3" aria-label="Roster">
+        {s.roster.map((d) => (
+          <li key={d.id} className="duty-person">
+            <span className="duty-avatar" aria-hidden="true">{d.name.split(" ").map((x) => x[0]).slice(0, 2).join("")}</span>
+            <span className="min-w-0 flex-1"><span className="block truncate text-[12.5px] font-medium">{d.name}</span>
+              <span className="block truncate text-[11px] text-faint">{[d.plate, d.site].filter(Boolean).join(" · ")}</span></span>
+            <span key={d.state} className="duty-chip" style={{ color: DUTY_META[d.state].color, background: `color-mix(in srgb, ${DUTY_META[d.state].color} 13%, transparent)` }}>
+              {DUTY_META[d.state].emoji} {d.state}</span>
+            <span className="tnum hidden w-[70px] shrink-0 text-right text-[10.5px] text-faint sm:block">{d.state === "On leave" || d.state === "Suspended" ? "" : since(d.since, now)}</span>
+          </li>
+        ))}
+      </ul>
     </section>
   );
 }

@@ -158,7 +158,22 @@ NORMALISE = {
     ("trips", "speeding_events"): "coalesce({x}, 0)",
     ("trips", "harsh_events"): "coalesce({x}, 0)",
     ("trips", "geofence_exits"): "coalesce({x}, 0)",
-    ("drivers", "status"): "CASE WHEN regexp_matches(lower(coalesce({x}, 'active')), 'inactive|left|terminated|suspend') THEN 'Inactive' ELSE 'Active' END",
+    ("drivers", "status"): """CASE
+        WHEN regexp_matches(lower(coalesce({x}, 'active')), 'suspend|banned|blocked') THEN 'Suspended'
+        WHEN regexp_matches(lower(coalesce({x}, 'active')), 'leave|vacation|holiday|sick') THEN 'On leave'
+        WHEN regexp_matches(lower(coalesce({x}, 'active')), 'inactive|left|terminated|resigned') THEN 'Inactive'
+        ELSE 'Active' END""",
+    ("warranties", "status"): "CASE WHEN regexp_matches(lower(coalesce({x}, '')), 'void|refus|cancel|denied') THEN 'Void' ELSE 'Active' END",
+    ("vehicle_addons", "category"): """CASE
+        WHEN {x} IS NULL THEN NULL
+        WHEN regexp_matches(lower({x}), 'self.?driv|autonom|adas|autopilot|lidar|radar') THEN 'Self-driving'
+        WHEN regexp_matches(lower({x}), 'charg|v2l|v2g|plug') THEN 'Charging'
+        WHEN regexp_matches(lower({x}), 'batter|thermal|heat.?pump') THEN 'Battery & thermal'
+        WHEN regexp_matches(lower({x}), 'camera|dash|safety|monitor') THEN 'Safety'
+        WHEN regexp_matches(lower({x}), 'telemat|gps|tracker') THEN 'Telematics'
+        WHEN regexp_matches(lower({x}), 'body|shelv|rack|tow|partition|fit.?out') THEN 'Body'
+        ELSE {x} END""",
+    ("service_contacts", "contact_id"): "coalesce({x}, 'SC-' || lpad((row_number() OVER ())::VARCHAR, 5, '0'))",
     ("documents", "doc_type"): """CASE
         WHEN regexp_matches(lower(coalesce({x}, '')), 'regist|mulkiya|istimara|logbook|v5|licen|title') THEN 'Registration'
         WHEN regexp_matches(lower(coalesce({x}, '')), 'insur|policy|cover') THEN 'Insurance'
