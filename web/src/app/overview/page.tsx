@@ -1,15 +1,16 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowRight } from "@phosphor-icons/react";
+import {
+  ArrowRight, ClockCountdown, CurrencyDollar, Pulse, RoadHorizon, ShieldCheck,
+  SteeringWheel, Truck, Wrench,
+} from "@phosphor-icons/react";
 import { Chart } from "@/components/chart";
 import { LivePanel } from "@/components/live";
-import { Emoji, emojiFor } from "@/components/art";
 import { GaugeRow } from "@/components/gauges";
-import { Swarm, SwarmToggle } from "@/components/bits/fleetops-bits";
 import type { EChartsOption } from "echarts";
 import { regionWhere, useEngine, useSql } from "@/components/engine-provider";
-import { attention, Card, Delta, KpiRow, Metric, PageHeader, rag, SectionTitle, Skeleton, type Rag } from "@/components/ui";
+import { attention, Card, CountIn, Delta, KpiRow, Metric, PageHeader, rag, SectionTitle, Skeleton, type Rag } from "@/components/ui";
 import { usePanel } from "@/components/use-panel";
 import { NODE } from "@/lib/metrics";
 
@@ -130,6 +131,17 @@ const SCORE: [string, string, string][] = [
   ["insurance_rag", "Insurance", "insurance_valid_pct"], ["fines_rag", "Fines /100", "fines_per_100_vehicles"],
 ];
 
+function GroupIcon({ title }: { title: string }) {
+  const props = { size: 17, weight: "duotone" as const };
+  if (title.startsWith("Fleet")) return <Truck {...props} />;
+  if (title.startsWith("Maintenance")) return <Wrench {...props} />;
+  if (title.startsWith("Drivers")) return <SteeringWheel {...props} />;
+  if (title === "Compliance") return <ShieldCheck {...props} />;
+  if (title === "Workshop") return <Pulse {...props} />;
+  if (title.startsWith("Customer")) return <ClockCountdown {...props} />;
+  return <CurrencyDollar {...props} />;
+}
+
 export default function Overview() {
   const { region, status, log } = useEngine();
   const p = usePanel();
@@ -162,17 +174,18 @@ export default function Overview() {
         </Card>
       )}
 
-      <Swarm />
-      <div className="-mt-3 mb-3 flex justify-end"><SwarmToggle /></div>
       <LivePanel focus="fleet" />
       <section className="ov-hero" aria-label="Headline indicators">
         <div className="ov-north">
-          <p className="text-[13px] text-muted">North star · off-road hours per vehicle per month</p>
+          <div className="ov-north-label">
+            <span className="ov-north-icon" aria-hidden="true"><RoadHorizon size={18} weight="duotone" /></span>
+            <span><b>North star</b><small>Off-road hours per vehicle per month</small></span>
+          </div>
           <div className="mt-3 flex flex-wrap items-baseline gap-x-3 gap-y-1">
-            <span className="tnum text-[56px] font-semibold leading-none tracking-[-0.045em]">{north === null ? "–" : north.toFixed(1)}</span>
+            <span className="tnum text-[56px] font-semibold leading-none tracking-[-0.045em]">{north === null ? "–" : <CountIn value={north} decimals={1} />}</span>
             <span className="text-[18px] text-muted">h</span>
             <span className="text-[12px]"><Delta delta={north !== null && p.prev?.v.offroad != null ? north - p.prev.v.offroad : null} decimals={1} unit="h" better="lower" />
-              <span className="ml-1.5 text-faint">vs last month · lower is better</span></span>
+              <span className="ml-1.5 text-muted">vs last month · lower is better</span></span>
           </div>
           <div className="mt-4">
             {p.ready ? (
@@ -224,7 +237,10 @@ export default function Overview() {
       <div className="kpi-wall">
         {WALL.map((g) => (
           <section key={g.title} className="kpi-group">
-            <header><h3 className="flex items-center gap-2 text-[14px] font-semibold"><Emoji e={emojiFor(g.title)} />{g.title}</h3><span className="text-[11.5px] text-muted">{g.sub}</span></header>
+            <header>
+              <span className="kpi-group-icon" aria-hidden="true"><GroupIcon title={g.title} /></span>
+              <span className="min-w-0 flex-1"><h3 className="text-[14px] font-semibold">{g.title}</h3><span className="block text-[11.5px] text-muted">{g.sub}</span></span>
+            </header>
             {g.items.map((it) => {
               if ("node" in it) {
                 const n = NODE[it.node], v = p.last?.v[it.node] ?? null, t = n.target ? p.targets[n.target] : undefined;
@@ -257,7 +273,7 @@ export default function Overview() {
                     {SCORE.map(([k, l, v]) => {
                       const state = (r[k] as Rag) ?? null, val = r[v] as number | null;
                       return (
-                        <td key={l} style={{ color: attention(state) }} className={state === "red" ? "font-semibold" : ""}>
+                        <td key={l} data-state={state ?? undefined} style={{ color: attention(state) }} className={`score-cell ${state === "red" ? "font-semibold" : ""}`}>
                           {val === null || val === undefined ? <span className="text-faint">–</span> : Number(val).toFixed(Math.abs(Number(val)) >= 100 ? 0 : 1)}
                         </td>
                       );

@@ -4,6 +4,10 @@ What changed in each version of FleetOps KPI. Dates are release dates; the newes
 
 ## Unreleased
 
+### Analytics control-board polish (2026-11-20)
+- Analytics now uses consistent fleet and operations icons in place of platform-dependent emoji for KPI groups, a clearer north-star instrument, stronger target-state marks and more legible scorecard risk cells.
+- The header illustration is now a purpose-built fleet telemetry scene. Motion is a short staged reveal and route sequence; the pointer swarm and its persistent toggle were removed from Analytics. Reduced-motion preferences still stop every effect.
+
 ### Warranty, add-ons, service contacts, driver status and system design (2026-11-19)
 - Every VIN: warranty cover by coverage (status by date and kilometres, days and km left, contract), add-on equipment (EV chargers and battery packs, self-driving hardware and software, cameras, telematics, fit-outs) and the maker's service-centre contacts per desk, in the vehicle sheet; a fleet-wide warranty and add-ons section on the register. New optional sheets `warranties`, `vehicle_addons`, `service_contacts`; 4 new SQL models, 1 test, 3 rules.
 - Drivers: employment status (Active, On leave, Suspended, Inactive) in the driver file and register; a live "Driver status now" board (on a trip, available, on a break, off duty, on leave, suspended) with a moving roster; live counters open on the day so far and the feed opens pre-filled.

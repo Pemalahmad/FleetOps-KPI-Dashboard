@@ -127,7 +127,7 @@ export function LiveBadge() {
     <div className="live-badge" role="status" aria-live="off">
       <span className="live-dot" data-paused={s.paused || undefined} aria-hidden="true" />
       <b className="mono-label !text-[10px]">{s.paused ? "Paused" : "Live"}</b>
-      {last && <span key={last.id} className="live-last">{last.text}{last.detail ? <span className="text-faint"> · {last.detail}</span> : null}</span>}
+      {last && <span key={last.id} className="live-last">{last.text}{last.detail ? <span className="text-muted"> · {last.detail}</span> : null}</span>}
       <button className="live-toggle" onClick={() => liveStore.set({ paused: !s.paused })} aria-label={s.paused ? "Resume live updates" : "Pause live updates"}>
         {s.paused ? <Play size={12} weight="fill" /> : <Pause size={12} weight="fill" />}
       </button>
@@ -178,7 +178,7 @@ export function LivePanel({ focus = "fleet" }: { focus?: "fleet" | "drivers" | "
     <section className="live-panel" aria-label="Live feed">
       <header className="flex flex-wrap items-center justify-between gap-2">
         <span className="flex items-center gap-2"><span className="live-dot" data-paused={s.paused || undefined} aria-hidden="true" /><b className="mono-label">Live</b>
-          <span className="text-[11.5px] text-faint">Simulated demo feed: events generated in your browser from the demo fleet</span></span>
+          <span className="text-[11.5px] text-muted">Simulated demo feed: events generated in your browser from the demo fleet</span></span>
         <Button variant="secondary" size="sm" onClick={() => liveStore.set({ paused: !s.paused })}>{s.paused ? <><Play size={13} weight="fill" /> Resume</> : <><Pause size={13} weight="fill" /> Pause</>}</Button>
       </header>
       <div className="live-grid">
@@ -201,8 +201,8 @@ export function LivePanel({ focus = "fleet" }: { focus?: "fleet" | "drivers" | "
           {s.events.slice(0, 6).map((e) => (
             <li key={e.id} className="live-item">
               <span className="live-emoji" data-tone={e.tone} aria-hidden="true">{eventEmoji(e)}</span>
-              <span className="min-w-0 flex-1"><span className="block truncate text-[12.5px]">{e.text}</span>{e.detail && <span className="block truncate text-[11px] text-faint">{e.detail}</span>}</span>
-              <span className="tnum shrink-0 text-[10.5px] text-faint">{ago(e.at, now)}</span>
+              <span className="min-w-0 flex-1"><span className="block truncate text-[12.5px]">{e.text}</span>{e.detail && <span className="block truncate text-[11px] text-muted">{e.detail}</span>}</span>
+              <span className="tnum shrink-0 text-[10.5px] text-muted">{ago(e.at, now)}</span>
             </li>
           ))}
           {!s.events.length && <li className="py-6 text-center text-[12px] text-muted"><Broadcast size={18} className="mx-auto mb-1" />Waiting for the first event…</li>}
@@ -252,7 +252,7 @@ export function DriverStatusBoard() {
     <section className="live-panel" aria-label="Driver status now">
       <header className="flex flex-wrap items-center justify-between gap-2">
         <span className="flex items-center gap-2"><span className="live-dot" data-paused={s.paused || undefined} aria-hidden="true" /><b className="mono-label">Driver status now</b>
-          <span className="text-[11.5px] text-faint">Simulated from the demo drivers; leave and suspensions come from the driver file</span></span>
+          <span className="text-[11.5px] text-muted">Simulated from the demo drivers; leave and suspensions come from the driver file</span></span>
       </header>
       <div className="duty-bar mt-3" role="img" aria-label={DUTY_STATES.map((k) => `${k}: ${s.duty![k]}`).join(", ")}>
         {DUTY_STATES.map((k) => <span key={k} style={{ width: `${(100 * s.duty![k]) / total}%`, background: DUTY_META[k].color }} title={`${k}: ${s.duty![k].toLocaleString()}`} />)}
@@ -262,7 +262,7 @@ export function DriverStatusBoard() {
           <div key={k} className="duty-cell" title={DUTY_META[k].note}>
             <span className="flex items-center gap-1.5 text-[11.5px] text-muted"><span aria-hidden="true">{DUTY_META[k].emoji}</span>{k}</span>
             <span className="tnum text-[20px] font-semibold leading-none"><NumberFlow value={s.duty![k]} /></span>
-            <span className="tnum text-[11px] text-faint">{((100 * s.duty![k]) / total).toFixed(1)}%</span>
+            <span className="tnum text-[11px] text-muted">{((100 * s.duty![k]) / total).toFixed(1)}%</span>
           </div>
         ))}
       </div>
@@ -271,10 +271,10 @@ export function DriverStatusBoard() {
           <li key={d.id} className="duty-person">
             <span className="duty-avatar" aria-hidden="true">{d.name.split(" ").map((x) => x[0]).slice(0, 2).join("")}</span>
             <span className="min-w-0 flex-1"><span className="block truncate text-[12.5px] font-medium">{d.name}</span>
-              <span className="block truncate text-[11px] text-faint">{[d.plate, d.site].filter(Boolean).join(" · ")}</span></span>
+              <span className="block truncate text-[11px] text-muted">{[d.plate, d.site].filter(Boolean).join(" · ")}</span></span>
             <span key={d.state} className="duty-chip" style={{ color: DUTY_META[d.state].color, background: `color-mix(in srgb, ${DUTY_META[d.state].color} 13%, transparent)` }}>
               {DUTY_META[d.state].emoji} {d.state}</span>
-            <span className="tnum hidden w-[70px] shrink-0 text-right text-[10.5px] text-faint sm:block">{d.state === "On leave" || d.state === "Suspended" ? "" : since(d.since, now)}</span>
+            <span className="tnum hidden w-[70px] shrink-0 text-right text-[10.5px] text-muted sm:block">{d.state === "On leave" || d.state === "Suspended" ? "" : since(d.since, now)}</span>
           </li>
         ))}
       </ul>

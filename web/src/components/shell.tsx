@@ -47,7 +47,7 @@ function ThemeToggle() {
   };
   return (
     <button onClick={flip} aria-label="Toggle light / dark"
-      className="flex h-9 w-9 items-center justify-center rounded-lg border border-border bg-panel text-muted transition hover:text-text active:scale-95">
+      className="flex h-11 w-11 items-center justify-center rounded-lg border border-border bg-panel text-muted transition hover:text-text active:scale-95">
       {dark ? <Sun size={17} /> : <Moon size={17} />}
     </button>
   );
@@ -89,7 +89,7 @@ function Regions() {
 
 function LegalLinks({ className = "" }: { className?: string }) {
   return (
-    <p className={`flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-faint ${className}`}>
+    <p className={`flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-muted ${className}`}>
       <Link href="/legal/#privacy" className="hover:text-text">Privacy</Link>
       <Link href="/legal/#eula" className="hover:text-text">EULA</Link>
       <Link href="/legal/#dmca" className="hover:text-text">DMCA</Link>

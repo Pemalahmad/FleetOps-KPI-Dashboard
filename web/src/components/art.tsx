@@ -91,14 +91,20 @@ const SCENES: Record<ArtKind, () => ReactNode> = {
     <Chip x={268} y={62} e="🔧" /><Chip x={52} y={58} e="🏁" d={0.8} />
   </>),
   analytics: () => (<>
-    <Card x={44} y={34} w={236} h={130}>
-      <Bars x={62} y={146} values={[0.35, 0.55, 0.45, 0.7, 0.6, 0.85]} h={78} />
-      <path className="art-draw" d="M178 120 C196 104 206 112 220 92 S248 74 262 60" fill="none" stroke={A} strokeWidth={3} strokeLinecap="round" pathLength={1} />
-      <circle cx={262} cy={60} r={5} fill={A} className="art-pulse" />
-      <circle cx={232} cy={140} r={13} fill="none" stroke={SOFT} strokeWidth={6} />
-      <circle cx={232} cy={140} r={13} fill="none" stroke={GOOD} strokeWidth={6} strokeDasharray="56 82" transform="rotate(-90 232 140)" />
+    <Card x={28} y={24} w={264} h={150}>
+      {[54, 84, 114, 144].map((y) => <line key={y} x1={46} y1={y} x2={274} y2={y} stroke={LINE} strokeWidth={1} strokeDasharray="3 7" />)}
+      <Bars x={50} y={139} values={[0.34, 0.52, 0.44, 0.68, 0.59, 0.82]} h={72} />
+      <path className="art-draw" d="M156 120 C175 110 183 114 197 96 S224 90 236 68 S256 61 270 48" fill="none" stroke={A} strokeWidth={3} strokeLinecap="round" pathLength={1} />
+      <circle cx={270} cy={48} r={5} fill={A} className="art-stamp" />
+      <g transform="translate(206 116)">
+        <circle cx={25} cy={25} r={21} fill="none" stroke={LINE} strokeWidth={7} />
+        <circle cx={25} cy={25} r={21} fill="none" stroke={GOOD} strokeWidth={7} strokeDasharray="88 132" transform="rotate(-90 25 25)" />
+        <circle cx={25} cy={25} r={3} fill={GOOD} />
+      </g>
+      <g className="art-drive-settle"><Car x={157} y={164} width={58} style="hatchback" spin={false} /></g>
+      <path className="art-signal" d="M46 158 H272" fill="none" stroke={FAINT} strokeWidth={2} strokeDasharray="8 8" />
+      {[50, 64, 78].map((x, i) => <circle key={x} cx={x} cy={40} r={3} fill={i === 0 ? GOOD : LINE} />)}
     </Card>
-    <Chip x={286} y={34} e="📊" /><Chip x={38} y={150} e="🚗" d={0.6} /><Chip x={160} y={182} e="⚡" d={1.2} />
   </>),
   network: () => {
     const N: [number, number, string][] = [[160, 98, "⭐"], [70, 52, "🔧"], [252, 50, "⏱️"], [62, 152, "🧾"], [258, 150, "💰"], [160, 176, "🚗"]];

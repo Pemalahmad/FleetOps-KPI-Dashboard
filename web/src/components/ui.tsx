@@ -62,7 +62,7 @@ export function SectionTitle({ children, sub }: { children: ReactNode; sub?: Rea
       <h2 className="flex items-center gap-2.5"><Emoji e={emojiFor(children)} className="emoji-sm" /><Label>{children}</Label></h2>
       {sub && (
         <p className="mt-2 max-w-4xl text-[17px] font-medium leading-snug tracking-[-0.015em] md:text-[19px]">
-          {lead === null ? sub : <>{lead}{rest && <span className="text-faint">{rest}</span>}</>}
+          {lead === null ? sub : <>{lead}{rest && <span className="text-muted">{rest}</span>}</>}
         </p>
       )}
     </div>
@@ -144,7 +144,7 @@ export function Metric({
   const has = value !== null && value !== undefined && Number.isFinite(value);
   const delta = has && prev !== null && prev !== undefined ? value - prev : null;
   return (
-    <div className="ov-metric" title={hint}>
+    <div className="ov-metric" data-status={status ?? undefined} title={hint}>
       <span className="block truncate text-[12.5px] text-muted">{label}</span>
       <span className="tnum mt-2 block text-[26px] font-semibold leading-none tracking-[-0.03em]" style={{ color: attention(status) }}>
         {!has ? <span className="text-faint">–</span> : (
