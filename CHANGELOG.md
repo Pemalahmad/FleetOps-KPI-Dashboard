@@ -4,6 +4,10 @@ What changed in each version of FleetOps KPI. Dates are release dates; the newes
 
 ## Unreleased
 
+### README information architecture and visual tour (2026-11-20)
+- Rebuilt the root README around a concise product explanation, a 30-second evaluation path, verified local setup, engineering guarantees, an honest scope statement and links to the detailed documentation.
+- Added curated architecture and metric-network graphs, reduced the visual tour to the most useful GIFs, and recaptured the Analytics GIF so it reflects the current icons, graphics and motion design.
+
 ### Analytics control-board polish (2026-11-20)
 - Analytics now uses consistent fleet and operations icons in place of platform-dependent emoji for KPI groups, a clearer north-star instrument, stronger target-state marks and more legible scorecard risk cells.
 - The header illustration is now a purpose-built fleet telemetry scene. Motion is a short staged reveal and route sequence; the pointer swarm and its persistent toggle were removed from Analytics. Reduced-motion preferences still stop every effect.
