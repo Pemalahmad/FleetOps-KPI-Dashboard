@@ -4,6 +4,8 @@ import "katex/dist/katex.min.css";
 import "./globals.css";
 import { EngineProvider } from "@/components/engine-provider";
 import { Shell } from "@/components/shell";
+import { GeistSans } from "geist/font/sans";
+import { GeistMono } from "geist/font/mono";
 
 
 export const metadata: Metadata = {
@@ -27,7 +29,7 @@ const frameGuard = `(function(){if(window.top===window.self)return;var ok=false;
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="en" className="antialiased" suppressHydrationWarning>
+    <html lang="en" className={`antialiased ${GeistSans.variable} ${GeistMono.variable}`} suppressHydrationWarning>
       <head>
         <meta name="referrer" content="no-referrer" />
         <meta name="theme-color" content="#6366f1" />

@@ -109,8 +109,8 @@ export function VehicleExtras({ vehicleId, region, make }: { vehicleId: string; 
             <li key={r.role + r.name} className="rounded-lg border border-border px-3 py-2 text-[12.5px]">
               <p className="flex items-center gap-1.5 text-[11.5px] font-semibold text-muted"><span aria-hidden="true">{roleEmoji(r.role)}</span>{r.role}</p>
               <p className="mt-0.5 font-medium">{r.name}</p>
-              {r.phone && <a className="mt-1 flex items-center gap-1 text-accent hover:underline" href={`tel:${r.phone.replace(/\s+/g, "")}`}><Phone size={12} />{r.phone}</a>}
-              {r.email && <a className="flex min-w-0 items-center gap-1 text-accent hover:underline" href={`mailto:${r.email}`}><Envelope size={12} /><span className="truncate">{r.email}</span></a>}
+              {r.phone && <a className="mt-1 flex items-center gap-1 text-accent-ink hover:underline" href={`tel:${r.phone.replace(/\s+/g, "")}`}><Phone size={12} />{r.phone}</a>}
+              {r.email && <a className="flex min-w-0 items-center gap-1 text-accent-ink hover:underline" href={`mailto:${r.email}`}><Envelope size={12} /><span className="truncate">{r.email}</span></a>}
               {r.hours && <p className="text-[11px] text-faint">{r.hours}</p>}
             </li>
           ))}
@@ -216,7 +216,7 @@ function SelfDriving({ rows }: { rows: FleetWarranty[] }) {
       <div className="flex flex-wrap gap-2">
         {list.map(([ver, n]) => (
           <span key={ver} className="tnum rounded-lg border border-border px-3 py-2 text-[12.5px]">
-            <b className={ver === latest ? "text-accent" : undefined}>{ver}</b> · {n.toLocaleString()} vehicle{n === 1 ? "" : "s"}{ver === latest ? " · latest" : ""}
+            <b className={ver === latest ? "text-accent-ink" : undefined}>{ver}</b> · {n.toLocaleString()} vehicle{n === 1 ? "" : "s"}{ver === latest ? " · latest" : ""}
           </span>
         ))}
       </div>

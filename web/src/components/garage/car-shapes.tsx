@@ -76,7 +76,7 @@ export function CarShapes({ rows }: { rows: Row[] }) {
       </ul>
       <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-[12px] text-muted">
         <span>{demo ? "Demo choices last until this tab reloads." : "Saved with this fleet in this browser (encrypted if a passphrase is set)."} Auto picks a shape from the model name.</span>
-        {models.length > 8 && <button className="font-medium text-accent hover:underline" onClick={() => setAll(!all)}>{all ? "Show fewer" : `Show all ${models.length} models`}</button>}
+        {models.length > 8 && <button className="font-medium text-accent-ink hover:underline" onClick={() => setAll(!all)}>{all ? "Show fewer" : `Show all ${models.length} models`}</button>}
       </div>
       {error && <p role="alert" className="mt-2 text-[12px] text-bad">{error}</p>}
     </div>

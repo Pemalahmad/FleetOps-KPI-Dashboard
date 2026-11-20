@@ -79,7 +79,7 @@ export default function DoctrinePage() {
             const live = signal(s.meta.id);
             return <button key={s.meta.id} onClick={() => { setSelected(s.meta.id); window.history.replaceState(null, "", "#" + s.meta.id); }}
               aria-pressed={selected === s.meta.id} className={"sop-row w-full text-left " + (selected === s.meta.id ? "sop-row-selected" : "")}>
-              <span className="flex items-center justify-between gap-3 text-[12px]"><span className="font-semibold text-accent">{s.meta.id}</span>
+              <span className="flex items-center justify-between gap-3 text-[12px]"><span className="font-semibold text-accent-ink">{s.meta.id}</span>
                 <span className={live.state === "active" ? "text-warn" : "text-muted"}>{live.state === "active" ? "Needs attention" : live.state === "unknown" ? "Check evidence" : "Routine"}</span></span>
               <span className="mt-2 block text-[14px] font-semibold">{s.meta.title}</span><span className="mt-1 block text-[12px] text-muted">{s.meta.owner}</span>
             </button>;
@@ -129,7 +129,7 @@ function Procedure({ sop, signal, storageKey, scope }: { sop: Sop; signal: SopSi
     const a = document.createElement("a"); a.href = url; a.download = sop.meta.id + "-review.md"; a.click(); setTimeout(() => URL.revokeObjectURL(url), 1000);
   };
   return <Card className="min-w-0 p-5 md:p-7">
-    <div className="flex flex-wrap items-start justify-between gap-3"><div><p className="text-[13px] font-semibold text-accent">{sop.meta.id}</p><h2 className="mt-1 text-[23px] font-semibold">{sop.meta.title}</h2></div>
+    <div className="flex flex-wrap items-start justify-between gap-3"><div><p className="text-[13px] font-semibold text-accent-ink">{sop.meta.id}</p><h2 className="mt-1 text-[23px] font-semibold">{sop.meta.title}</h2></div>
       {page && <Link href={page.href} className="ops-button">{page.label}</Link>}</div>
     <p className={"mt-4 rounded-lg border p-3 text-[13px] " + (signal.state === "active" ? "border-warn/40 bg-warn/5" : "border-border bg-panel-2")}>{signal.reason}</p>
     <dl className="mt-5 grid gap-4 text-[13px] sm:grid-cols-2">

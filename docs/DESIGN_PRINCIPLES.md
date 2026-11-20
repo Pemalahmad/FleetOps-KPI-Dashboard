@@ -49,9 +49,9 @@ Every KPI tile is built from the same parts, in this order, at the same insets:
   mono 500 only for chips and time columns.
 - **Tabular figures everywhere numbers sit in a column or change while you watch** (`font-variant-numeric:
   tabular-nums`). Remember that the `font` shorthand resets it: add it back where the shorthand is used.
-- **Fonts ship with the app.** The CSP allows `font-src 'self' data:` only, so no Google Fonts or font CDNs. Use the
-  system stack in `globals.css`, or a self-hosted font file bundled from npm (e.g. Geist, SIL OFL) after the
-  maintainer agrees; never a new network host.
+- **Fonts ship with the app.** The CSP allows `font-src 'self' data:` only, so no Google Fonts or font CDNs. FleetOps
+  uses Geist and Geist Mono from the `geist` npm package (SIL OFL, pinned), served from its own origin by `next/font`,
+  with the system stack as fallback; never a new network host.
 - **Numbers are formatted for the reader's locale** (`Intl.NumberFormat`), not hard-coded `en-US`, and dates use
   the owner's time zone.
 
@@ -59,13 +59,14 @@ Every KPI tile is built from the same parts, in this order, at the same insets:
 
 - **The accent is `#6366f1` (`--accent`)**: the label dots, "today", "now", the selected item, the active switch, the
   live bar. If everything is purple, nothing is: an accent appears at most a few times per tile.
-- **Accent text needs the darker shade.** `#6366f1` is 4.47:1 on white, just under WCAG AA for small text. Use it
-  for fills, dots, icons and text 18 px and up (or 14 px bold); for small accent text use `#4f46e5` (6.29:1).
-- **Muted text must pass AA (4.5:1).** `--muted` passes (6.1:1 light). `--faint` (2.6:1 light, 3.2:1 dark) is for
-  decoration, disabled controls and text 18 px and up only, never for a caption someone needs to read.
-- **Status colours are for status only, and never alone.** Good, warn and bad always come with an icon or a word
-  ("Overdue", "Expiring"). In light mode the current `--good` (#059669, 3.8:1) and `--warn` (#d97706, 3.2:1) are
-  fills and icons, not small text; use a darker shade (e.g. `#047857`, `#b45309`) for status words.
+- **Accent text uses `--accent-ink`.** `#6366f1` is 4.47:1 on white, just under WCAG AA for small text, so it stays
+  the fill, dot and icon colour while text uses `--accent-ink` (`#4f46e5`, 6.3:1; `text-accent-ink` in Tailwind).
+- **Every text colour passes AA (4.5:1) on the panel and the page, in both themes.** Light: `--muted` #5b6178,
+  `--faint` #6b7189, `--good` #047857, `--warn` #b45309, `--bad` #be123c. Dark: `--faint` #7c8299. (Before
+  2026-11-20 faint, good and warn were 2.6, 3.8 and 3.2:1.) Keep it that way when adding a colour.
+- **Status colours are for status only, and never alone.** Good, warn and bad always come with an icon or a word:
+  `STATUS_WORD` in `ui.tsx` gives "On target", "Watch", "Off target"; tiles show the word for amber and red and give
+  it to screen readers for green.
 - **Ink tints instead of greys.** Wells, tracks, hairlines and dotted guides are the text colour at 5–16 % opacity,
   so they stay in key on both themes.
 - **Dark mode is designed, not inverted.** Every token has a dark value in `.dark`; check each new tile in both.

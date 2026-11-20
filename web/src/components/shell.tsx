@@ -76,7 +76,7 @@ function Regions() {
   const { regions, region, setRegion, status } = useEngine();
   if (status !== "ready" || !regions.length) return null;
   const pill = (active: boolean) =>
-    `rounded-full border px-2.5 py-1 text-[12px] transition active:scale-95 ${active ? "border-accent bg-accent-soft text-accent font-medium" : "border-border text-muted hover:text-text"}`;
+    `rounded-full border px-2.5 py-1 text-[12px] transition active:scale-95 ${active ? "border-accent bg-accent-soft text-accent-ink font-medium" : "border-border text-muted hover:text-text"}`;
   return (
     <div className="flex flex-wrap gap-1.5">
       <button aria-pressed={region === null} className={pill(region === null)} onClick={() => setRegion(null)}>All regions</button>
@@ -119,7 +119,7 @@ export function Shell({ children }: { children: ReactNode }) {
                 const active = href === "/" ? path === "/" : path.startsWith(href);
                 return (
                   <Link key={href} href={href} aria-current={(href === "/" ? path === "/" : path.startsWith(href)) ? "page" : undefined}
-                    className={`mb-0.5 flex items-center gap-2.5 rounded-lg px-2 py-1.5 text-[13.5px] transition ${active ? "bg-accent-soft font-medium text-accent" : "text-muted hover:bg-panel-2 hover:text-text"}`}>
+                    className={`mb-0.5 flex items-center gap-2.5 rounded-lg px-2 py-1.5 text-[13.5px] transition ${active ? "bg-accent-soft font-medium text-accent-ink" : "text-muted hover:bg-panel-2 hover:text-text"}`}>
                     <Icon size={17} weight={active ? "fill" : "regular"} />
                     {label}
                   </Link>
@@ -142,7 +142,7 @@ export function Shell({ children }: { children: ReactNode }) {
           <nav aria-label="Mobile navigation" className="mt-2 flex gap-1 overflow-x-auto lg:hidden">
             {NAV.flatMap((g) => g.items).map(({ href, label }) => (
               <Link key={href} href={href} aria-current={(href === "/" ? path === "/" : path.startsWith(href)) ? "page" : undefined}
-                className={`shrink-0 rounded-full px-3 py-1 text-[12.5px] ${(href === "/" ? path === "/" : path.startsWith(href)) ? "bg-accent-soft text-accent" : "text-muted"}`}>
+                className={`shrink-0 rounded-full px-3 py-1 text-[12.5px] ${(href === "/" ? path === "/" : path.startsWith(href)) ? "bg-accent-soft text-accent-ink" : "text-muted"}`}>
                 {label}
               </Link>
             ))}

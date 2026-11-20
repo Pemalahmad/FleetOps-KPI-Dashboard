@@ -4,6 +4,12 @@ What changed in each version of FleetOps KPI. Dates are release dates; the newes
 
 ## Unreleased
 
+### Design principles applied (2026-11-20)
+- Every text colour now passes WCAG AA (4.5:1) in light and dark: faint text, good, warn and bad are darker in light mode (#6b7189, #047857, #b45309, #be123c) and faint is lighter in dark mode; purple used as small text uses the new `--accent-ink` (#4f46e5), while #6366f1 stays the accent for fills, dots and icons.
+- Geist and Geist Mono, bundled from the `geist` npm package (SIL OFL) and served from the app's own origin, so no font host and no CSP change; the system fonts remain the fallback.
+- KPI tiles follow one anatomy: an accent dot before the label, thin tabular headline numbers (the north star, metric tiles, stat strips, the metric network), and status in words ("Watch", "Off target"; "On target" for screen readers) as well as colour. Card titles carry the dot too.
+- Tiles rise in once, in grid order (fade, 18 px rise and slight grow, cubic ease-out, 60 ms apart); reduced motion keeps them still. New Analytics GIF.
+
 ### Design principles (2026-11-20)
 - New docs/DESIGN_PRINCIPLES.md: one tile style on a cell grid, tile anatomy, one accent used as meaning, thin tabular numerals, motion as a pure function of time, the four data states, contrast, dark mode, Arabic and a "Done when" checklist. The design agent and AGENTS.md now point to it. It records that the light-mode faint, good and warn colours and small accent text fall short of WCAG AA, with the shades to use instead.
 

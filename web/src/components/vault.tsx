@@ -29,7 +29,7 @@ export function UnlockBanner() {
         setWrong(!ok);
         if (ok) setPass("");
       }}>
-      <LockSimple size={20} className="text-accent" />
+      <LockSimple size={20} className="text-accent-ink" />
       <p className="min-w-[220px] flex-1 text-[13.5px]">
         <span className="font-medium">Your fleet data is locked.</span>{" "}
         <span className="text-muted">You are looking at the demo fleet. Enter your passphrase to open your own.</span>

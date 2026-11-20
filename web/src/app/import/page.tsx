@@ -120,7 +120,7 @@ export default function ImportPage() {
           onDragLeave={() => setDrag(false)}
           onDrop={(e) => { e.preventDefault(); setDrag(false); onFiles(e.dataTransfer.files); }}
           className={`card flex cursor-pointer flex-col items-center justify-center gap-2 border-2 border-dashed px-6 py-12 text-center transition ${drag ? "border-accent bg-accent-soft" : "hover:border-accent"} ${busy ? "pointer-events-none opacity-60" : ""}`}>
-          <FileXls size={34} className="text-accent" />
+          <FileXls size={34} className="text-accent-ink" />
           <span className="text-[16px] font-semibold">{reading ? "Reading…" : "Drop Excel or CSV files, or click to choose"}</span>
           <span className="max-w-md text-[13px] text-muted">.xlsx, .xls, .csv, .parquet or .json. Workbooks with many sheets are fine: each sheet is recognised separately.</span>
           <input type="file" multiple accept=".xlsx,.xls,.xlsm,.csv,.parquet,.json" className="hidden" onChange={(e) => onFiles(e.target.files)} />
@@ -134,7 +134,7 @@ export default function ImportPage() {
             Only a <b className="text-text">vehicle list</b> is needed to start. Work orders unlock the operations KPIs and the metric network.
           </p>
           <button onClick={downloadTemplate} disabled={!tables.length}
-            className="mt-4 inline-flex items-center gap-2 rounded-lg border border-border px-3 py-2 text-[13px] text-muted transition hover:border-accent hover:text-accent active:scale-95">
+            className="mt-4 inline-flex items-center gap-2 rounded-lg border border-border px-3 py-2 text-[13px] text-muted transition hover:border-accent hover:text-accent-ink active:scale-95">
             <DownloadSimple size={15} /> Download an Excel template (a sheet per table)
           </button>
         </Card>

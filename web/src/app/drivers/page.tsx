@@ -142,7 +142,7 @@ export default function DriversPage() {
         <Card className="mb-4">
           <p className="text-[13.5px] text-muted"><b className="text-text">No drivers loaded yet.</b> Add a drivers sheet (id, name, licence class and expiry,
             assigned vehicle) and a trips export (vehicle, start, km, idle minutes, speeding and harsh events) on the{" "}
-            <Link href="/import/" className="text-accent hover:underline">import page</Link>. Both are optional; everything else keeps working without them.</p>
+            <Link href="/import/" className="text-accent-ink hover:underline">import page</Link>. Both are optional; everything else keeps working without them.</p>
         </Card>
       )}
 

@@ -112,7 +112,7 @@ export function GaragePage() {
       <LivePanel focus="garage" />
       <section className="garage-floor" aria-label="Visual fleet garage">
         <div className="garage-floor-header"><div><h2 className="text-lg font-semibold">The garage floor</h2><p className="mt-1 text-xs text-muted">{NUM.format(vehicles.length)} vehicles across six work zones. Accident holds flash; repair bays lift the car.</p></div>
-          <div className="flex items-center gap-2"><Link href="/fleet/#car-shapes" className="garage-report-badge hover:text-accent">Match car shapes</Link><span className="garage-report-badge">Live from the loaded report</span></div></div>
+          <div className="flex items-center gap-2"><Link href="/fleet/#car-shapes" className="garage-report-badge hover:text-accent-ink">Match car shapes</Link><span className="garage-report-badge">Live from the loaded report</span></div></div>
         <Garage3D groups={groups} onOpen={openVehicle} styleFor={carStyles.styleFor} />
         <div className="garage-zones">{LANES.map((lane) => <section key={lane.id} className="garage-zone" aria-label={lane.label + " queue"}><Glare>
           <header className="flex items-baseline justify-between gap-2"><h3 className="flex items-center gap-2 text-[13px] font-semibold"><span className="h-2 w-2 rounded-full" style={{ background: lane.color }} />{lane.label}</h3>
@@ -138,7 +138,7 @@ export function GaragePage() {
           <div className="mt-4 flex flex-wrap gap-1.5" aria-label="Badges">{badges.map((b) => <span key={b.label} title={b.hint} className={"garage-badge " + (b.earned ? "garage-badge-earned" : "")}>{b.earned ? "★" : "☆"} {b.label}</span>)}</div>
           <p className="mt-4 text-[11px] leading-relaxed text-muted">50 XP per reviewed handover. XP never clears a safety or document gate.{context.demo ? " Practice progress resets on reload." : ""}</p>
         </div>
-        <div className="garage-missions"><div className="mb-3 flex items-center gap-2"><Flag size={17} className="text-accent" /><h2 className="text-[15px] font-semibold">Recovery missions</h2><span className="ml-auto text-[11px] text-muted">Road ready {roadPct}%</span></div>
+        <div className="garage-missions"><div className="mb-3 flex items-center gap-2"><Flag size={17} className="text-accent-ink" /><h2 className="text-[15px] font-semibold">Recovery missions</h2><span className="ml-auto text-[11px] text-muted">Road ready {roadPct}%</span></div>
           <div className="grid gap-2 sm:grid-cols-2">
             <Mission title="Recover accident holds" text="Assign an owner and move recovery through its stages." count={groups.incident.length} total={vehicles.length} color="var(--bad)" onClick={() => filterQueue("incident")} />
             <Mission title="Clear the renewal desk" text="Track submissions and refresh expiry evidence." count={groups.renewal.length} total={vehicles.length} color="var(--warn)" onClick={() => filterQueue("renewal")} />
@@ -186,7 +186,7 @@ export function GaragePage() {
       <div className="divide-y divide-border">{visibleAlerts.map((a) => <div key={a.id} className={"garage-alert-row " + (acknowledged.has(a.id) ? "garage-alert-read" : "")}>
         <span className={"mt-1 " + (a.priority === "critical" ? "text-bad" : a.priority === "ready" ? "text-good" : "text-warn")}>{a.priority === "ready" ? <CheckCircle size={20} weight="fill" /> : <Warning size={20} weight="fill" />}</span>
         <div className="min-w-0 flex-1"><p className="text-sm font-semibold">{a.title}</p><p className="mt-1 text-xs leading-relaxed text-muted">{a.detail}</p>
-          <div className="mt-2 flex gap-3"><button className="text-xs font-medium text-accent" onClick={() => openVehicle(a.vehicleId)}>Open vehicle</button>{!acknowledged.has(a.id) ? <button className="text-xs text-muted" disabled={operations.saving} onClick={() => void markRead([a])}>Mark as read</button> : <span className="text-xs text-muted">Read</span>}</div></div>
+          <div className="mt-2 flex gap-3"><button className="text-xs font-medium text-accent-ink" onClick={() => openVehicle(a.vehicleId)}>Open vehicle</button>{!acknowledged.has(a.id) ? <button className="text-xs text-muted" disabled={operations.saving} onClick={() => void markRead([a])}>Mark as read</button> : <span className="text-xs text-muted">Read</span>}</div></div>
       </div>)}</div>
       {!filteredAlerts.length && <div className="py-12 text-center"><ShieldCheck size={32} className="mx-auto text-good" /><p className="mt-3 text-sm">No alerts of this type in the loaded evidence for this scope.</p></div>}
       {operations.error && <p role="alert" className="mt-4 text-sm text-bad">{operations.error}</p>}

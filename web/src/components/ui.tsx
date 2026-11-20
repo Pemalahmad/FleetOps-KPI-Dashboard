@@ -6,7 +6,7 @@ import katex from "katex";
 import { HeaderDots, Shine, SpotCard } from "./bits/fleetops-bits";
 import { useEffect, useRef, useState } from "react";
 import NumberFlow from "@number-flow/react";
-import type { ReactNode } from "react";
+import type { CSSProperties, ReactNode } from "react";
 
 export function Card({ children, className = "", title, sub, right }: {
   children: ReactNode; className?: string; title?: ReactNode; sub?: ReactNode; right?: ReactNode;
@@ -16,7 +16,7 @@ export function Card({ children, className = "", title, sub, right }: {
       {(title || right) && (
         <header className="mb-3 flex items-start justify-between gap-3">
           <div>
-            {title && <h3 className="text-[15px] font-semibold">{title}</h3>}
+            {title && <h3 className="tile-label text-[15px] font-semibold"><i className="tile-dot" aria-hidden />{title}</h3>}
             {sub && <p className="mt-0.5 text-[13px] text-muted">{sub}</p>}
           </div>
           {right}
@@ -106,7 +106,7 @@ export function Delta({ delta, decimals, unit, better }: { delta: number | null;
   const flat = Math.abs(delta) < 0.5 * 10 ** -decimals;
   const good = flat ? null : (delta > 0) === (better === "higher");
   return (
-    <span className="kpi-delta tnum" style={{ color: good === null ? "var(--muted)" : good ? "var(--good)" : "var(--bad)" }}>
+    <span className="kpi-delta tnum shrink-0 whitespace-nowrap" style={{ color: good === null ? "var(--muted)" : good ? "var(--good)" : "var(--bad)" }}>
       {flat ? "±" : delta > 0 ? "+" : "−"}{Math.abs(delta).toFixed(decimals)}{unit === "%" ? " pp" : unit && unit !== "$" ? " " + unit : ""}
     </span>
   );
@@ -131,6 +131,9 @@ export function CountIn({ value, decimals = 0 }: { value: number; decimals?: num
   );
 }
 
+/** Status in words, so it never rests on colour alone. */
+export const STATUS_WORD: Record<"green" | "amber" | "red", string> = { green: "On target", amber: "Watch", red: "Off target" };
+
 /** Colour for a value only when it needs attention; on-target numbers stay in the text colour. */
 export const attention = (r: Rag) => (r === "red" ? "var(--bad)" : r === "amber" ? "var(--warn)" : undefined);
 
@@ -145,8 +148,8 @@ export function Metric({
   const delta = has && prev !== null && prev !== undefined ? value - prev : null;
   return (
     <div className="ov-metric" data-status={status ?? undefined} title={hint}>
-      <span className="block truncate text-[12.5px] text-muted">{label}</span>
-      <span className="tnum mt-2 block text-[26px] font-semibold leading-none tracking-[-0.03em]" style={{ color: attention(status) }}>
+      <span className="tile-label text-[12.5px] text-muted"><i className="tile-dot" aria-hidden /><span className="truncate">{label}</span></span>
+      <span className="tile-figure mt-2.5 block text-[30px]" style={{ color: attention(status) }}>
         {!has ? <span className="text-faint">–</span> : (
           <>
             {unit === "$" && <span className="mr-0.5 text-[16px] font-medium text-muted">$</span>}
@@ -155,9 +158,11 @@ export function Metric({
           </>
         )}
       </span>
-      <span className="mt-2 flex items-center gap-1.5 text-[11.5px] text-faint">
+      <span className="mt-2 flex min-w-0 items-center gap-1.5 whitespace-nowrap text-[11.5px] text-faint">
+        {status && status !== "green" && <span className="status-word shrink-0" data-status={status}>{STATUS_WORD[status]}</span>}
+        {status === "green" && <span className="sr-only">{STATUS_WORD.green}</span>}
         <Delta delta={delta} decimals={decimals} unit={unit} better={better} />
-        {target && <span className="truncate">{delta !== null ? "· " : ""}{target}</span>}
+        {target && <span className="min-w-0 truncate">{delta !== null ? "· " : ""}{target}</span>}
       </span>
       {spark && <span className="mt-3 block"><Sparkline values={spark} height={22} fill={false} width={1.25} color="var(--faint)" /></span>}
     </div>
@@ -170,15 +175,16 @@ export function StatStrip({ items }: {
 }) {
   return (
     <div className="stat-strip">
-      {items.map((it) => {
+      {items.map((it, i) => {
         const has = it.value !== null && it.value !== undefined && Number.isFinite(it.value);
         return (
-          <div key={it.label} className="stat-strip-item">
+          <div key={it.label} className="stat-strip-item rise" style={{ "--i": i } as CSSProperties} title={it.status ? STATUS_WORD[it.status] : undefined}>
             <span className="flex items-center gap-1.5 text-[11.5px] text-muted">
-              {it.status && <span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ background: ragColor(it.status) }} />}
+              {it.status && <span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ background: ragColor(it.status) }} aria-hidden />}
+              {it.status && <span className="sr-only">{STATUS_WORD[it.status]}:</span>}
               <span className="truncate">{it.label}</span>
             </span>
-            <span className="tnum mt-1 block text-[20px] font-semibold leading-none tracking-[-0.02em]">
+            <span className="tile-figure mt-1.5 block text-[22px]">
               {has ? <CountIn value={it.value as number} decimals={it.decimals ?? 0} /> : <span className="text-faint">–</span>}
               {has && it.unit && <span className="ml-0.5 text-[12px] font-medium tracking-normal text-muted">{unitText(it.unit).trim()}</span>}
             </span>

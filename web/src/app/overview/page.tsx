@@ -161,15 +161,15 @@ export default function Overview() {
     <>
       <PageHeader art="analytics" backdrop eyebrow={region ?? "Network"} title="Fleet operations, as one system">
         Every number below is computed in your browser by the same tested SQL pipeline, and every KPI is connected to the north
-        star by exact algebra or a measured driver. Open the <Link href="/network/" className="text-accent underline-offset-2 hover:underline">metric network</Link> to see the maths.
+        star by exact algebra or a measured driver. Open the <Link href="/network/" className="text-accent-ink underline-offset-2 hover:underline">metric network</Link> to see the maths.
       </PageHeader>
 
       {log?.mode === "registry" && (
         <Card className="mb-4">
           <p className="text-[13.5px] text-muted">
-            <b className="text-text">Your fleet is in registry mode.</b> The <Link href="/fleet/" className="text-accent hover:underline">fleet register</Link>,{" "}
+            <b className="text-text">Your fleet is in registry mode.</b> The <Link href="/fleet/" className="text-accent-ink hover:underline">fleet register</Link>,{" "}
             documents and licence are live. The operating KPIs below need work orders: add your service history on the{" "}
-            <Link href="/import/" className="text-accent hover:underline">import page</Link>.
+            <Link href="/import/" className="text-accent-ink hover:underline">import page</Link>.
           </p>
         </Card>
       )}
@@ -182,7 +182,7 @@ export default function Overview() {
             <span><b>North star</b><small>Off-road hours per vehicle per month</small></span>
           </div>
           <div className="mt-3 flex flex-wrap items-baseline gap-x-3 gap-y-1">
-            <span className="tnum text-[56px] font-semibold leading-none tracking-[-0.045em]">{north === null ? "–" : <CountIn value={north} decimals={1} />}</span>
+            <span className="tile-figure text-[60px]">{north === null ? "–" : <CountIn value={north} decimals={1} />}</span>
             <span className="text-[18px] text-muted">h</span>
             <span className="text-[12px]"><Delta delta={north !== null && p.prev?.v.offroad != null ? north - p.prev.v.offroad : null} decimals={1} unit="h" better="lower" />
               <span className="ml-1.5 text-muted">vs last month · lower is better</span></span>
@@ -209,7 +209,7 @@ export default function Overview() {
             Visits per vehicle <b className="tnum font-semibold text-text">{p.last?.v.visits?.toFixed(3) ?? "–"}</b> × hours per visit{" "}
             <b className="tnum font-semibold text-text">{p.last?.v.per_visit?.toFixed(1) ?? "–"}</b>. Availability{" "}
             <b className="tnum font-semibold text-text">{p.last?.v.availability?.toFixed(2) ?? "–"}%</b> is the same number from the other side.{" "}
-            <Link href="/network/" className="inline-flex items-center gap-1 font-medium text-accent hover:underline">What drives it <ArrowRight size={12} /></Link>
+            <Link href="/network/" className="inline-flex items-center gap-1 font-medium text-accent-ink hover:underline">What drives it <ArrowRight size={12} /></Link>
           </p>
         </div>
         <div className="ov-metrics">

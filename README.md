@@ -20,7 +20,7 @@ FleetOps KPI turns Excel, CSV, Parquet, JSON, and document scans into a device-l
 
 The included Sahra Mobility demo is synthetic: 6,500 vehicles, 15 workshops, 7 markets, and 18 months of operational history. It is large enough to exercise the full pipeline without presenting fictional results as industry benchmarks.
 
-![Analytics dashboard moving from the fleet north star through target states and live operations](docs/web-overview.gif)
+![Analytics dashboard: the north star and KPI tiles with dot labels, thin tabular numbers and status words, then the full KPI wall](docs/web-overview.gif)
 
 ## What it answers
 
@@ -137,6 +137,7 @@ See the generated [data contract](docs/DATA_CONTRACT.md) for every table, field,
 |---|---|
 | **Warehouse** | Dependency-sorted SQL models, atomic publication, retained last-good build, validation issues with offending row identifiers, and lineage logs. |
 | **Browser** | Static export, strict Content Security Policy, no inline-script escape hatch, offline package, responsive light/dark UI, and reduced-motion support. |
+| **Design** | One tile system from [design principles](docs/DESIGN_PRINCIPLES.md): bundled Geist type (no font host), every text colour at WCAG AA 4.5:1 in light and dark, status shown in words as well as colour. |
 | **Untrusted input** | Property-based parser tests, spreadsheet formula neutralisation, hostile workbook rendering tests, and authenticated encryption with tamper detection. |
 | **Statistics** | Implemented from first principles and tested against R, SciPy, and statsmodels reference values. |
 | **CI** | Python 3.11 and 3.13, web lint/type/unit/build, Playwright security flows, dependency audits, CodeQL, OpenSSF Scorecard, and a Docker demo build. |
@@ -184,6 +185,7 @@ FleetOps-KPI-Dashboard/
 | [Garage workflow](docs/GARAGE.md) | Stages, gates, alerts, evidence, and handovers |
 | [Three Clocks Doctrine](docs/DOCTRINE.md) | Operating model behind the KPI system |
 | [System design](docs/SYSTEM_DESIGN.md) | Architecture decisions and hosted-system comparisons |
+| [Design principles](docs/DESIGN_PRINCIPLES.md) | Tiles, type, colour, motion, data states, and the UI "Done when" checklist |
 | [SQL catalog](docs/SQL_CATALOG.md) | Every model, dependency, validation rule, and test |
 | [Data contract](docs/DATA_CONTRACT.md) | Input schemas, accepted synonyms, and constraints |
 | [Security](SECURITY.md) | Threat model, reporting, and supported versions |

@@ -90,7 +90,7 @@ export default function DocumentsPage() {
       {!mine && (
         <Card className="mb-4 border-accent/40">
           <p className="text-[13.5px] text-muted">
-            You are looking at the demo fleet. <Link href="/import/" className="font-medium text-accent hover:underline">Import your vehicle list</Link>{" "}
+            You are looking at the demo fleet. <Link href="/import/" className="font-medium text-accent-ink hover:underline">Import your vehicle list</Link>{" "}
             first so cards match your vehicles, or start from the cards: any card that matches no vehicle can create it.
           </p>
         </Card>
@@ -102,7 +102,7 @@ export default function DocumentsPage() {
           onDragLeave={() => setDrag(false)}
           onDrop={(e) => { e.preventDefault(); setDrag(false); onFiles(e.dataTransfer.files); }}
           className={`card flex cursor-pointer flex-col items-center justify-center gap-2 border-2 border-dashed px-6 py-10 text-center transition ${drag ? "border-accent bg-accent-soft" : "hover:border-accent"} ${busy ? "pointer-events-none opacity-60" : ""}`}>
-          <IdentificationCard size={34} className="text-accent" />
+          <IdentificationCard size={34} className="text-accent-ink" />
           <span className="text-[16px] font-semibold">Drop photos or PDFs of documents</span>
           <span className="text-[13px] text-muted">JPG, PNG, WEBP or PDF · several at once. The first scan downloads the reader (about 9 MB), once.</span>
           <input type="file" multiple accept="image/png,image/jpeg,image/webp,image/gif,image/bmp,image/tiff,application/pdf,text/plain" className="hidden" onChange={(e) => onFiles(e.target.files)} />
@@ -161,7 +161,7 @@ export default function DocumentsPage() {
                 const st = status(d.expiry_date);
                 return (
                   <tr key={d.id} className="border-t border-border">
-                    <td className="py-2">{d.vehicle_ref}{d.create_vehicle && <span className="ml-1.5 rounded bg-accent-soft px-1.5 text-[11px] text-accent">new vehicle</span>}</td>
+                    <td className="py-2">{d.vehicle_ref}{d.create_vehicle && <span className="ml-1.5 rounded bg-accent-soft px-1.5 text-[11px] text-accent-ink">new vehicle</span>}</td>
                     <td>{d.doc_type}</td><td className="text-muted">{d.issuer ?? "–"}</td><td>{d.expiry_date ?? "–"}</td>
                     <td><span className="font-medium" style={{ color: STATUS_COLOR[st] }}>{st}</span></td>
                     <td className="text-right">
@@ -181,7 +181,7 @@ export default function DocumentsPage() {
 
 function OpenFile({ id, name }: { id: string; name: string }) {
   return (
-    <button aria-label={`Open ${name}`} className="rounded-md p-1.5 text-faint hover:bg-panel-2 hover:text-accent" onClick={async () => {
+    <button aria-label={`Open ${name}`} className="rounded-md p-1.5 text-faint hover:bg-panel-2 hover:text-accent-ink" onClick={async () => {
       const blob = await loadFile(id);
       if (!blob) return;
       const safe = isSafeDocumentPreview(blob.type);
@@ -224,7 +224,7 @@ function Review({ d, known, onPatch, onRemove }: {
         <div>
           <Thumb id={d.id} mime={d.mime} />
           <p className="mt-1.5 truncate text-[11.5px] text-faint">{d.file_name}</p>
-          <button onClick={() => setText(!text)} className="text-[11.5px] text-accent hover:underline">{text ? "Hide" : "Show"} text read</button>
+          <button onClick={() => setText(!text)} className="text-[11.5px] text-accent-ink hover:underline">{text ? "Hide" : "Show"} text read</button>
         </div>
         <div className="grid grid-cols-2 gap-2 text-[12px]">
           <label className="col-span-2">Vehicle (plate, VIN or fleet number)

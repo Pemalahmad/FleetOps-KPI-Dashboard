@@ -35,7 +35,7 @@ export default function LegalPage() {
     <PageHeader art="legal" eyebrow="Legal" title="Privacy, licence terms and copyright">FleetOps keeps your fleet data on your device. These documents also ship in the offline package.</PageHeader>
     <div role="tablist" aria-label="Legal documents" className="mb-5 flex flex-wrap gap-1.5">
       {DOCS.map((d) => <a key={d.id} role="tab" href={"#" + d.id} aria-selected={active === d.id}
-        className={`rounded-full border px-3 py-1.5 text-[13px] transition active:scale-95 ${active === d.id ? "border-accent bg-accent-soft font-medium text-accent" : "border-border text-muted hover:text-text"}`}>{d.label}</a>)}
+        className={`rounded-full border px-3 py-1.5 text-[13px] transition active:scale-95 ${active === d.id ? "border-accent bg-accent-soft font-medium text-accent-ink" : "border-border text-muted hover:text-text"}`}>{d.label}</a>)}
     </div>
     <Card className="p-5 md:p-8">
       {error ? <p className="text-sm text-bad">The documents could not be loaded. Reconnect and reload, or read them in the repository.</p>

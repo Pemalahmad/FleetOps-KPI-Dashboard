@@ -175,7 +175,7 @@ function Detail({ id, models, p, onSelect }: { id: string; models: FittedModel[]
       <p className="mt-1 text-[13.5px] text-muted">{n.meaning}</p>
       {id === "key_to_key" && <p className="mt-2 text-[12px] text-warn">Across regions this is a job-weighted mean of regional medians, not a pooled fleet median.</p>}
       <div className="mt-4 flex items-baseline gap-3">
-        <span className="tnum text-[34px] font-bold leading-none">{val(id, v)}</span>
+        <span className="tile-figure text-[36px]">{val(id, v)}</span>
         {target && (
           <span className="text-[12.5px] text-muted">
             target {target.direction === "higher" ? "≥" : "≤"} {target.green}{" "}
@@ -300,7 +300,7 @@ function Regression({ m }: { m: FittedModel }) {
             return (
               <tr key={d} className="border-t border-border">
                 <td className="py-1.5 text-text">{NODE[d].label}</td>
-                <td className="text-right text-text">{f.coef[i + 1].toFixed(3)}<span className="text-accent">{s.stars}</span></td>
+                <td className="text-right text-text">{f.coef[i + 1].toFixed(3)}<span className="text-accent-ink">{s.stars}</span></td>
                 <td className="text-right">{f.se[i + 1].toFixed(3)}</td>
                 <td className="text-right">{f.t[i + 1].toFixed(2)}</td>
                 <td className="text-right">{pFmt(f.p[i + 1])}</td>
@@ -328,12 +328,12 @@ function Simulator({ base, models }: { base: Record<string, number | null>; mode
   const OUT = ["offroad", "availability", "per_visit", "workshop", "visits", "key_to_key", "csat", "low_rating", "goodwill", "spend"];
   return (
     <div className="grid gap-4 lg:grid-cols-[1fr_1.4fr]">
-      <Card title="Levers" right={<button className="text-[12.5px] text-accent hover:underline" onClick={() => setLv({})}>Reset</button>}>
+      <Card title="Levers" right={<button className="text-[12.5px] text-accent-ink hover:underline" onClick={() => setLv({})}>Reset</button>}>
         {LEVERS.map((l) => (
           <label key={l.id} className="mb-3.5 block">
             <span className="flex justify-between text-[13px]">
               <span>{l.label}</span>
-              <span className="tnum font-medium text-accent">{(lv[l.id] ?? 0) > 0 ? "+" : ""}{(lv[l.id] ?? 0).toFixed(1)} {l.unit}</span>
+              <span className="tnum font-medium text-accent-ink">{(lv[l.id] ?? 0) > 0 ? "+" : ""}{(lv[l.id] ?? 0).toFixed(1)} {l.unit}</span>
             </span>
             <input type="range" disabled={base[l.id] == null} min={l.min} max={l.max} step={l.step} value={lv[l.id] ?? 0} className="mt-1 w-full accent-[var(--accent)] disabled:opacity-30"
               onChange={(e) => setLv({ ...lv, [l.id]: Number(e.target.value) })} />

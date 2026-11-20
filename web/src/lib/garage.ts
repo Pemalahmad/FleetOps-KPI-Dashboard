@@ -55,7 +55,7 @@ export const CHECKS: { id: CheckId; label: string; detail: string }[] = [
 ];
 export const LANES: { id: GarageLane; label: string; description: string; color: string }[] = [
   { id: "road", label: "Road ready", description: "Available in the loaded report", color: "var(--good)" },
-  { id: "repair", label: "Repair bays", description: "Workshop work still open", color: "var(--accent)" },
+  { id: "repair", label: "Repair bays", description: "Workshop work still open", color: "var(--accent-ink)" },
   { id: "renewal", label: "Renewal desk", description: "Registration or insurance blocks", color: "var(--warn)" },
   { id: "incident", label: "Accident intake", description: "Assess, repair and recover", color: "var(--bad)" },
   { id: "dispatch", label: "Dispatch review", description: "Repair ready; verify and hand over", color: "var(--good)" },

@@ -233,7 +233,7 @@ function FollowCard({ s }: { s: LiveState }) {
 
 /* ----------------------------------------------------------------------------------------------- driver status */
 export const DUTY_META: Record<DutyState, { emoji: string; color: string; note: string }> = {
-  "On a trip": { emoji: "🚗", color: "var(--accent)", note: "Driving a job now" },
+  "On a trip": { emoji: "🚗", color: "var(--accent-ink)", note: "Driving a job now" },
   Available: { emoji: "🟢", color: "var(--good)", note: "On shift, waiting for a job" },
   "On a break": { emoji: "☕", color: "var(--warn)", note: "Paused mid-shift" },
   "Off duty": { emoji: "🌙", color: "var(--faint)", note: "Not on shift" },

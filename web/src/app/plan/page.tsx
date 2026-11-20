@@ -75,7 +75,7 @@ export default function PlanPage() {
       <div className="grid gap-4 lg:grid-cols-3">
         <Card title="Install as an app" sub="Chrome, Edge or Safari: the app opens in its own window and works offline after the first visit.">
           <button onClick={() => install()} disabled={!canInstall}
-            className="inline-flex items-center gap-2 rounded-lg border border-accent px-3 py-2 text-[13px] font-medium text-accent transition hover:bg-accent-soft active:scale-95 disabled:opacity-40">
+            className="inline-flex items-center gap-2 rounded-lg border border-accent px-3 py-2 text-[13px] font-medium text-accent-ink transition hover:bg-accent-soft active:scale-95 disabled:opacity-40">
             <DownloadSimple size={15} /> {canInstall ? "Install FleetOps" : "Use your browser's Install / Add to Home Screen"}
           </button>
         </Card>
@@ -133,7 +133,7 @@ function ActivityLog() {
           </li>
         ))}
       </ul>
-      {entries.length > 15 && <button onClick={() => setAll(!all)} className="w-full border-t border-border px-4 py-2 text-left text-[12px] font-medium text-accent">{all ? "Show fewer" : `Show all ${entries.length}`}</button>}
+      {entries.length > 15 && <button onClick={() => setAll(!all)} className="w-full border-t border-border px-4 py-2 text-left text-[12px] font-medium text-accent-ink">{all ? "Show fewer" : `Show all ${entries.length}`}</button>}
     </Card>
   );
 }

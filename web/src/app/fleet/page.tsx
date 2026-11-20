@@ -70,14 +70,14 @@ export default function FleetPage() {
       <PageHeader art="fleet" eyebrow={dataset === "mine" ? "My fleet" : "Demo fleet"} title="Fleet register">
         Every vehicle with its identity (VIN, plate, make, model, year, trim, configuration), its licence to drive (registration,
         insurance and the documents behind them) and its service record, with one next action per vehicle.
-        {dataset === "demo" && <> <Link href="/import/" className="text-accent hover:underline">Import your own fleet</Link> to see yours.</>}
+        {dataset === "demo" && <> <Link href="/import/" className="text-accent-ink hover:underline">Import your own fleet</Link> to see yours.</>}
       </PageHeader>
 
       {log?.mode === "registry" && (
         <Card className="mb-4">
           <p className="text-[13.5px] text-muted">
             <b className="text-text">Registry mode.</b> Your register and compliance are live. Add work orders (and usage) on the{" "}
-            <Link href="/import/" className="text-accent hover:underline">import page</Link> to unlock the operations KPIs, the three clocks and the metric network.
+            <Link href="/import/" className="text-accent-ink hover:underline">import page</Link> to unlock the operations KPIs, the three clocks and the metric network.
           </p>
         </Card>
       )}
@@ -161,7 +161,7 @@ export default function FleetPage() {
           ]).filter((x): x is NonNullable<typeof x> => x !== null);
           download(new Blob([renewalsIcs(items)], { type: "text/calendar" }), "fleet-renewals.ics");
         }} disabled={!rows.length}
-          className="inline-flex items-center gap-2 rounded-lg border border-border px-3 py-1.5 text-[12.5px] text-muted transition hover:border-accent hover:text-accent active:scale-95 disabled:opacity-40">
+          className="inline-flex items-center gap-2 rounded-lg border border-border px-3 py-1.5 text-[12.5px] text-muted transition hover:border-accent hover:text-accent-ink active:scale-95 disabled:opacity-40">
           <CalendarPlus size={15} /> Add renewals to my calendar (.ics, alerts 30 and 7 days before)
         </button>
         <button onClick={async () => {
@@ -170,18 +170,18 @@ export default function FleetPage() {
           XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(safeRows(filtered as unknown as Record<string, unknown>[])), "Fleet register");
           XLSX.writeFile(wb, "fleet-register.xlsx");
         }} disabled={!rows.length}
-          className="inline-flex items-center gap-2 rounded-lg border border-border px-3 py-1.5 text-[12.5px] text-muted transition hover:border-accent hover:text-accent active:scale-95 disabled:opacity-40">
+          className="inline-flex items-center gap-2 rounded-lg border border-border px-3 py-1.5 text-[12.5px] text-muted transition hover:border-accent hover:text-accent-ink active:scale-95 disabled:opacity-40">
           <FileXls size={15} /> Export {action || q ? "this view" : "the register"} to Excel
         </button>
       </div>
       <div className="flex flex-wrap gap-2">
         <button onClick={() => { setAction(null); setPage(0); }}
-          className={`rounded-full border px-3 py-1.5 text-[12.5px] ${action === null ? "border-accent bg-accent-soft text-accent" : "border-border text-muted"}`}>
+          className={`rounded-full border px-3 py-1.5 text-[12.5px] ${action === null ? "border-accent bg-accent-soft text-accent-ink" : "border-border text-muted"}`}>
           All vehicles · {rows.length.toLocaleString()}
         </button>
         {actions.map(([a, n]) => (
           <button key={a} onClick={() => { setAction(a); setPage(0); }}
-            className={`rounded-full border px-3 py-1.5 text-[12.5px] transition ${action === a ? "border-accent bg-accent-soft text-accent" : "border-border text-muted hover:text-text"}`}
+            className={`rounded-full border px-3 py-1.5 text-[12.5px] transition ${action === a ? "border-accent bg-accent-soft text-accent-ink" : "border-border text-muted hover:text-text"}`}
             style={a.startsWith("Ground") && action !== a ? { color: "var(--bad)", borderColor: "color-mix(in srgb, var(--bad) 40%, transparent)" } : undefined}>
             {a} · {n.toLocaleString()}
           </button>
@@ -306,7 +306,7 @@ function ModelMix({ rows }: { rows: RegistryRow[] }) {
         })}
       </ul>
       {models.length > 7 && (
-        <button onClick={() => setAll(!all)} className="mt-1 text-[12px] font-medium text-accent hover:underline">
+        <button onClick={() => setAll(!all)} className="mt-1 text-[12px] font-medium text-accent-ink hover:underline">
           {all ? "Show fewer models" : `Show all ${models.length} models`}
         </button>
       )}
@@ -341,7 +341,7 @@ function VinDecode({ rows }: { rows: RegistryRow[] }) {
         </div>
         {todo.length > 0 && (
           <button onClick={run} disabled={state.busy}
-            className="inline-flex items-center gap-2 rounded-lg border border-accent px-3 py-2 text-[13px] font-medium text-accent transition hover:bg-accent-soft active:scale-95 disabled:opacity-50">
+            className="inline-flex items-center gap-2 rounded-lg border border-accent px-3 py-2 text-[13px] font-medium text-accent-ink transition hover:bg-accent-soft active:scale-95 disabled:opacity-50">
             <CloudArrowDown size={16} /> {state.busy ? `Decoding… ${state.done}/${todo.length}` : `Decode ${todo.length.toLocaleString()} VIN${todo.length === 1 ? "" : "s"} online`}
           </button>
         )}
@@ -402,12 +402,12 @@ function VehicleDrawer({ row, onClose }: { row: RegistryRow | null; onClose: () 
               <h3 className="mb-1 mt-5 text-[13px] font-semibold">Documents on file</h3>
               {docs.data?.length ? docs.data.map((d, i) => (
                 <F key={i} k={`${d.doc_type}${d.issuer ? ` · ${d.issuer}` : ""}`} v={<span style={{ color: STATUS_COLOR[d.status] }}>{d.expiry_date ?? "no expiry"} · {d.status}</span>} />
-              )) : <p className="text-[13px] text-muted">None. <Link href="/documents/" className="text-accent hover:underline">Scan the registration card</Link>.</p>}
+              )) : <p className="text-[13px] text-muted">None. <Link href="/documents/" className="text-accent-ink hover:underline">Scan the registration card</Link>.</p>}
               <h3 className="mb-1 mt-5 text-[13px] font-semibold">Service history · {row.visits} visits · ${Math.round(row.service_spend).toLocaleString()}</h3>
               {wo.data?.length ? wo.data.map((w) => (
                 <F key={w.work_order_id} k={`${w.key_in_ts?.slice(0, 10)} · ${w.job_type}`} v={`${w.issue_category ?? ""}${w.key_to_key_h ? ` · ${w.key_to_key_h.toFixed(0)} h` : ""}${w.total_cost ? ` · $${Math.round(w.total_cost)}` : ""}`} />
               )) : <p className="text-[13px] text-muted">No work orders recorded.</p>}
-              <Link href="/workshop/" className="mt-5 inline-flex items-center gap-1 text-[13px] text-accent hover:underline">Workshop view <ArrowRight size={13} /></Link>
+              <Link href="/workshop/" className="mt-5 inline-flex items-center gap-1 text-[13px] text-accent-ink hover:underline">Workshop view <ArrowRight size={13} /></Link>
             </>
           )}
         </Dialog.Content>

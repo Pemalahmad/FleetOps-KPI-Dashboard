@@ -90,7 +90,7 @@ export function VehicleDialog({ vehicle, state, context, change, saving, error, 
             {gate.status !== "pass" && <label className="garage-field mt-3 text-xs">Renewal progress<select value={draft.paperwork[kind]} disabled={saving} onChange={(e) => setDraft({ ...draft, paperwork: { ...draft.paperwork, [kind]: e.target.value as PaperworkStage } })} className="ops-input mt-1 text-xs">
               <option value="not_started">Not started</option><option value="submitted">Renewal submitted</option><option value="received">Renewed document received</option>
             </select></label>}
-            <Link href="/documents/" className="mt-3 inline-block text-xs font-medium text-accent hover:underline">Open document vault</Link>
+            <Link href="/documents/" className="mt-3 inline-block text-xs font-medium text-accent-ink hover:underline">Open document vault</Link>
           </div>;
         })}</div>
         <p className="mt-2 text-xs text-muted">Renewal progress tracks the task. Confirmed source expiry dates determine whether a document is current.</p>
@@ -100,7 +100,7 @@ export function VehicleDialog({ vehicle, state, context, change, saving, error, 
         <ul className="mt-2 divide-y divide-border">{gates.map((g) => <li key={g.id} className="flex items-start gap-3 py-3">
           <span className={g.status === "pass" ? "text-good" : g.status === "blocked" ? "text-bad" : "text-warn"}>{g.status === "pass" ? <CheckCircle weight="fill" size={20} /> : g.status === "blocked" ? <LockSimple size={20} /> : <Warning size={20} />}</span>
           <div className="min-w-0 flex-1"><p className="text-sm font-medium">{g.label}<span className="ml-2 text-xs font-normal text-muted">{g.status === "pass" ? "Passed" : g.status === "blocked" ? "Blocked" : "Verify"}</span></p><p className="mt-0.5 text-xs text-muted">{g.detail}</p></div>
-          {g.status !== "pass" && <Link href={g.href} className="shrink-0 text-xs font-medium text-accent">Review</Link>}
+          {g.status !== "pass" && <Link href={g.href} className="shrink-0 text-xs font-medium text-accent-ink">Review</Link>}
         </li>)}</ul>
       </section>
 
@@ -124,7 +124,7 @@ export function VehicleDialog({ vehicle, state, context, change, saving, error, 
           <button disabled={saving || blockers.length > 0 || vehicle.released} onClick={() => void handover()} className="garage-primary">{vehicle.released ? "Handover recorded" : context.demo ? "Practice handover" : "Record handover"}</button></div>
       </div>
       <div className="mt-4 flex flex-wrap justify-between gap-3 text-xs">
-        <Link href="/doctrine/#SOP-03" className="text-accent hover:underline">Open recovery procedure</Link>
+        <Link href="/doctrine/#SOP-03" className="text-accent-ink hover:underline">Open recovery procedure</Link>
         {!vehicle.incident && <button disabled={saving} onClick={onIncident} className="font-medium text-bad">Report accident for this vehicle</button>}
       </div>
       {handovers.length > 0 && <section className="mt-5 border-t border-border pt-4"><h3 className="text-sm font-semibold">Recent recorded handovers</h3>{handovers.map((h) => <div key={h.id} className="mt-3 rounded-lg border border-border p-3 text-xs text-muted">
