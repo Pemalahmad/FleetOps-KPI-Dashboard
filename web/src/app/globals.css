@@ -143,7 +143,13 @@ button:disabled { cursor: not-allowed; }
 .tile-label { display: flex; min-width: 0; align-items: center; gap: 8px; }
 .tile-dot { width: 6px; height: 6px; flex: none; border-radius: 50%; background: var(--accent); }
 .tile-figure { font-weight: var(--display-weight); letter-spacing: var(--display-tracking); line-height: 1; font-variant-numeric: tabular-nums; }
+/* Numbers and changes read left to right inside an Arabic (rtl) layout: "97.61 %", "+0.18 pp" */
+.tile-figure, .kpi-delta { unicode-bidi: isolate; direction: ltr; }
+[dir="rtl"] .tile-figure { text-align: right; }
 .status-word { font-weight: 600; }
+/* Empty and error states: centred, one title, one line, one action (docs/DESIGN_PRINCIPLES.md §7) */
+.state-box { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; padding: 24px 16px; border: 1px dashed var(--border); border-radius: 12px; text-align: center; }
+.as-of { margin-top: 10px; font-family: var(--font-mono); font-size: 11px; letter-spacing: .02em; color: var(--muted); }
 .status-word[data-status="amber"] { color: var(--warn); }
 .status-word[data-status="red"] { color: var(--bad); }
 .kpi-wall { columns: 1; column-gap: 40px; }

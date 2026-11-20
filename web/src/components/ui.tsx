@@ -6,6 +6,7 @@ import katex from "katex";
 import { HeaderDots, Shine, SpotCard } from "./bits/fleetops-bits";
 import { useEffect, useRef, useState } from "react";
 import NumberFlow from "@number-flow/react";
+import { useEngine, useQueryFailure, useSql } from "./engine-provider";
 import type { CSSProperties, ReactNode } from "react";
 
 export function Card({ children, className = "", title, sub, right }: {
@@ -40,7 +41,7 @@ export function Label({ children, className = "" }: { children: ReactNode; class
   return <span className={`mono-label ${className}`}><span className="mono-mark" aria-hidden />{children}</span>;
 }
 
-export function PageHeader({ eyebrow, title, children, backdrop = false, art }: { eyebrow: string; title: string; children?: ReactNode; backdrop?: boolean; art?: ArtKind }) {
+export function PageHeader({ eyebrow, title, children, backdrop = false, art, asOf = false }: { eyebrow: string; title: string; children?: ReactNode; backdrop?: boolean; art?: ArtKind; asOf?: boolean }) {
   const [lead, rest] = split(title, /[,:]\s/);
   return (
     <header className={[backdrop ? "page-head page-head-dots" : "page-head", art ? "page-head-art" : ""].join(" ")}>
@@ -51,6 +52,7 @@ export function PageHeader({ eyebrow, title, children, backdrop = false, art }: 
         {lead}{rest && <Shine>{rest}</Shine>}
       </h1>
       {children && <p className="mt-3 max-w-3xl text-[15px] leading-relaxed text-muted">{children}</p>}
+      {asOf && <AsOf />}
     </header>
   );
 }
@@ -218,8 +220,59 @@ export function KpiRow({ label, value, unit = "", decimals = 1, prev, better = "
   );
 }
 
+/** Loading placeholder in the shape of what is coming. If the warehouse build failed, or a query on the page failed in
+ *  this run, it becomes an error state with a way out instead of pulsing for ever. */
 export function Skeleton({ height = 280 }: { height?: number }) {
-  return <div className="animate-pulse rounded-xl bg-panel-2" style={{ height }} />;
+  const { status, message } = useEngine();
+  const failed = useQueryFailure();
+  if (status === "failed") return <ErrorState height={height} detail={message} />;
+  if (failed) return <ErrorState height={height} detail={failed} />;
+  return <div className="animate-pulse rounded-xl bg-panel-2" style={{ height }} role="status" aria-label="Loading" />;
+}
+
+/** What failed, in plain words, and a reload. */
+export function ErrorState({ height = 160, detail }: { height?: number; detail?: string | null }) {
+  return (
+    <div className="state-box" style={{ minHeight: Math.min(height, 220) }} role="alert">
+      <p className="text-[14px] font-semibold">This view could not load</p>
+      <p className="max-w-md text-[12.5px] text-muted">
+        Your data is safe on this device. {detail ? <span className="font-mono text-[11.5px]">{detail}</span> : null}
+      </p>
+      <button type="button" className="ops-button" onClick={() => window.location.reload()}>Reload the page</button>
+    </div>
+  );
+}
+
+/** Nothing to show yet: one line on why, one on what fills it. */
+export function EmptyState({ title, children, height = 160 }: { title: string; children?: ReactNode; height?: number }) {
+  return (
+    <div className="state-box" style={{ minHeight: Math.min(height, 220) }}>
+      <p className="text-[14px] font-semibold">{title}</p>
+      {children && <p className="max-w-md text-[12.5px] text-muted">{children}</p>}
+    </div>
+  );
+}
+
+/** A table body with no rows: one full-width row that says so. */
+export function EmptyRow({ cols, children }: { cols: number; children: ReactNode }) {
+  return <tr><td colSpan={cols} className="py-10 text-center text-[13px] text-muted">{children}</td></tr>;
+}
+
+const MONTH = new Intl.DateTimeFormat(undefined, { month: "long", year: "numeric", timeZone: "UTC" });
+
+/** When the numbers on a page are from: the report month and whose data it is. */
+export function AsOf() {
+  const { dataset } = useEngine();
+  const q = useSql<{ m: string | number | Date }>("SELECT report_month() AS m");
+  const raw = q.data?.[0]?.m;
+  if (raw === undefined || raw === null) return null;
+  const d = new Date(raw);
+  if (Number.isNaN(d.getTime())) return null;
+  return (
+    <p className="as-of">
+      Data as of {MONTH.format(d)} · {dataset === "demo" ? "simulated demo fleet" : "your fleet, on this device"}
+    </p>
+  );
 }
 
 export const fmt = (v: number | null | undefined, d = 1) =>

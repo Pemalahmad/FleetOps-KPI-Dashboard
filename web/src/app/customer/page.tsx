@@ -20,7 +20,7 @@ export default function CustomerPage() {
 
   return (
     <>
-      <PageHeader art="customer" eyebrow="Customer clock" title="The hours the customer counts">
+      <PageHeader asOf art="customer" eyebrow="Customer clock" title="The hours the customer counts">
         Law 1: the job card is the workshop&apos;s story; key-to-key is the customer&apos;s. Law 2: a vehicle is not fixed until it is earning,
         so the fleet clock adds the time from key back to earning again.
       </PageHeader>

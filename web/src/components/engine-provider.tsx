@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import { Engine, type IngestInput, type PipelineLog, type Row } from "@/lib/engine";
 import { createTaskQueue } from "@/lib/task-queue";
 import { isBodyStyle, type BodyStyle } from "@/lib/car-styles";
@@ -230,6 +230,25 @@ export function useEngine() {
   return c;
 }
 
+/** Queries that failed in the current run, so loading placeholders can turn into an error state instead of waiting
+ *  for ever (docs/DESIGN_PRINCIPLES.md §7). Keyed by run and SQL; a later success for the same key clears it. */
+const failures = new Map<string, string>();
+const failureListeners = new Set<() => void>();
+const setFailure = (key: string, message: string | null) => {
+  if (message === null ? !failures.delete(key) : failures.get(key) === message) return;
+  if (message !== null) failures.set(key, message);
+  failureListeners.forEach((l) => l());
+};
+/** The first query error in the current run, or null. */
+export function useQueryFailure(): string | null {
+  const { runId } = useEngine();
+  return useSyncExternalStore(
+    (l) => { failureListeners.add(l); return () => { failureListeners.delete(l); }; },
+    () => { for (const [k, m] of failures) if (k.startsWith(runId + ":")) return m; return null; },
+    () => null,
+  );
+}
+
 /** Run SQL against the warehouse; re-runs when the pipeline re-runs or the SQL changes. */
 export function useSql<T = Row>(sql: string | null) {
   const { engine, status, runId } = useEngine();
@@ -240,8 +259,8 @@ export function useSql<T = Row>(sql: string | null) {
     let live = true;
     engine
       .query<T>(sql)
-      .then((data) => live && setState({ data, error: null, key }))
-      .catch((e: Error) => live && setState({ data: null, error: e.message.split("\n")[0], key }));
+      .then((data) => { setFailure(key, null); if (live) setState({ data, error: null, key }); })
+      .catch((e: Error) => { const msg = e.message.split("\n")[0]; setFailure(key, msg); if (live) setState({ data: null, error: msg, key }); });
     return () => {
       live = false;
     };

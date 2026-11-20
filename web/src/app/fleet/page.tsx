@@ -6,7 +6,7 @@ import * as Dialog from "@radix-ui/react-dialog";
 import { ArrowRight, CalendarPlus, CloudArrowDown, FileXls, MagnifyingGlass, X } from "@phosphor-icons/react";
 import { Chart, PALETTE, STATUS } from "@/components/chart";
 import { regionWhere, useEngine, useSql } from "@/components/engine-provider";
-import { Card, PageHeader, SectionTitle, Skeleton, StatStrip } from "@/components/ui";
+import { Card, PageHeader, SectionTitle, Skeleton, StatStrip, EmptyRow } from "@/components/ui";
 import { decodeVins } from "@/lib/vin";
 import { renewalsIcs, safeRows } from "@/lib/exporters";
 import { cleanName, withoutPrefix } from "@/lib/names";
@@ -67,7 +67,7 @@ export default function FleetPage() {
 
   return (
     <>
-      <PageHeader art="fleet" eyebrow={dataset === "mine" ? "My fleet" : "Demo fleet"} title="Fleet register">
+      <PageHeader asOf art="fleet" eyebrow={dataset === "mine" ? "My fleet" : "Demo fleet"} title="Fleet register">
         Every vehicle with its identity (VIN, plate, make, model, year, trim, configuration), its licence to drive (registration,
         insurance and the documents behind them) and its service record, with one next action per vehicle.
         {dataset === "demo" && <> <Link href="/import/" className="text-accent-ink hover:underline">Import your own fleet</Link> to see yours.</>}
@@ -203,7 +203,7 @@ export default function FleetPage() {
                     <th className="font-medium">Make · model</th><th className="font-medium">Year</th><th className="font-medium">Trim</th>
                     <th className="font-medium">Registration</th><th className="font-medium">Insurance</th><th className="font-medium">Warranty</th><th className="font-medium">Add-ons</th><th className="font-medium">Next action</th></tr>
                 </thead>
-                <tbody>{filtered.slice(page * PAGE, (page + 1) * PAGE).map((r) => (
+                <tbody>{filtered.length === 0 && <EmptyRow cols={11}>No vehicles match. Clear the search or pick another filter.</EmptyRow>}{filtered.slice(page * PAGE, (page + 1) * PAGE).map((r) => (
                   <tr key={r.vehicle_id} onClick={() => setOpen(r)} className="cursor-pointer border-t border-border transition hover:bg-panel-2">
                     <td className="py-2 font-medium">{r.vehicle_id}</td>
                     <td>{r.plate_number ?? "–"}</td>

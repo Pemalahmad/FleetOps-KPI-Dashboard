@@ -4,6 +4,12 @@ What changed in each version of FleetOps KPI. Dates are release dates; the newes
 
 ## Unreleased
 
+### Design checklist completed (2026-11-20)
+- Every data page now says when its numbers are from: "Data as of September 2026 · simulated demo fleet" (or "your fleet, on this device") under the page title, on the garage, Analytics, Fleet register, Drivers, Workshop, Ledger, Licence, Customer clock and Metric network.
+- Loading placeholders no longer wait for ever: if the warehouse build or a query fails, they turn into a plain error state ("This view could not load", the reason, and a reload button). Tables with no rows (Fleet register and Drivers searches, Workshop open jobs, Ledger, Licence expiries and repeat offenders) say so instead of showing an empty grid.
+- Numbers and changes stay left to right inside an Arabic (right-to-left) layout. Checked: no horizontal scroll at 360 px on all 16 pages, visible keyboard focus, light and dark.
+- New README GIFs for Analytics, the garage and the metric network.
+
 ### Design principles applied (2026-11-20)
 - Every text colour now passes WCAG AA (4.5:1) in light and dark: faint text, good, warn and bad are darker in light mode (#6b7189, #047857, #b45309, #be123c) and faint is lighter in dark mode; purple used as small text uses the new `--accent-ink` (#4f46e5), while #6366f1 stays the accent for fills, dots and icons.
 - Geist and Geist Mono, bundled from the `geist` npm package (SIL OFL) and served from the app's own origin, so no font host and no CSP change; the system fonts remain the fallback.

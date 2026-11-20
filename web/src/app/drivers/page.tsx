@@ -9,7 +9,7 @@ import { DriverStatusBoard, LivePanel } from "@/components/live";
 import { Emoji, emojiFor } from "@/components/art";
 import { GaugeRow } from "@/components/gauges";
 import { regionWhere, useEngine, useSql } from "@/components/engine-provider";
-import { attention, Card, KpiRow, PageHeader, SectionTitle, Skeleton, StatStrip, type Rag } from "@/components/ui";
+import { attention, Card, KpiRow, PageHeader, SectionTitle, Skeleton, StatStrip, type Rag, EmptyRow } from "@/components/ui";
 
 /** Employment status from the driver file, with its emoji and colour. */
 const EMPLOY: Record<string, [string, string]> = { Active: ["🟢", "var(--good)"], "On leave": ["🏖️", "#94a3b8"], Suspended: ["⛔", "var(--bad)"], Inactive: ["⚪", "var(--faint)"] };
@@ -133,7 +133,7 @@ export default function DriversPage() {
 
   return (
     <>
-      <PageHeader art="drivers" backdrop eyebrow="Drivers & trips" title="Every driver, scored on the road">
+      <PageHeader asOf art="drivers" backdrop eyebrow="Drivers & trips" title="Every driver, scored on the road">
         Drivers and their licences, and how each one drives: speeding, harsh driving, idling and leaving the permitted zone, read
         from your telematics exports (Geotab, Webfleet, Samsara, Motive…) and checked against the limits in your settings.
       </PageHeader>
@@ -363,7 +363,7 @@ export default function DriversPage() {
                 <thead className="text-left text-faint"><tr className="[&>th]:py-1.5 [&>th]:font-medium">
                   <th>Driver</th><th>Status</th><th>Vehicle</th><th>Compliance</th><th>Licence</th><th className="text-right">Score</th>
                   <th className="text-right">Fines</th><th className="text-right">Tickets on · by</th><th className="text-right">Speeding</th><th className="text-right">Idle</th></tr></thead>
-                <tbody>{register.slice(page * PAGE, (page + 1) * PAGE).map((r) => (
+                <tbody>{register.length === 0 && <EmptyRow cols={10}>No drivers match. Clear the search or pick another filter.</EmptyRow>}{register.slice(page * PAGE, (page + 1) * PAGE).map((r) => (
                   <tr key={r.driver_id} onClick={() => setOpen(r)} className="cursor-pointer border-t border-border transition hover:bg-panel-2 [&>td]:py-2">
                     <td><b className="font-semibold">{r.driver_name}</b><span className="block text-[11px] text-faint">{r.driver_id}{r.site_name ? ` · ${r.site_name}` : ""}</span></td>
                     <td><span className="duty-chip" style={{ color: EMPLOY[r.driver_status]?.[1] ?? "var(--muted)", background: `color-mix(in srgb, ${EMPLOY[r.driver_status]?.[1] ?? "var(--muted)"} 13%, transparent)` }}>{EMPLOY[r.driver_status]?.[0] ?? "•"} {r.driver_status}</span></td>

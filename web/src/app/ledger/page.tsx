@@ -2,7 +2,7 @@
 
 import { Chart, PALETTE } from "@/components/chart";
 import { regionWhere, useEngine, useSql } from "@/components/engine-provider";
-import { Card, PageHeader, SectionTitle, Skeleton } from "@/components/ui";
+import { Card, PageHeader, SectionTitle, Skeleton, EmptyRow } from "@/components/ui";
 import { contextLines, linesBy, monthLabels, months } from "@/lib/chart-helpers";
 
 const PT = ["BEV", "PHEV", "HEV", "ICE"];
@@ -27,7 +27,7 @@ export default function LedgerPage() {
 
   return (
     <>
-      <PageHeader art="ledger" eyebrow="The ledger" title="What each vehicle costs, and who pays">
+      <PageHeader asOf art="ledger" eyebrow="The ledger" title="What each vehicle costs, and who pays">
         Service spend per vehicle, goodwill (the price of broken laws), cost against budget, and the cost per km of each powertrain:
         energy, maintenance and depreciation.
       </PageHeader>
@@ -52,7 +52,7 @@ export default function LedgerPage() {
           {top.data ? (
             <table className="tnum w-full text-[12.5px]">
               <thead className="text-left text-faint"><tr><th className="py-1 font-medium">Vehicle</th><th className="font-medium">Type</th><th className="font-medium">Region</th><th className="text-right font-medium">Visits</th><th className="text-right font-medium">Spend</th></tr></thead>
-              <tbody>{top.data.map((v) => (
+              <tbody>{top.data.length === 0 && <EmptyRow cols={5}>No vehicles with costs in this period.</EmptyRow>}{top.data.map((v) => (
                 <tr key={v.vehicle_id} className="border-t border-border">
                   <td className="py-1.5">{v.vehicle_id}</td><td>{v.powertrain}</td><td>{v.region}</td>
                   <td className="text-right">{v.visits}</td><td className="text-right font-medium">${Math.round(v.total_service_spend).toLocaleString()}</td>

@@ -137,7 +137,7 @@ See the generated [data contract](docs/DATA_CONTRACT.md) for every table, field,
 |---|---|
 | **Warehouse** | Dependency-sorted SQL models, atomic publication, retained last-good build, validation issues with offending row identifiers, and lineage logs. |
 | **Browser** | Static export, strict Content Security Policy, no inline-script escape hatch, offline package, responsive light/dark UI, and reduced-motion support. |
-| **Design** | One tile system from [design principles](docs/DESIGN_PRINCIPLES.md): bundled Geist type (no font host), every text colour at WCAG AA 4.5:1 in light and dark, status shown in words as well as colour. |
+| **Design** | One tile system from [design principles](docs/DESIGN_PRINCIPLES.md): bundled Geist type (no font host), every text colour at WCAG AA 4.5:1 in light and dark, status in words as well as colour, an "as of" stamp on every data page, and loading, empty and error states that never hang. |
 | **Untrusted input** | Property-based parser tests, spreadsheet formula neutralisation, hostile workbook rendering tests, and authenticated encryption with tamper detection. |
 | **Statistics** | Implemented from first principles and tested against R, SciPy, and statsmodels reference values. |
 | **CI** | Python 3.11 and 3.13, web lint/type/unit/build, Playwright security flows, dependency audits, CodeQL, OpenSSF Scorecard, and a Docker demo build. |

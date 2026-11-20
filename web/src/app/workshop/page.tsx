@@ -2,7 +2,7 @@
 
 import { Chart, PALETTE, RISK_SCALE, STATUS } from "@/components/chart";
 import { regionWhere, useEngine, useSql } from "@/components/engine-provider";
-import { Card, PageHeader, SectionTitle, Skeleton } from "@/components/ui";
+import { Card, PageHeader, SectionTitle, Skeleton, EmptyRow } from "@/components/ui";
 import { contextLines, linesBy, monthLabels } from "@/lib/chart-helpers";
 
 export default function WorkshopPage() {
@@ -27,7 +27,7 @@ export default function WorkshopPage() {
 
   return (
     <>
-      <PageHeader art="workshop" eyebrow="Workshop clock" title="Key in to ready">
+      <PageHeader asOf art="workshop" eyebrow="Workshop clock" title="Key in to ready">
         Law 3: fix it once, or pay three times. Law 4: a parts ETA is a promise. INTERVENE flags a site whose weekly median
         turnaround runs far above the network and its own trend.
       </PageHeader>
@@ -111,7 +111,7 @@ export default function WorkshopPage() {
                 <thead className="sticky top-0 bg-panel text-left text-faint">
                   <tr><th className="py-1 font-medium">Order</th><th className="font-medium">Site</th><th className="font-medium">Supplier</th><th className="text-right font-medium">Days late</th></tr>
                 </thead>
-                <tbody>{open.data.map((o) => (
+                <tbody>{open.data.length === 0 && <EmptyRow cols={4}>No open jobs right now. New check-ins appear here.</EmptyRow>}{open.data.map((o) => (
                   <tr key={o.part_order_id} className="border-t border-border">
                     <td className="py-1.5">{o.part_order_id}<div className="text-[11px] text-faint">{o.part_description}</div></td>
                     <td>{o.site_name}</td>

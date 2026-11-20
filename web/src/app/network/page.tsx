@@ -45,7 +45,7 @@ export default function NetworkPage() {
 
   return (
     <>
-      <PageHeader art="network" eyebrow="Metric network" title="Every KPI, connected">
+      <PageHeader asOf art="network" eyebrow="Metric network" title="Every KPI, connected">
         Solid lines are <b className="text-text">identities</b>: exact algebra that holds to the decimal and is asserted by the
         pipeline&apos;s SQL tests. Dashed lines are <b className="text-text">measured drivers</b>: multiple regressions fitted on{" "}
         {p.all.length || "…"} region-months, drawn thicker when the evidence is stronger. Click any metric to see its maths.

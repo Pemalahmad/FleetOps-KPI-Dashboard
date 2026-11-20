@@ -159,7 +159,7 @@ export default function Overview() {
 
   return (
     <>
-      <PageHeader art="analytics" backdrop eyebrow={region ?? "Network"} title="Fleet operations, as one system">
+      <PageHeader asOf art="analytics" backdrop eyebrow={region ?? "Network"} title="Fleet operations, as one system">
         Every number below is computed in your browser by the same tested SQL pipeline, and every KPI is connected to the north
         star by exact algebra or a measured driver. Open the <Link href="/network/" className="text-accent-ink underline-offset-2 hover:underline">metric network</Link> to see the maths.
       </PageHeader>

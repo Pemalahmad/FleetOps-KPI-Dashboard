@@ -2,7 +2,7 @@
 
 import { Chart, PALETTE, STATUS } from "@/components/chart";
 import { regionWhere, useEngine, useSql } from "@/components/engine-provider";
-import { Card, PageHeader, SectionTitle, Skeleton } from "@/components/ui";
+import { Card, PageHeader, SectionTitle, Skeleton, EmptyRow } from "@/components/ui";
 import { months } from "@/lib/chart-helpers";
 
 const STATUS_COLOR: Record<string, string> = { Valid: PALETTE[1], Expiring: STATUS.warn, Expired: STATUS.bad, Unknown: "#DDE1EA" };
@@ -26,7 +26,7 @@ export default function LicencePage() {
 
   return (
     <>
-      <PageHeader art="licence" eyebrow="The licence" title="A gate, not a score">
+      <PageHeader asOf art="licence" eyebrow="The licence" title="A gate, not a score">
         Law 6: registration, insurance, preventive maintenance and recalls are not traded against speed or cost. An expired vehicle is
         grounded until it is renewed (SOP-07).
       </PageHeader>
@@ -63,7 +63,7 @@ export default function LicencePage() {
           {expiring.data ? (
             <table className="tnum w-full text-[12.5px]">
               <thead className="text-left text-faint"><tr><th className="py-1 font-medium">Vehicle</th><th className="font-medium">Region</th><th className="font-medium">Document</th><th className="text-right font-medium">Days left</th></tr></thead>
-              <tbody>{expiring.data.map((e) => (
+              <tbody>{expiring.data.length === 0 && <EmptyRow cols={4}>No licences expire in the next 90 days.</EmptyRow>}{expiring.data.map((e) => (
                 <tr key={`${e.vehicle_id}${e.document}`} className="border-t border-border">
                   <td className="py-1.5">{e.vehicle_id}</td><td>{e.region}</td><td>{e.document}</td>
                   <td className="text-right font-medium" style={{ color: STATUS_COLOR[e.status] ?? "inherit" }}>{e.days_left}</td>
@@ -104,7 +104,7 @@ export default function LicencePage() {
           {offenders.data ? (
             <table className="tnum w-full text-[12.5px]">
               <thead className="text-left text-faint"><tr><th className="py-1 font-medium">Vehicle</th><th className="font-medium">Region</th><th className="text-right font-medium">Fines</th><th className="text-right font-medium">Unpaid</th></tr></thead>
-              <tbody>{offenders.data.map((o) => (
+              <tbody>{offenders.data.length === 0 && <EmptyRow cols={4}>No repeat offenders in this period.</EmptyRow>}{offenders.data.map((o) => (
                 <tr key={o.vehicle_id} className="border-t border-border">
                   <td className="py-1.5">{o.vehicle_id}</td><td>{o.region}</td><td className="text-right font-medium">{o.fines}</td>
                   <td className="text-right" style={{ color: o.unpaid_amount > 0 ? "var(--bad)" : "var(--muted)" }}>${Math.round(o.unpaid_amount).toLocaleString()}</td>

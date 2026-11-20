@@ -39,8 +39,9 @@ Every KPI tile is built from the same parts, in this order, at the same insets:
 - **One headline per tile.** If a tile needs two big numbers, it is two tiles.
 - **Units live next to the number**, smaller and muted ("94 %", "1,240 km"), never in the label.
 - **Machine values are mono** (timestamps, VINs, plates, IDs, percentages in lists); prose is sans.
-- **Every number has a source and an "as of".** A tile shows when its data was computed (a muted caption or a
-  tooltip); live tiles say they are live, and demo tiles say they are simulated.
+- **Every number has a source and an "as of".** Data pages pass `asOf` to `PageHeader` (or render `<AsOf />`), which
+  shows the report month and whose data it is ("simulated demo fleet" or "your fleet, on this device"); live tiles
+  say they are live.
 
 ## 3. Type
 
@@ -104,14 +105,17 @@ Every KPI tile is built from the same parts, in this order, at the same insets:
 ## 7. Built for real data (what a motion piece doesn't need)
 
 - **Every data tile has four states:** loading (a skeleton in the tile's own shape, no spinner), empty (one line on
-  what would fill it and how), error (what failed and a retry), and populated.
+  what would fill it and how), error (what failed and a way out), and populated. In `ui.tsx`: `Skeleton` turns into
+  `ErrorState` by itself when the warehouse build or a query in the current run fails (`useQueryFailure`), so no
+  placeholder pulses for ever; use `EmptyState` for an empty chart or card and `EmptyRow` for a table with no rows.
 - **Charts tell the truth.** Bar axes start at zero; a share shows its denominator; targets are drawn as a line, not
   implied by colour; sparklines show their period.
 - **Tiles are interactive and accessible.** Real buttons and links with hover, active, focus-visible and disabled
   states; hit targets at least 44 px on touch; a chart has a text equivalent (the headline plus a summary, or a
   table). Decorative motion pieces may be one `role="img"` with a description; data tiles may not.
 - **Arabic and right-to-left.** Use logical properties (`inset-inline-start`, `margin-inline-end`); the label sits
-  at the start edge, the context at the end edge; icons that point (next, back) flip.
+  at the start edge, the context at the end edge; icons that point (next, back) flip. Numbers and changes are
+  isolated left to right (`.tile-figure`, `.kpi-delta`) so "97.61 %" and "+0.18 pp" never reverse.
 - **Small screens.** Below about 640 px the grid becomes one column of full-width tiles in priority order; no
   horizontal scroll at 360 px. Scale a decorative stage as a whole; reflow data.
 - **No images for UI.** Illustrations, covers and icons are CSS shapes, inline SVG or `@phosphor-icons/react`;
