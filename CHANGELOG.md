@@ -4,6 +4,9 @@ What changed in each version of FleetOps KPI. Dates are release dates; the newes
 
 ## Unreleased
 
+### Design principles (2026-11-20)
+- New docs/DESIGN_PRINCIPLES.md: one tile style on a cell grid, tile anatomy, one accent used as meaning, thin tabular numerals, motion as a pure function of time, the four data states, contrast, dark mode, Arabic and a "Done when" checklist. The design agent and AGENTS.md now point to it. It records that the light-mode faint, good and warn colours and small accent text fall short of WCAG AA, with the shades to use instead.
+
 ### README information architecture and visual tour (2026-11-20)
 - Rebuilt the root README around a concise product explanation, a 30-second evaluation path, verified local setup, engineering guarantees, an honest scope statement and links to the detailed documentation.
 - Added curated architecture and metric-network graphs, reduced the visual tour to the most useful GIFs, and recaptured the Analytics GIF so it reflects the current icons, graphics and motion design.

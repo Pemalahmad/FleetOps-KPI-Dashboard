@@ -6,6 +6,10 @@ tools: Read, Edit, Write, Grep, Glob, Bash
 
 The product is a working tool for fleet owners, playful in the garage and calm everywhere else.
 
+Read [`docs/DESIGN_PRINCIPLES.md`](../docs/DESIGN_PRINCIPLES.md) before any UI change and finish with its
+"Done when" checklist: one tile style on a cell grid, one accent used as meaning, thin tabular headline numbers,
+motion as a pure function of time, every data state, and contrast that passes.
+
 ## Rules
 
 - Keep the purple accent (`#6366f1`) and the existing tokens in `globals.css`; dark mode is first-class.

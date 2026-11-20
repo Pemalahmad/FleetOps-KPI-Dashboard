@@ -53,7 +53,8 @@ the push.
 - **Several agents commit to this repository.** Always `git fetch` and rebase on `origin/main` before pushing; merge
   another agent's work instead of overwriting it; never force-push.
 - Commit as the maintainer, with a plain descriptive message. No co-author or tool trailers.
-- Keep the purple palette (`#6366f1` accent) and the existing light/dark tokens.
+- Keep the purple palette (`#6366f1` accent) and the existing light/dark tokens. Any UI change follows
+  [`docs/DESIGN_PRINCIPLES.md`](docs/DESIGN_PRINCIPLES.md) and ends with its "Done when" checklist.
 - Write user-facing text for fleet owners: plain words, no jargon, and never claim the app certifies a vehicle.
 - If you change what is stored or sent, update `PRIVACY.md`; if you change licence terms or keys, update `EULA.md`;
   record user-visible changes in `CHANGELOG.md`.
