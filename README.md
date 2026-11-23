@@ -22,6 +22,12 @@ The included Sahra Mobility demo is synthetic: 6,500 vehicles, 15 workshops, 7 m
 
 ![Analytics dashboard: the north star and KPI tiles with dot labels, thin tabular numbers and status words, then the full KPI wall](docs/web-overview.gif)
 
+## Watch it in two minutes
+
+[![A two-minute captioned walkthrough: garage, GCC compliance by country, analytics, metric network, fleet register, pipeline, privacy and procedures](docs/walkthrough-poster.jpg)](docs/walkthrough.mp4)
+
+**[Play the walkthrough](docs/walkthrough.mp4)** (2 min, captioned) · **[Read the case study](docs/CASE_STUDY.md)**: what FleetOps finds in a 6,500-vehicle fleet across the GCC and Türkiye, and what a real pilot would measure.
+
 ## What it answers
 
 | Operational question | FleetOps answer |
@@ -185,6 +191,7 @@ FleetOps-KPI-Dashboard/
 |---|---|
 | [Fleet software guide](docs/FLEET_SOFTWARE.md) | Owner workflow, supported exports, and product scope |
 | [Garage workflow](docs/GARAGE.md) | Stages, gates, alerts, evidence, and handovers |
+| [Case study](docs/CASE_STUDY.md) | The demo fleet's findings, the build choices behind them, and a pilot plan |
 | [GCC compliance rules](docs/GCC_COMPLIANCE.md) | The six countries' rules, sources, confidence and what is not confirmed |
 | [Three Clocks Doctrine](docs/DOCTRINE.md) | Operating model behind the KPI system |
 | [System design](docs/SYSTEM_DESIGN.md) | Architecture decisions and hosted-system comparisons |
