@@ -4,6 +4,7 @@ import { Chart, PALETTE, STATUS } from "@/components/chart";
 import { regionWhere, useEngine, useSql } from "@/components/engine-provider";
 import { Card, PageHeader, SectionTitle, Skeleton, EmptyRow } from "@/components/ui";
 import { months } from "@/lib/chart-helpers";
+import { GccCompliance } from "@/components/gcc-compliance";
 
 const STATUS_COLOR: Record<string, string> = { Valid: PALETTE[1], Expiring: STATUS.warn, Expired: STATUS.bad, Unknown: "#DDE1EA" };
 
@@ -85,6 +86,8 @@ export default function LicencePage() {
           })} /> : <Skeleton />}
         </Card>
       </div>
+
+      <GccCompliance />
 
       <SectionTitle sub="Every fine is a licence event: pay or dispute before the penalty date, and brief repeat offenders.">Fines</SectionTitle>
       <div className="grid gap-4 lg:grid-cols-[1.4fr_1fr]">

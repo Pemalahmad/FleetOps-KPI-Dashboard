@@ -4,6 +4,11 @@ What changed in each version of FleetOps KPI. Dates are release dates; the newes
 
 ## Unreleased
 
+### GCC compliance by country (2026-11-23)
+- The Licence page now checks every active vehicle against its country's published rules for the UAE, Saudi Arabia, Qatar, Kuwait, Bahrain and Oman: registration, insurance, technical inspection by vehicle age, Saudi TGA operating cards for goods vehicles, and Bahrain's rule that insurance must cover the whole registration period.
+- Each vehicle gets one status (Non-compliant, Evidence missing, Expiring, Compliant, or Not covered outside the six countries) with the reason in plain words, and each country shows its authority, a dated source link and how confident the rule is.
+- Rules that are not officially published (Bahrain's inspection age, for one) are left out rather than guessed. FleetOps checks your records; it does not certify a vehicle. See [docs/GCC_COMPLIANCE.md](docs/GCC_COMPLIANCE.md).
+
 ### Reliability and security fixes (2026-11-23)
 - **Passphrase protection is all-or-nothing.** Setting or removing a passphrase now seals or unseals the whole fleet in one storage transaction, so a closed tab or full disk can no longer leave some records readable while the fleet shows as protected. A fleet left half-sealed by an earlier version stays locked and is sealed completely the next time it is unlocked.
 - **Saves no longer overwrite each other.** A followed file re-importing while a document is scanned now keeps both changes. Deleting a document removes its listing before its scan, so a failed save never loses the original.

@@ -16,7 +16,7 @@
 
 </div>
 
-FleetOps KPI turns Excel, CSV, Parquet, JSON, and document scans into a device-local fleet workspace. The browser runs the same DuckDB pipeline used by the Python CLI: **68 SQL models, 47 validation rules, and 28 data tests**. There is no application server and fleet data is not uploaded.
+FleetOps KPI turns Excel, CSV, Parquet, JSON, and document scans into a device-local fleet workspace. The browser runs the same DuckDB pipeline used by the Python CLI: **70 SQL models, 47 validation rules, and 29 data tests**. There is no application server and fleet data is not uploaded.
 
 The included Sahra Mobility demo is synthetic: 6,500 vehicles, 15 workshops, 7 markets, and 18 months of operational history. It is large enough to exercise the full pipeline without presenting fictional results as industry benchmarks.
 
@@ -27,6 +27,7 @@ The included Sahra Mobility demo is synthetic: 6,500 vehicles, 15 workshops, 7 m
 | Operational question | FleetOps answer |
 |---|---|
 | **Can this vehicle legally and safely drive?** | Registration, insurance, licence class, preventive maintenance, recalls, repair gates, and source freshness resolve to one next action. |
+| **Is each vehicle legal in its GCC country?** | Every active vehicle is checked against the published registration, insurance, inspection and operating-card rules of the UAE, Saudi Arabia, Qatar, Kuwait, Bahrain or Oman, with the reason, the authority and a dated source. A check of your records, never a certification ([rules](docs/GCC_COMPLIANCE.md)). |
 | **What happens when a vehicle is damaged?** | A damage case holds the vehicle off the road and walks it through severity, safety, evidence, notifications and deadlines, estimate, authorization, repair and quality check, with overdue alerts and an audit trail, before handover is allowed (SOP-09). |
 | **Where is fleet capacity being lost?** | A visual garage and the north star—off-road hours per vehicle per month—connect queue state to availability. |
 | **Why did the KPI move?** | Exact identities, month-on-month decomposition, measured drivers, confidence intervals, and what-if propagation expose the path. |
@@ -60,8 +61,8 @@ flowchart LR
 
     I --> V["47 validation rules"]
     V -- blocked --> E["Actionable issues<br/>last good build retained"]
-    V -- valid --> D[("DuckDB-WASM<br/>68 SQL models")]
-    D --> T["28 data tests"]
+    V -- valid --> D[("DuckDB-WASM<br/>70 SQL models")]
+    D --> T["29 data tests"]
     T --> W["Garage · Register · Drivers"]
     T --> K["Analytics · Metric network"]
     T --> P["Pipeline · Exports · SOPs"]
@@ -184,6 +185,7 @@ FleetOps-KPI-Dashboard/
 |---|---|
 | [Fleet software guide](docs/FLEET_SOFTWARE.md) | Owner workflow, supported exports, and product scope |
 | [Garage workflow](docs/GARAGE.md) | Stages, gates, alerts, evidence, and handovers |
+| [GCC compliance rules](docs/GCC_COMPLIANCE.md) | The six countries' rules, sources, confidence and what is not confirmed |
 | [Three Clocks Doctrine](docs/DOCTRINE.md) | Operating model behind the KPI system |
 | [System design](docs/SYSTEM_DESIGN.md) | Architecture decisions and hosted-system comparisons |
 | [Design principles](docs/DESIGN_PRINCIPLES.md) | Tiles, type, colour, motion, data states, and the UI "Done when" checklist |
