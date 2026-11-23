@@ -27,6 +27,7 @@ The included Sahra Mobility demo is synthetic: 6,500 vehicles, 15 workshops, 7 m
 | Operational question | FleetOps answer |
 |---|---|
 | **Can this vehicle legally and safely drive?** | Registration, insurance, licence class, preventive maintenance, recalls, repair gates, and source freshness resolve to one next action. |
+| **What happens when a vehicle is damaged?** | A damage case holds the vehicle off the road and walks it through severity, safety, evidence, notifications and deadlines, estimate, authorization, repair and quality check, with overdue alerts and an audit trail, before handover is allowed (SOP-09). |
 | **Where is fleet capacity being lost?** | A visual garage and the north star—off-road hours per vehicle per month—connect queue state to availability. |
 | **Why did the KPI move?** | Exact identities, month-on-month decomposition, measured drivers, confidence intervals, and what-if propagation expose the path. |
 | **Can the number be trusted?** | Every dashboard value traces through the work tree to its source, validation result, SQL model, and data test. |
