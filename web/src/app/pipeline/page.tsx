@@ -74,6 +74,8 @@ export default function PipelinePage() {
                 <div key={l.table} className="rounded-xl border border-border p-3 text-[12.5px]">
                   <p className="font-medium">{l.table} <span className="text-faint">· {l.rows.toLocaleString()} rows from {l.source}</span></p>
                   {l.missingRequired.length > 0 && <p className="mt-1 text-bad">Missing: {l.missingRequired.join(", ")}</p>}
+                  {Object.entries(l.blankRequired ?? {}).map(([c, n]) => <p key={"b" + c} className="mt-1 text-bad">{n.toLocaleString()} row(s) with a blank {c}</p>)}
+                  {Object.entries(l.unparsed ?? {}).map(([c, n]) => <p key={"u" + c} className={"mt-1 " + (l.required?.includes(c) ? "text-bad" : "text-warn")}>{n.toLocaleString()} {c} value(s) could not be read</p>)}
                   <ul className="mt-1.5 space-y-0.5 text-muted">
                     {Object.entries(l.mapped).map(([k, v]) => <li key={k}><code>{v}</code> → {k}</li>)}
                   </ul>

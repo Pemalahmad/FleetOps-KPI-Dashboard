@@ -105,6 +105,20 @@ test("a hostile workbook is shown as text, runs nothing and breaks no SQL", asyn
   expect([...seen.origins]).toEqual([new URL(baseURL!).origin]);
 });
 
+test("an import with a blank required value is blocked, like the Python pipeline", async ({ page }) => {
+  const rows = [["Fleet No", "Plate No", "Make", "Model", "Fuel"], ["X-001", "D 1", "Toyota", "Camry", "Petrol"], ["", "D 2", "Tesla", "Model 3", "Electric"]];
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(rows), "Vehicles");
+  const buffer = Buffer.from(XLSX.write(wb, { type: "buffer", bookType: "xlsx" }));
+  await page.goto("/import/");
+  await ready(page);
+  await page.setInputFiles("input[type=file]", { name: "blank-id.xlsx", mimeType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", buffer });
+  await page.getByRole("button", { name: /Add to my fleet and build/ }).click();
+  await page.goto("/pipeline/");
+  await expect(page.getByText(/required values missing or invalid: vehicles\.vehicle_id: 1 blank/).first()).toBeVisible({ timeout: 90_000 });
+  await expect(page.getByText("1 row(s) with a blank vehicle_id")).toBeVisible();
+});
+
 test("another site framing the app sees a blank page (clickjacking guard)", async ({ page, baseURL }) => {
   // a second origin (another port) stands in for a hostile site embedding the app in an invisible frame
   const hostile = createServer((_q, r) => r.writeHead(200, { "content-type": "text/html" })

@@ -97,6 +97,12 @@ export interface LoadLog {
   rows: number;
   mapped: Record<string, string>;
   missingRequired: string[];
+  /** Non-blank source values that are not a valid value of the column's type (they would load as NULL). */
+  unparsed?: Record<string, number>;
+  /** Rows whose required column is blank. */
+  blankRequired?: Record<string, number>;
+  /** Required columns of this table (once it is supplied, an optional table's required columns still apply). */
+  required?: string[];
 }
 export interface PipelineLog {
   ok: boolean;
@@ -218,8 +224,13 @@ export class Engine {
     let n = 0;
     for (const t of this.manifest.tables) {
       const mine = all.filter((i) => i.table === t.name);
-      const log: LoadLog = { table: t.name, source: mine.map((i) => i.label).join(" + ") || null, rows: 0, mapped: {}, missingRequired: [] };
-      const required = registry ? (t.name === "vehicles" ? ["vehicle_id"] : []) : t.required ? t.columns.filter((c) => c.required).map((c) => c.name) : [];
+      const log: LoadLog = { table: t.name, source: mine.map((i) => i.label).join(" + ") || null, rows: 0, mapped: {}, missingRequired: [], unparsed: {}, blankRequired: {} };
+      // Same contract as fleetkpi/validate.py. "Optional" means the table may be absent; once supplied, its required
+      // columns apply. Registry mode (no work orders yet) asks only for vehicle ids from the vehicle list.
+      const contract = t.columns.filter((c) => c.required).map((c) => c.name);
+      const required = mine.length ? (registry && t.name === "vehicles" ? ["vehicle_id"] : contract)
+        : registry ? (t.name === "vehicles" ? ["vehicle_id"] : []) : t.required ? contract : [];
+      log.required = required;
       if (!mine.length) {
         const cols = t.columns.map((c) => `CAST(NULL AS ${c.type}) AS ${c.name}`).join(", ");
         await this.exec(`CREATE OR REPLACE TABLE ${t.name} AS SELECT ${cols} WHERE FALSE`);
@@ -253,6 +264,25 @@ export class Engine {
           return `${c.empty_expr} AS ${c.name}`;
         });
         selects.push(`SELECT ${cols.join(", ")} FROM ${raw}`);
+        // Count what a mapped column would silently lose: values that fail conversion, and blank required cells.
+        const checks: string[] = [], keys: [string, "u" | "b", string][] = [];
+        t.columns.forEach((c, k) => {
+          const m = inp.mapping[c.name];
+          if (!m) return;
+          const src = m.startsWith("=") ? lit(m.slice(1)) : `${qid(m)}::VARCHAR`;
+          checks.push(`count(*) FILTER (WHERE nullif(trim(${src}), '') IS NOT NULL AND (${c.expr.replaceAll("{src}", src)}) IS NULL) AS u${k}`);
+          keys.push([`u${k}`, "u", c.name]);
+          if (required.includes(c.name)) { checks.push(`count(*) FILTER (WHERE nullif(trim(${src}), '') IS NULL) AS b${k}`); keys.push([`b${k}`, "b", c.name]); }
+        });
+        if (checks.length) {
+          const [counts] = await this.query<Record<string, number | bigint>>(`SELECT ${checks.join(", ")} FROM ${raw}`);
+          for (const [key, kind, col] of keys) {
+            const found = Number(counts[key] ?? 0);
+            if (!found) continue;
+            const bucket = kind === "u" ? log.unparsed! : log.blankRequired!;
+            bucket[col] = (bucket[col] ?? 0) + found;
+          }
+        }
       }
       log.missingRequired = required.filter((c) => !mine.some((i) => i.mapping[c]));
       await this.exec(`CREATE OR REPLACE TABLE ${t.name} AS ${selects.join(" UNION ALL ")}`);
@@ -306,6 +336,19 @@ export class Engine {
       const found = loads.filter((l) => l.source).length;
       if (missing.length)
         return ["blocked", `missing required: ${missing.map((l) => `${l.table} (${l.missingRequired.join(", ")})`).join("; ")}`];
+      const bad: string[] = [];
+      for (const l of loads) {
+        for (const [col, n] of Object.entries(l.unparsed ?? {})) {
+          const hard = !!l.required?.includes(col);
+          log.issues.push({ rule: "ingest_unparsed", table: l.table, severity: hard ? "error" : "warning", check: `'${col}' values that are not valid for this column`, count: n, example: "" });
+          if (hard) bad.push(`${l.table}.${col}: ${n} invalid`);
+        }
+        for (const [col, n] of Object.entries(l.blankRequired ?? {})) {
+          log.issues.push({ rule: "ingest_blank_required", table: l.table, severity: "error", check: `Required '${col}' is blank`, count: n, example: "" });
+          bad.push(`${l.table}.${col}: ${n} blank`);
+        }
+      }
+      if (bad.length) return ["blocked", `required values missing or invalid: ${bad.join("; ")}`];
       return ["ok", `${found} of ${loads.length} tables, ${rows.toLocaleString()} rows${this.mode === "registry" ? " · registry mode (no work orders yet)" : ""}`];
     });
     if (!ingestOk) return this.finish(log, t0);
