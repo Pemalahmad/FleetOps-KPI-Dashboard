@@ -6,6 +6,7 @@
 import type { BodyStyle } from "./car-styles";
 import type { VinSpec } from "./vin";
 import type { GarageState } from "./garage";
+import type { ServiceState } from "./service";
 import { isSealed, newVault, openVault, seal, sealJson, unseal, unsealJson, type Sealed, type VaultHeader } from "./vault";
 
 export interface SavedInput {
@@ -47,6 +48,8 @@ export interface Workspace {
   updated: string;
   /** Operational reviews share the workspace's existing encrypted storage boundary. */
   garage?: GarageState;
+  /** Service board: repair orders, check-ins, tyres, hours, parts, invoices and comments; sealed with the workspace. */
+  service?: ServiceState;
   /** SOP review progress (checked steps, owner, due date, notes), keyed by sopProgressKey; sealed with the workspace. */
   sops?: Record<string, SopProgress>;
   /** Car body style per make and model (modelKey), chosen by the owner for the 3D garage; sealed with the workspace. */

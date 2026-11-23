@@ -120,3 +120,36 @@ test("the owner can choose a car shape per model and the garage keeps it", async
   await page.getByRole("link", { name: "Match car shapes" }).click();
   await expect(page.getByRole("combobox", { name: /Car shape for/ }).first()).toHaveValue("pickup");
 });
+
+test("service board: every stage has orders, gates hold, and a booking lands in Scheduled", async ({ page }) => {
+  await page.goto("/service/");
+  await expect(page.getByText(/SQL models and \d+ tests ran/)).toBeVisible({ timeout: 120_000 });
+  const board = (name: string) => page.getByRole("region", { name, exact: true });
+  for (const stage of ["Scheduled", "Arrived", "Service ready", "On hold", "In service", "Diagnosis", "Service complete", "Delivered"])
+    await expect(board(stage).locator("button").first()).toBeVisible();
+
+  // An arrived order cannot move to Service ready until it is assigned.
+  await board("Arrived").locator("button").first().click();
+  const sheet = page.getByRole("dialog");
+  await sheet.getByLabel("Assigned to").fill("");
+  await expect(sheet.getByText("Assign the stage to a technician or advisor.")).toBeVisible();
+  await expect(sheet.getByRole("button", { name: "Move to Service ready" })).toBeDisabled();
+  await sheet.getByLabel("Assigned to").fill("Grace Okafor");
+  await sheet.getByRole("button", { name: "Move to Service ready" }).click();
+  await expect(sheet.getByText("Service ready", { exact: true }).first()).toBeVisible();
+  for (const tab of ["Check-in", "Work", "Time", "Comments", "Invoice", "History"]) {
+    await sheet.getByRole("tab", { name: tab }).click();
+    await expect(sheet.getByRole("tab", { name: tab })).toHaveAttribute("aria-selected", "true");
+  }
+  await page.keyboard.press("Escape");
+
+  const scheduled = await board("Scheduled").locator("button").count();
+  await page.getByRole("button", { name: "Book a vehicle" }).click();
+  const book = page.getByRole("dialog");
+  await book.getByLabel(/Vehicle/).fill("V0");
+  await book.locator("ul button").first().click();
+  await book.getByLabel("Service advisor").fill("Lina Haddad");
+  await book.getByLabel("Issue reported").fill("Brake warning light on");
+  await book.getByRole("button", { name: "Book in" }).click();
+  await expect(board("Scheduled").locator("button")).toHaveCount(scheduled + 1);
+});

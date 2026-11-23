@@ -6,6 +6,7 @@ import { createTaskQueue } from "@/lib/task-queue";
 import { loadDemoPreview, recordDemoQuery, recordDemoRun, type DemoPreview } from "@/lib/demo-preview";
 import { isBodyStyle, type BodyStyle } from "@/lib/car-styles";
 import { assertGarageGeneration, emptyGarage, type GarageState } from "@/lib/garage";
+import { emptyService, isServiceState, type ServiceState } from "@/lib/service";
 import { emptyWorkspace, isActivityEntry, withActivity, clearLegacySopNotes, documentsCsv, hasFleet, loadWorkspace, persistStorage, saveWorkspace, takeLegacySopNotes, unlockVault, vaultStatus, vehiclesFromDocuments, type SopProgress, type VaultStatus, type Workspace } from "@/lib/workspace";
 
 export const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
@@ -29,6 +30,8 @@ interface EngineState {
   /** Apply a change to the latest saved workspace (inside the save queue), save it and rebuild the warehouse. */
   commit: (change: (current: Workspace) => Workspace, opts?: { rebuild?: boolean }) => Promise<void>;
   updateGarage: (update: (state: GarageState) => GarageState) => Promise<void>;
+  /** Apply a change to the owner's service board and save it in the (encrypted) workspace. */
+  updateService: (update: (state: ServiceState) => ServiceState, detail: string) => Promise<void>;
   /** Save one procedure's review progress into the (encrypted) workspace. */
   updateSop: (key: string, progress: SopProgress) => Promise<void>;
   updateCarStyle: (key: string, style: BodyStyle | null) => Promise<void>;
@@ -51,6 +54,7 @@ async function loadAndMigrate(): Promise<Workspace | null> {
   if (!loaded) return loaded;
   // keep only recognised car shapes; anything else in stored data is ignored
   const ws = { ...loaded, activity: Array.isArray(loaded.activity) ? loaded.activity.filter(isActivityEntry).slice(-400) : [], carStyles: Object.fromEntries(Object.entries(loaded.carStyles ?? {}).filter(([k, v]) => typeof k === "string" && isBodyStyle(v))) as Record<string, BodyStyle> };
+  if (ws.service !== undefined && !isServiceState(ws.service)) delete ws.service;   // unrecognised stored shape: dropped, never trusted
   const legacy = takeLegacySopNotes();
   if (!Object.keys(legacy).length) { clearLegacySopNotes(); return ws; }
   const next = { ...ws, sops: { ...legacy, ...ws.sops } };
@@ -171,6 +175,14 @@ export function EngineProvider({ children }: { children: ReactNode }) {
     setWorkspace(next);
     });
   }, [saveQueue]);
+  const updateService = useCallback((update: (state: ServiceState) => ServiceState, detail: string) => saveQueue(async () => {
+    const current = workspaceRef.current;
+    if (!current) throw new Error("Load and unlock your fleet before saving service orders.");
+    const next = withActivity({ ...current, service: update(current.service ?? emptyService()) }, "garage", detail);
+    await saveWorkspace(next);
+    workspaceRef.current = next;
+    setWorkspace(next);
+  }), [saveQueue]);
   const updateSop = useCallback((key: string, progress: SopProgress) => saveQueue(async () => {
     const current = workspaceRef.current;
     if (!current) throw new Error("Load and unlock your fleet before saving procedure notes.");
@@ -233,7 +245,7 @@ export function EngineProvider({ children }: { children: ReactNode }) {
   const preview = dataset === "demo" && (status === "booting" || status === "running") ? savedPreview : null;
   return (
     <Ctx.Provider value={{ status, message: preview ? "Showing saved demo results while the live SQL engine loads…" : message, log, runId, engine, region, setRegion, regions,
-      runDemo: demo, dataset, workspace, commit, updateGarage, updateSop, updateCarStyle, runMine, vault, unlock, refreshVault, preview }}>
+      runDemo: demo, dataset, workspace, commit, updateGarage, updateService, updateSop, updateCarStyle, runMine, vault, unlock, refreshVault, preview }}>
       {children}
     </Ctx.Provider>
   );

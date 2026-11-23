@@ -4,6 +4,12 @@ What changed in each version of FleetOps KPI. Dates are release dates; the newes
 
 ## Unreleased
 
+### Service board (2026-11-23)
+- New **Service board** page under Operate: every repair order moves Scheduled → Arrived → Service ready → In service → Diagnosis → Service complete → Delivered, with **On hold** (waiting for parts, approval or a bay) available from any active stage and resuming where it left off. Each move records who made it, when, and the technician it is assigned to.
+- Each order has a full job sheet: condition at arrival and delivery (odometer in and out, fuel or charge, body, interior, warning lights, and tread, pressure and condition of all four tyres), work lines with the issue, diagnosis, work done and pay type (customer pay, warranty, recall or retrofit, with the claim or campaign number), estimated vs logged technician hours, parts changed, comments from technicians, advisors and owners, an invoice split by pay type, and the vehicle's full service history.
+- Moves are checked: no arrival without the check-in and all four tyres, no stage without an assigned technician, no completion without diagnosis, work done, estimate, claim number and logged hours, and no delivery without the odometer out and an issued invoice.
+- Reports: orders by stage, hold reasons, technician efficiency (estimated ÷ logged hours), charges by pay type, average time in the workshop and customer-pay revenue. The demo opens with sample orders in every stage; your own orders are saved encrypted with your fleet ([PRIVACY.md](PRIVACY.md)).
+
 ### Widgets fill instantly on a first visit (2026-11-23)
 - A first visit used to show empty placeholders for 8–13 seconds while the in-browser SQL engine (about 15 MB) downloaded and the demo pipeline ran. Every widget now shows the demo fleet's saved results within about a second, labelled "Showing saved demo results while the live SQL engine loads…", and the live engine replaces them as soon as it is ready.
 - The preview is demo data only, never your own fleet; it is ignored automatically if the SQL models change, and the end-to-end suite fails until it is regenerated (`npm run demo-preview`). About 1.5 MB to download, and not stored in the offline package.

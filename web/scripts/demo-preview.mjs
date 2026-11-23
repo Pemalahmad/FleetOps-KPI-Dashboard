@@ -11,7 +11,7 @@ import { chromium } from "playwright";
 
 const web = join(dirname(fileURLToPath(import.meta.url)), "..");
 const PORT = 4321, BASE = `http://127.0.0.1:${PORT}`;
-const PAGES = ["/", "/overview/", "/fleet/", "/drivers/", "/documents/", "/import/", "/plan/", "/network/", "/customer/", "/workshop/",
+const PAGES = ["/", "/overview/", "/fleet/", "/drivers/", "/documents/", "/import/", "/plan/", "/network/", "/service/", "/customer/", "/workshop/",
   "/ledger/", "/licence/", "/pipeline/", "/system/", "/doctrine/"];
 
 if (!existsSync(join(web, "out/index.html"))) throw new Error("Build first: npm run build");
