@@ -10,6 +10,8 @@ What changed in each version of FleetOps KPI. Dates are release dates; the newes
 - **Road ready means road ready today.** Registration and insurance on your own fleet are checked against today's date, not only the report date. A vehicle handed over on the day a document expires moves to renewal the next day, with an expired-document alert, and an open garage re-checks just after midnight.
 - **Imports check values, not just columns.** Blank required cells and values that cannot be read (a cost of "abc", say) now stop the build with the column and row count on the Pipeline page, as the Python pipeline already did. An optional sheet you add must still have its own required columns.
 - **The offline package never downloads code.** Without Python, Ruby or PHP, the Mac and Linux launchers now use a small server shipped in the package instead of fetching one from npm.
+- **Documents attach to the right vehicle.** A card read by its VIN no longer lands on another vehicle whose fleet number happens to equal that VIN, and a reference that fits two vehicles (two cars with the same plate) is left unattached for you to check instead of being guessed.
+- **No more "p NaN".** The metric network shows a defined result when both groups are at 100%, and "n/a" for any test that cannot be computed.
 - **Nothing is published without the security tests.** The hosted dashboard and offline releases now deploy only after the full CI suite passes, including the strict-CSP, encryption, hostile-file and clickjacking tests.
 
 ### Complete vehicle damage escalation (2026-11-23)
