@@ -4,6 +4,14 @@ What changed in each version of FleetOps KPI. Dates are release dates; the newes
 
 ## Unreleased
 
+### Reliability and security fixes (2026-11-23)
+- **Passphrase protection is all-or-nothing.** Setting or removing a passphrase now seals or unseals the whole fleet in one storage transaction, so a closed tab or full disk can no longer leave some records readable while the fleet shows as protected. A fleet left half-sealed by an earlier version stays locked and is sealed completely the next time it is unlocked.
+- **Saves no longer overwrite each other.** A followed file re-importing while a document is scanned now keeps both changes. Deleting a document removes its listing before its scan, so a failed save never loses the original.
+- **Road ready means road ready today.** Registration and insurance on your own fleet are checked against today's date, not only the report date. A vehicle handed over on the day a document expires moves to renewal the next day, with an expired-document alert, and an open garage re-checks just after midnight.
+- **Imports check values, not just columns.** Blank required cells and values that cannot be read (a cost of "abc", say) now stop the build with the column and row count on the Pipeline page, as the Python pipeline already did. An optional sheet you add must still have its own required columns.
+- **The offline package never downloads code.** Without Python, Ruby or PHP, the Mac and Linux launchers now use a small server shipped in the package instead of fetching one from npm.
+- **Nothing is published without the security tests.** The hosted dashboard and offline releases now deploy only after the full CI suite passes, including the strict-CSP, encryption, hostile-file and clickjacking tests.
+
 ### Complete vehicle damage escalation (2026-11-23)
 - Garage accident intake now records severity, drivability, safety facts, an active operational hold, and explicit police, insurer and management decisions with authority/policy-derived deadlines. FleetOps records these actions but makes no network calls and assumes no universal GCC deadline.
 - Each damage case tracks referenced evidence, notification completion, estimate and authorization, repair records, quality checks, overdue alerts and an append-only audit history. Every recovery stage is blocked until its recorded gate passes.
