@@ -82,6 +82,12 @@ describe("recorded recovery operations", () => {
     expect(normaliseDamageCase(state.incidents[0]).history.slice(0, before.length)).toEqual(before);
     expect(state.reviews[row.vehicle_id]).toBeUndefined();
   });
+  it("rejects malformed case chronology and approvals without a complete estimate", () => {
+    const state = reportAccident(emptyGarage(), incident, at), current = normaliseDamageCase(state.incidents[0]);
+    expect(() => updateDamageCase(state, incident.id, { ...current, repair: { ...current.repair, startedAt: "2026-11-18T12:00:00Z", completedAt: "2026-11-18T11:00:00Z" } }, "Manager", at)).toThrow("cannot precede");
+    expect(() => updateDamageCase(state, incident.id, { ...current, estimate: { ...current.estimate, amount: null }, authorization: { ...current.authorization, status: "approved" } }, "Manager", at)).toThrow("complete received estimate");
+    expect(() => updateDamageCase(state, incident.id, { ...current, quality: { ...current.quality, reviewedAt: "not-a-time" } }, "Manager", at)).toThrow("valid quality review");
+  });
   it("holds a reported accident, emits an alert and advances through each recovery stage", () => {
     let state = reportAccident(emptyGarage(), incident, at);
     expect(deriveVehicle(row, state, context).lane).toBe("incident");

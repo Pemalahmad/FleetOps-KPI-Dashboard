@@ -145,6 +145,28 @@ function commonDamageBlockers(damage: DamageCase): string[] {
   }
   return blockers;
 }
+function damageRecordErrors(damage: DamageCase): string[] {
+  const errors: string[] = [];
+  const timestamps: [string, string][] = [
+    ["hold placement", damage.hold.placedAt], ["hold release", damage.hold.releasedAt],
+    ["estimate receipt", damage.estimate.receivedAt], ["authorization decision", damage.authorization.decidedAt],
+    ["repair start", damage.repair.startedAt], ["repair completion", damage.repair.completedAt], ["quality review", damage.quality.reviewedAt],
+    ...DAMAGE_NOTIFICATIONS.flatMap((kind): [string, string][] => [[`${kind} deadline`, damage.notifications[kind].dueAt], [`${kind} completion`, damage.notifications[kind].sentAt]]),
+    ...DAMAGE_EVIDENCE.map((id): [string, string] => [`${id} evidence`, damage.evidence[id].recordedAt]),
+  ];
+  for (const [label, value] of timestamps) if (value && !validTimestamp(value)) errors.push(`Use a valid ${label} time.`);
+  if (damage.estimate.amount !== null && (!Number.isFinite(damage.estimate.amount) || damage.estimate.amount < 0)) errors.push("Estimate amount must be a non-negative finite number.");
+  if (damage.estimate.amount !== null && !/^[A-Z]{3}$/.test(damage.estimate.currency)) errors.push("Estimate currency must be a three-letter code.");
+  if (damage.authorization.status === "approved" && (damage.estimate.amount === null || !damage.estimate.reference.trim() || !validTimestamp(damage.estimate.receivedAt))) errors.push("An approval requires a complete received estimate.");
+  if (damage.repair.completedAt && (!validTimestamp(damage.repair.startedAt) || Date.parse(damage.repair.completedAt) < Date.parse(damage.repair.startedAt))) errors.push("Repair completion cannot precede repair start.");
+  if (damage.quality.reviewedAt && (!validTimestamp(damage.repair.completedAt) || Date.parse(damage.quality.reviewedAt) < Date.parse(damage.repair.completedAt))) errors.push("Quality review cannot precede repair completion.");
+  for (const kind of DAMAGE_NOTIFICATIONS) {
+    const note = damage.notifications[kind];
+    if (note.status === "sent" && (!validTimestamp(note.sentAt) || !note.notifiedBy.trim() || !note.reference.trim())) errors.push(`Record when, by whom and under which reference the ${kind} notification was made.`);
+    if (note.status === "not_required" && !note.waiverReason.trim()) errors.push(`Record the rationale for no ${kind} notification.`);
+  }
+  return [...new Set(errors)];
+}
 export function damageStageBlockers(incident: GarageIncident): string[] {
   const damage = normaliseDamageCase(incident), blockers = commonDamageBlockers(damage);
   if (incident.stage === "reported") return blockers;
@@ -279,6 +301,8 @@ export function reportAccident(state: GarageState, input: Omit<GarageIncident, "
   const reviewHistory = previous ? [{ vehicleId: input.vehicleId, review: previous, archivedAt: at, reason: "New incident" }, ...(state.reviewHistory ?? [])] : state.reviewHistory;
   const draft: GarageIncident = { ...input, summary: input.summary.trim(), owner: input.owner.trim(), stage: "reported", createdAt: at, updatedAt: at };
   draft.damage = normaliseDamageCase(draft);
+  const errors = damageRecordErrors(draft.damage);
+  if (errors.length) throw new Error(errors[0]);
   return { ...state, reviews, reviewHistory, incidents: [draft, ...state.incidents] };
 }
 export function updateDamageCase(state: GarageState, incidentId: string, next: DamageCase, actor: string, at: string): GarageState {
@@ -286,8 +310,8 @@ export function updateDamageCase(state: GarageState, incidentId: string, next: D
   if (!incident) throw new Error("The incident is no longer open.");
   if (!validTimestamp(at) || !actor.trim()) throw new Error("Record a valid update time and responsible person.");
   const damage = normaliseDamageCase({ ...incident, damage: next });
-  const validation = commonDamageBlockers(damage).filter((item) => !item.includes("deadline") && !item.includes("still pending") && !item.includes("must remain active"));
-  if (validation.some((item) => item.includes("non-negative") || item.includes("three-letter") || item.includes("cannot be waived") || item.includes("when, by whom") || item.includes("rationale"))) throw new Error(validation[0]);
+  const validation = damageRecordErrors(damage);
+  if (validation.length) throw new Error(validation[0]);
   const prior = normaliseDamageCase(incident);
   if (prior.hold.releasedAt && (damage.hold.active || damage.hold.releasedAt !== prior.hold.releasedAt)) throw new Error("A released damage hold is immutable after handover.");
   const history = [...prior.history, { id: `update:${at}:${prior.history.length}`, at, actor: actor.trim(), action: "Damage case updated", detail: `Recorded during ${incident.stage} stage.` }];
