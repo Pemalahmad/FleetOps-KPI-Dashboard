@@ -28,4 +28,9 @@ describe("SOP evidence and progress scope", () => {
   it("uses configured target direction for parts and repeat repair triggers", () => {
     expect(sopSignal("SOP-03", log, { "SOP-03": 0 }, { parts: 80 }, { parts_on_time_pct: { green: 95, direction: "higher" } }).state).toBe("active");
   });
+  it("activates the damage escalation procedure only from recorded open cases", () => {
+    expect(sopSignal("SOP-09", log, { "SOP-09": 2 }, {}, {})).toEqual({ state: "active", reason: "2 open vehicle damage escalations" });
+    expect(sopSignal("SOP-09", log, { "SOP-09": null }, {}, {}).state).toBe("unknown");
+    expect(sopSignal("SOP-09", log, { "SOP-09": 0 }, {}, {}).state).toBe("routine");
+  });
 });

@@ -12,6 +12,7 @@ Doctrine law 5: *every flag has an owner within 48 hours.* Each SOP names its ow
 | [SOP-06](SOP-06-month-end-cost-energy.md) | Month-end cost & energy | Every month-end; cost against budget |
 | [SOP-07](SOP-07-registration-insurance.md) | Registration, insurance & fines | Expired or expiring documents; fines per 100 vehicles |
 | [SOP-08](SOP-08-customer-recovery.md) | Customer recovery & goodwill | 1-2 star ratings; goodwill above target |
+| [SOP-09](SOP-09-vehicle-damage-escalation.md) | Vehicle damage escalation | Every damage report, open collision case or overdue recorded notification |
 
 
 ## Browser execution workspace

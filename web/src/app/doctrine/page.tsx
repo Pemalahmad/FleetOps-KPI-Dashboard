@@ -53,7 +53,10 @@ export default function DoctrinePage() {
     window.addEventListener("hashchange", onHash);
     return () => window.removeEventListener("hashchange", onHash);
   }, []);
-  const evidence = engine.status === "ready" && counts.data ? Object.fromEntries(counts.data.map((r) => [r.id, r.n])) : null;
+  const evidence = engine.status === "ready" && counts.data ? {
+    ...Object.fromEntries(counts.data.map((r) => [r.id, r.n])),
+    "SOP-09": engine.workspace?.garage ? engine.workspace.garage.incidents.filter((incident) => !incident.resolvedAt).length : null,
+  } : null;
   const signal = (id: string) => sopSignal(id, engine.log, evidence, panel.last?.v ?? {}, panel.targets);
   const active = content?.sops.filter((s) => signal(s.meta.id).state === "active").length ?? 0;
   const chosen = content?.sops.find((s) => s.meta.id === selected);

@@ -31,6 +31,7 @@ export const SOP_PAGES: Record<string, { href: string; label: string }> = {
   "SOP-06": { href: "/ledger/", label: "Review ledger" },
   "SOP-07": { href: "/licence/", label: "Review renewals" },
   "SOP-08": { href: "/customer/", label: "Review customer evidence" },
+  "SOP-09": { href: "/", label: "Open Garage" },
 };
 
 export interface SopSignal { state: "active" | "routine" | "unknown"; reason: string }
@@ -68,6 +69,7 @@ export function sopSignal(id: string, log: PipelineLog | null, counts: SopCounts
     "SOP-06": "regions over budget in the report month",
     "SOP-07": "active registration/insurance records expired, expiring or missing",
     "SOP-08": "low-rated work orders in the report month",
+    "SOP-09": "open vehicle damage escalations",
   };
   if ((n ?? 0) > 0 || breaches.length) return {
     state: "active",
