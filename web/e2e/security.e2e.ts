@@ -114,6 +114,7 @@ test("an import with a blank required value is blocked, like the Python pipeline
   await ready(page);
   await page.setInputFiles("input[type=file]", { name: "blank-id.xlsx", mimeType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", buffer });
   await page.getByRole("button", { name: /Add to my fleet and build/ }).click();
+  await page.waitForURL(/\/fleet\/?$/, { timeout: 90_000 });   // the import page moves on only after the save
   await page.goto("/pipeline/");
   await expect(page.getByText(/required values missing or invalid: vehicles\.vehicle_id: 1 blank/).first()).toBeVisible({ timeout: 90_000 });
   await expect(page.getByText("1 row(s) with a blank vehicle_id")).toBeVisible();
