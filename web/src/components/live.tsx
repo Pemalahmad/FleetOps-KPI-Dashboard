@@ -106,7 +106,7 @@ export function LiveDriver() {
         return prev ? [{ ...prev, id: uid("in"), csv: sh.kind === "tabular" ? toCsv(sh) : undefined, bytes: sh.bytes, rows: sh.rows.length, added: new Date(now).toISOString() }] : [];
       });
       if (!fresh.length) throw new Error("None of this file's sheets are in your fleet yet. Import it once on the Import page, then follow it.");
-      await save({ ...ws, inputs: [...ws.inputs.filter((i) => !fresh.some((f) => f.label === i.label)), ...fresh] });
+      await save((c) => ({ ...c, inputs: [...c.inputs.filter((i) => !fresh.some((f) => f.label === i.label)), ...fresh] }));
       const st = liveStore.get();
       const rows = fresh.reduce((n, f) => n + f.rows, 0);
       liveStore.set({ events: [fileEvent(`${file.name} changed`, `${fresh.length} sheet(s), ${rows.toLocaleString()} rows re-imported; dashboards rebuilt`, "good", now), ...st.events].slice(0, 40),

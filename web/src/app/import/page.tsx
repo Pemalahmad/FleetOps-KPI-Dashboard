@@ -11,7 +11,7 @@ import Button from "@/components/arc/button";
 import { canFollow, chooseFileToFollow, LivePanel, useLive } from "@/components/live";
 import type { TableSpec } from "@/lib/engine";
 import { guessMapping, guessTable, readFile, toCsv, type Sheet } from "@/lib/sheets";
-import { emptyWorkspace, uid, type SavedInput } from "@/lib/workspace";
+import { uid, type SavedInput } from "@/lib/workspace";
 
 interface Staged {
   sheet: Sheet;
@@ -60,7 +60,6 @@ export default function ImportPage() {
   const willHaveWorkOrders = [...ready, ...(workspace?.inputs ?? [])].some((s) => s.table === "work_orders");
 
   async function addToFleet() {
-    const ws = workspace ?? emptyWorkspace();
     const now = new Date().toISOString();
     const fresh: SavedInput[] = ready.map((s) => ({
       id: uid("in"), table: s.table!, label: s.sheet.id, kind: s.sheet.kind,
@@ -68,15 +67,14 @@ export default function ImportPage() {
       rows: s.sheet.rows.length, added: now,
     }));
     // re-importing the same file + sheet replaces it (an updated vehicle list, say)
-    const kept = ws.inputs.filter((i) => !fresh.some((f) => f.label === i.label));
-    await commit({ ...ws, inputs: [...kept, ...fresh] });
+    await commit((c) => ({ ...c, inputs: [...c.inputs.filter((i) => !fresh.some((f) => f.label === i.label)), ...fresh] }));
     setStaged([]);
     router.push("/fleet/");
   }
 
   async function removeInput(id: string) {
     if (!workspace) return;
-    await commit({ ...workspace, inputs: workspace.inputs.filter((i) => i.id !== id) });
+    await commit((c) => ({ ...c, inputs: c.inputs.filter((i) => i.id !== id) }));
   }
 
   function downloadTemplate() {

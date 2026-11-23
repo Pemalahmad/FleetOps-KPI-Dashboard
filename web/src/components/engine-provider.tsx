@@ -5,7 +5,7 @@ import { Engine, type IngestInput, type PipelineLog, type Row } from "@/lib/engi
 import { createTaskQueue } from "@/lib/task-queue";
 import { isBodyStyle, type BodyStyle } from "@/lib/car-styles";
 import { assertGarageGeneration, emptyGarage, type GarageState } from "@/lib/garage";
-import { isActivityEntry, withActivity, clearLegacySopNotes, documentsCsv, hasFleet, loadWorkspace, persistStorage, saveWorkspace, takeLegacySopNotes, unlockVault, vaultStatus, vehiclesFromDocuments, type SopProgress, type VaultStatus, type Workspace } from "@/lib/workspace";
+import { emptyWorkspace, isActivityEntry, withActivity, clearLegacySopNotes, documentsCsv, hasFleet, loadWorkspace, persistStorage, saveWorkspace, takeLegacySopNotes, unlockVault, vaultStatus, vehiclesFromDocuments, type SopProgress, type VaultStatus, type Workspace } from "@/lib/workspace";
 
 export const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
 
@@ -25,8 +25,8 @@ interface EngineState {
   /** The owner's fleet, saved in this browser. */
   dataset: Dataset;
   workspace: Workspace | null;
-  /** Save a changed workspace and rebuild the warehouse from it. */
-  commit: (ws: Workspace, opts?: { rebuild?: boolean }) => Promise<void>;
+  /** Apply a change to the latest saved workspace (inside the save queue), save it and rebuild the warehouse. */
+  commit: (change: (current: Workspace) => Workspace, opts?: { rebuild?: boolean }) => Promise<void>;
   updateGarage: (update: (state: GarageState) => GarageState) => Promise<void>;
   /** Save one procedure's review progress into the (encrypted) workspace. */
   updateSop: (key: string, progress: SopProgress) => Promise<void>;
@@ -128,10 +128,11 @@ export function EngineProvider({ children }: { children: ReactNode }) {
   );
 
   const commit = useCallback(
-    (ws: Workspace, opts: { rebuild?: boolean } = {}) => saveQueue(async () => {
-      const prev = workspaceRef.current;
-      const base = { ...ws, garage: prev?.garage ?? ws.garage, sops: prev?.sops ?? ws.sops, carStyles: prev?.carStyles ?? ws.carStyles, activity: prev?.activity ?? ws.activity };
-      const files = ws.inputs.length, docs = ws.documents.length;
+    (change: (current: Workspace) => Workspace, opts: { rebuild?: boolean } = {}) => saveQueue(async () => {
+      // The change runs here, inside the queue, on the latest saved workspace, so two saves that start together
+      // (a followed file re-importing while a document is scanned) both land instead of the last one winning.
+      const base = change(workspaceRef.current ?? emptyWorkspace());
+      const files = base.inputs.length, docs = base.documents.length;
       const next = withActivity(base, "data", `Fleet data saved: ${files} sheet${files === 1 ? "" : "s"}, ${docs} document${docs === 1 ? "" : "s"}`);
       await saveWorkspace(next);
       workspaceRef.current = next;

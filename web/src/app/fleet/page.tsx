@@ -324,8 +324,8 @@ function VinDecode({ rows }: { rows: RegistryRow[] }) {
     setState({ busy: true, done: 0, msg: null });
     try {
       const specs = await decodeVins(todo, (done) => setState((s) => ({ ...s, done })));
-      const vinSpecs = { ...workspace.vinSpecs, ...Object.fromEntries(specs.map((s) => [s.vin, s])) };
-      await commit({ ...workspace, vinSpecs });
+      const decoded = Object.fromEntries(specs.map((s) => [s.vin, s]));
+      await commit((c) => ({ ...c, vinSpecs: { ...c.vinSpecs, ...decoded } }));
       const found = specs.filter((s) => s.make || s.model).length;
       setState({ busy: false, done: todo.length, msg: `Decoded ${found} of ${specs.length} VINs. Blank make, model, year, trim and configuration were filled; nothing you supplied was overwritten.` });
     } catch (e) {

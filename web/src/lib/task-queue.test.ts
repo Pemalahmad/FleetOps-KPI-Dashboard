@@ -17,3 +17,20 @@ it("allows recovery after a failed run", async () => {
   await expect(queue(async () => { throw new Error("bad import"); })).rejects.toThrow("bad import");
   await expect(queue(async () => "recovered")).resolves.toBe("recovered");
 });
+
+// The engine provider's commit() runs each change inside this queue against the latest saved workspace.
+it("keeps both of two saves that start together (a followed file re-import and a document scan)", async () => {
+  const queue = createTaskQueue();
+  let saved = { inputs: ["fleet.xlsx v1"], documents: [] as string[] };
+  const slowDisk = () => new Promise((r) => setTimeout(r, 5));
+  const commit = (change: (c: typeof saved) => typeof saved) => queue(async () => {
+    const next = change(saved);
+    await slowDisk();
+    saved = next;
+  });
+  await Promise.all([
+    commit((c) => ({ ...c, inputs: ["fleet.xlsx v2"] })),
+    commit((c) => ({ ...c, documents: [...c.documents, "registration.jpg"] })),
+  ]);
+  expect(saved).toEqual({ inputs: ["fleet.xlsx v2"], documents: ["registration.jpg"] });
+});
