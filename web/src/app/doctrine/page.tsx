@@ -53,7 +53,7 @@ export default function DoctrinePage() {
     window.addEventListener("hashchange", onHash);
     return () => window.removeEventListener("hashchange", onHash);
   }, []);
-  const evidence = engine.status === "ready" && counts.data ? {
+  const evidence = (engine.status === "ready" || !!engine.preview) && counts.data ? {
     ...Object.fromEntries(counts.data.map((r) => [r.id, r.n])),
     "SOP-09": engine.workspace?.garage ? engine.workspace.garage.incidents.filter((incident) => !incident.resolvedAt).length : null,
   } : null;
@@ -88,7 +88,7 @@ export default function DoctrinePage() {
             </button>;
           })}{!visible?.length && <p className="p-4 text-sm text-muted">No procedures match. Clear the search or select All.</p>}</div>
         </section>
-        {chosen && (engine.status !== "ready" ? <Skeleton height={560} /> : <Procedure key={key} sop={chosen} signal={signal(chosen.meta.id)} storageKey={key} scope={scope} />)}
+        {chosen && (engine.status !== "ready" && !engine.preview ? <Skeleton height={560} /> : <Procedure key={key} sop={chosen} signal={signal(chosen.meta.id)} storageKey={key} scope={scope} />)}
       </div>}
     {content && <details className="card mt-8 p-5"><summary className="cursor-pointer text-[16px] font-semibold">Read the Three Clocks Doctrine</summary>
       <article className="prose-doc mt-6 max-w-4xl" dangerouslySetInnerHTML={{ __html: content.doc }} /></details>}

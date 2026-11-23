@@ -3,6 +3,7 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import { Engine, type IngestInput, type PipelineLog, type Row } from "@/lib/engine";
 import { createTaskQueue } from "@/lib/task-queue";
+import { loadDemoPreview, recordDemoQuery, recordDemoRun, type DemoPreview } from "@/lib/demo-preview";
 import { isBodyStyle, type BodyStyle } from "@/lib/car-styles";
 import { assertGarageGeneration, emptyGarage, type GarageState } from "@/lib/garage";
 import { emptyWorkspace, isActivityEntry, withActivity, clearLegacySopNotes, documentsCsv, hasFleet, loadWorkspace, persistStorage, saveWorkspace, takeLegacySopNotes, unlockVault, vaultStatus, vehiclesFromDocuments, type SopProgress, type VaultStatus, type Workspace } from "@/lib/workspace";
@@ -37,6 +38,8 @@ interface EngineState {
   /** Enter the passphrase; on success the saved fleet is loaded and built. */
   unlock: (passphrase: string) => Promise<boolean>;
   refreshVault: () => Promise<void>;
+  /** Saved demo results shown while the live engine loads (first visit, demo only); null once the engine is ready. */
+  preview: DemoPreview | null;
 }
 
 const Ctx = createContext<EngineState | null>(null);
@@ -72,6 +75,7 @@ export function EngineProvider({ children }: { children: ReactNode }) {
   const saveQueue = useRef(createTaskQueue()).current;
   const warehouseGeneration = useRef(0);
   const [vault, setVault] = useState<VaultStatus>("none");
+  const [savedPreview, setSavedPreview] = useState<DemoPreview | null>(null);
 
   const finish = useCallback(async (e: Engine, l: PipelineLog) => {
     setLog(l);
@@ -79,6 +83,7 @@ export function EngineProvider({ children }: { children: ReactNode }) {
       const rs = await e.query<{ region: string }>("SELECT DISTINCT region FROM mart_fleet_registry WHERE region IS NOT NULL ORDER BY 1");
       setRegions(rs.map((r) => r.region));
       setRegion(null);
+      if (l.dataset.includes("(demo)")) recordDemoRun(l, rs.map((r) => r.region));
       setStatus("ready");
       setMessage(`${l.dataset}: ${l.models.length} SQL models and ${l.tests.length} tests ran in ${(l.totalMs / 1000).toFixed(1)} s`);
     } else {
@@ -93,6 +98,13 @@ export function EngineProvider({ children }: { children: ReactNode }) {
     warehouseGeneration.current += 1;
     setDataset("demo");
     setStatus("running");
+    // Fill the widgets from the saved demo results at once; the live engine replaces them when it is ready.
+    void loadDemoPreview(BASE).then((p) => {
+      if (!p) return;
+      setSavedPreview(p);
+      setLog((l) => l ?? p.log);
+      setRegions((r) => (r.length ? r : p.regions));
+    });
     try {
       const e = await getEngine();
       setEngine(e);
@@ -218,8 +230,10 @@ export function EngineProvider({ children }: { children: ReactNode }) {
 
   const refreshVault = useCallback(async () => setVault(await vaultStatus()), []);
 
+  const preview = dataset === "demo" && (status === "booting" || status === "running") ? savedPreview : null;
   return (
-    <Ctx.Provider value={{ status, message, log, runId, engine, region, setRegion, regions, runDemo: demo, dataset, workspace, commit, updateGarage, updateSop, updateCarStyle, runMine, vault, unlock, refreshVault }}>
+    <Ctx.Provider value={{ status, message: preview ? "Showing saved demo results while the live SQL engine loads…" : message, log, runId, engine, region, setRegion, regions,
+      runDemo: demo, dataset, workspace, commit, updateGarage, updateSop, updateCarStyle, runMine, vault, unlock, refreshVault, preview }}>
       {children}
     </Ctx.Provider>
   );
@@ -252,7 +266,7 @@ export function useQueryFailure(): string | null {
 
 /** Run SQL against the warehouse; re-runs when the pipeline re-runs or the SQL changes. */
 export function useSql<T = Row>(sql: string | null) {
-  const { engine, status, runId } = useEngine();
+  const { engine, status, runId, preview, dataset, region } = useEngine();
   const [state, setState] = useState<{ data: T[] | null; error: string | null; key: string }>({ data: null, error: null, key: "" });
   const key = `${runId}:${sql}`;
   useEffect(() => {
@@ -260,13 +274,19 @@ export function useSql<T = Row>(sql: string | null) {
     let live = true;
     engine
       .query<T>(sql)
-      .then((data) => { setFailure(key, null); if (live) setState({ data, error: null, key }); })
+      .then((data) => {
+        setFailure(key, null);
+        if (dataset === "demo" && !region) recordDemoQuery(sql, data as Row[]);   // automation only; see lib/demo-preview.ts
+        if (live) setState({ data, error: null, key });
+      })
       .catch((e: Error) => { const msg = e.message.split("\n")[0]; setFailure(key, msg); if (live) setState({ data: null, error: msg, key }); });
     return () => {
       live = false;
     };
-  }, [engine, status, sql, key]);
-  return status === "ready" && state.key === key ? state : { data: null, error: null, key };
+  }, [engine, status, sql, key, dataset, region]);
+  if (status === "ready") return state.key === key ? state : { data: null, error: null, key };
+  const saved = sql ? preview?.queries[sql] : undefined;   // first visit: saved demo results until the engine is ready
+  return { data: (saved as T[] | undefined) ?? null, error: null, key };
 }
 
 /** SQL fragment for the global region filter. */

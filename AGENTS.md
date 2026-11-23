@@ -42,6 +42,7 @@ A change that breaks one of these is rejected, whatever it adds.
 | Web lint / types / unit + fuzz tests | `cd web && npm run lint && npm run typecheck && npm test` |
 | Production build (writes the CSP) | `cd web && npm run build` |
 | Security and garage end-to-end tests | `cd web && npm run test:e2e` |
+| Refresh the saved demo preview (after any SQL model or demo change; e2e fails while it is stale) | `cd web && npm run demo-preview` |
 | Offline package | `cd web && bash scripts/package-offline.sh <version>` |
 | Refresh hash-locked Python requirements | see [`requirements/README.md`](requirements/README.md) |
 

@@ -198,3 +198,17 @@ test("the document reader works under the strict CSP and stays on this site", as
   expect([...seen.origins]).toEqual([new URL(baseURL!).origin]);
 });
 
+
+test("the saved demo preview matches the engine and fills widgets before the engine loads", async ({ page, request }) => {
+  // Stale preview guard: regenerate with `npm run build && node scripts/demo-preview.mjs && npm run build` after SQL changes.
+  const [preview, manifest] = await Promise.all([request.get("/demo-preview.json"), request.get("/engine/manifest.json")]);
+  expect(preview.ok()).toBe(true);
+  const { createHash } = await import("node:crypto");
+  const fingerprint = createHash("sha256").update(await manifest.body()).digest("hex");
+  expect((await preview.json()).fingerprint, "demo-preview.json is stale: regenerate it (see scripts/demo-preview.mjs)").toBe(fingerprint);
+
+  await page.route("**/duckdb/**", (route) => route.abort());   // the engine never starts: what shows comes from the preview
+  await page.goto("/");
+  await expect(page.getByText("Showing saved demo results while the live SQL engine loads…")).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByText(/Road ready\s*[\d,]{3,}/).first()).toBeVisible({ timeout: 30_000 });
+});

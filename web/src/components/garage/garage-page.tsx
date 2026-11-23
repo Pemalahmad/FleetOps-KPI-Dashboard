@@ -67,7 +67,7 @@ export function GaragePage() {
   const safePage = Math.min(page, Math.max(0, Math.ceil(filtered.length / PAGE_SIZE) - 1));
   const visible = filtered.slice(safePage * PAGE_SIZE, (safePage + 1) * PAGE_SIZE);
   const selected = selectedId ? vehicles.find((v) => v.row.vehicle_id === selectedId) : null;
-  const ready = engine.status === "ready" && source.data !== null;
+  const ready = (engine.status === "ready" || !!engine.preview) && source.data !== null;   // saved demo results count while the engine loads
   const ids = useMemo(() => new Set(vehicles.map((v) => v.row.vehicle_id)), [vehicles]);
   const handovers = operations.state.handovers.filter((h) => ids.has(h.vehicleId));
   const doneToday = handovers.filter((h) => localDate(new Date(h.at)) === today).length;

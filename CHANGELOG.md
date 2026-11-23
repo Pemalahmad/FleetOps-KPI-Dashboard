@@ -4,6 +4,11 @@ What changed in each version of FleetOps KPI. Dates are release dates; the newes
 
 ## Unreleased
 
+### Widgets fill instantly on a first visit (2026-11-23)
+- A first visit used to show empty placeholders for 8–13 seconds while the in-browser SQL engine (about 15 MB) downloaded and the demo pipeline ran. Every widget now shows the demo fleet's saved results within about a second, labelled "Showing saved demo results while the live SQL engine loads…", and the live engine replaces them as soon as it is ready.
+- The preview is demo data only, never your own fleet; it is ignored automatically if the SQL models change, and the end-to-end suite fails until it is regenerated (`npm run demo-preview`). About 1.5 MB to download, and not stored in the offline package.
+- The end-to-end test server no longer crashes when a file is missing.
+
 ### Dispatch lab (2026-11-23)
 - New **Dispatch lab** page under Operate: a seeded simulation that runs the same day of jobs through four dispatch rules (shortest distance, highest margin, least deadhead, and earliest deadline as a reference) for delivery vans, shuttle and charter buses, or commercial trucks.
 - Compares SLA on-time delivery, empty-mile (deadhead) ratio, driver shift utilisation, turnaround per job, margin per vehicle-day and jobs served, each as the mean of 20 simulated days with a 95% confidence interval, plus an on-time vs empty-miles trade-off chart. Fleet size, demand level and seed are adjustable.

@@ -15,7 +15,8 @@ createServer(async (req, res) => {
     let p = normalize(join(root, decodeURIComponent(new URL(req.url, "http://x").pathname)));
     if (p !== root && !p.startsWith(root + sep)) throw new Error("outside root");
     if ((await stat(p).catch(() => null))?.isDirectory()) p = join(p, "index.html");
-    res.writeHead(200, { "content-type": TYPES[extname(p)] ?? "application/octet-stream" }).end(await readFile(p));
+    const body = await readFile(p);   // read first: a missing file must become a 404, not a crash after a 200 header
+    res.writeHead(200, { "content-type": TYPES[extname(p)] ?? "application/octet-stream" }).end(body);
   } catch {
     res.writeHead(404).end("not found");
   }

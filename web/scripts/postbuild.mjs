@@ -20,7 +20,8 @@ function walk(dir) {
 
 // everything the site serves, except source maps and the two control files the worker fetches itself
 const files = walk(out).map((p) => relative(out, p).split("\\").join("/"))
-  .filter((f) => !f.endsWith(".map") && f !== "precache.json" && f !== "sw.js");
+  // demo-preview.json only bridges a first visit while the engine downloads; offline copies already have the engine.
+  .filter((f) => !f.endsWith(".map") && f !== "precache.json" && f !== "sw.js" && f !== "demo-preview.json");
 const url = (f) => `${base}/${f.endsWith("index.html") ? f.slice(0, -"index.html".length) : f}`;
 const isOcr = (f) => f.startsWith("tesseract/") || f.startsWith("pdf/");
 const core = files.filter((f) => !isOcr(f)).map(url);
