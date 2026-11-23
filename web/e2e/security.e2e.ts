@@ -15,7 +15,7 @@ import { createServer } from "node:http";
 import path from "node:path";
 import * as XLSX from "xlsx";
 
-const PAGES = ["/", "/overview/", "/fleet/", "/drivers/", "/documents/", "/import/", "/plan/", "/network/", "/customer/", "/workshop/", "/ledger/",
+const PAGES = ["/", "/overview/", "/fleet/", "/drivers/", "/documents/", "/import/", "/plan/", "/network/", "/dispatch/", "/customer/", "/workshop/", "/ledger/",
   "/licence/", "/pipeline/", "/system/", "/doctrine/", "/legal/"];
 const SAMPLE = path.resolve(__dirname, "../../samples/fleet-vehicles.xlsx");
 

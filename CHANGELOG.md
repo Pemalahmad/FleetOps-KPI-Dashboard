@@ -4,6 +4,11 @@ What changed in each version of FleetOps KPI. Dates are release dates; the newes
 
 ## Unreleased
 
+### Dispatch lab (2026-11-23)
+- New **Dispatch lab** page under Operate: a seeded simulation that runs the same day of jobs through four dispatch rules (shortest distance, highest margin, least deadhead, and earliest deadline as a reference) for delivery vans, shuttle and charter buses, or commercial trucks.
+- Compares SLA on-time delivery, empty-mile (deadhead) ratio, driver shift utilisation, turnaround per job, margin per vehicle-day and jobs served, each as the mean of 20 simulated days with a 95% confidence interval, plus an on-time vs empty-miles trade-off chart. Fleet size, demand level and seed are adjustable.
+- Runs entirely in the browser. The model, metric definitions and its limits are in [docs/DISPATCH_LAB.md](docs/DISPATCH_LAB.md).
+
 ### GCC compliance by country (2026-11-23)
 - The Licence page now checks every active vehicle against its country's published rules for the UAE, Saudi Arabia, Qatar, Kuwait, Bahrain and Oman: registration, insurance, technical inspection by vehicle age, Saudi TGA operating cards for goods vehicles, and Bahrain's rule that insurance must cover the whole registration period.
 - Each vehicle gets one status (Non-compliant, Evidence missing, Expiring, Compliant, or Not covered outside the six countries) with the reason in plain words, and each country shows its authority, a dated source link and how confident the rule is.

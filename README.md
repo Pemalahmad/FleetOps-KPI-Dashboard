@@ -33,6 +33,7 @@ The included Sahra Mobility demo is synthetic: 6,500 vehicles, 15 workshops, 7 m
 | Operational question | FleetOps answer |
 |---|---|
 | **Can this vehicle legally and safely drive?** | Registration, insurance, licence class, preventive maintenance, recalls, repair gates, and source freshness resolve to one next action. |
+| **Which dispatch rule should we run?** | The Dispatch lab runs the same simulated day through shortest-distance, highest-margin, least-deadhead and earliest-deadline dispatch for vans, buses or trucks, and compares on-time delivery, empty-mile ratio, driver utilisation, turnaround and margin with 95% confidence intervals ([model](docs/DISPATCH_LAB.md)). |
 | **Is each vehicle legal in its GCC country?** | Every active vehicle is checked against the published registration, insurance, inspection and operating-card rules of the UAE, Saudi Arabia, Qatar, Kuwait, Bahrain or Oman, with the reason, the authority and a dated source. A check of your records, never a certification ([rules](docs/GCC_COMPLIANCE.md)). |
 | **What happens when a vehicle is damaged?** | A damage case holds the vehicle off the road and walks it through severity, safety, evidence, notifications and deadlines, estimate, authorization, repair and quality check, with overdue alerts and an audit trail, before handover is allowed (SOP-09). |
 | **Where is fleet capacity being lost?** | A visual garage and the north star—off-road hours per vehicle per month—connect queue state to availability. |
@@ -45,6 +46,10 @@ The included Sahra Mobility demo is synthetic: 6,500 vehicles, 15 workshops, 7 m
 |---|---|
 | ![A 3D fleet garage with road-ready, repair, renewal, accident, dispatch, and safety zones](docs/web-garage.gif) | ![An interactive graph connecting fleet KPIs through identities and measured drivers](docs/web-metric-network.gif) |
 | Vehicles appear in their registered colour and body style. Open one to inspect its documents, repair milestones, release gates, owner, and target return date. | Select any metric to inspect its definition, live identity, change decomposition, regression evidence, and downstream impact. |
+
+**Dispatch lab.** The same simulated day run through four dispatch rules, for vans, buses or trucks, with 95% confidence intervals:
+
+![The dispatch lab comparing shortest-distance, highest-margin, least-deadhead and earliest-deadline dispatch on on-time delivery, empty miles, utilisation, turnaround and margin](docs/web-dispatch-lab.gif)
 
 The rest of the workspace covers the fleet register, drivers and trips, document OCR, import mapping, customer clock, workshop performance, ledger and assets, compliance, SQL pipeline, operating doctrine, and system design.
 
@@ -191,6 +196,7 @@ FleetOps-KPI-Dashboard/
 |---|---|
 | [Fleet software guide](docs/FLEET_SOFTWARE.md) | Owner workflow, supported exports, and product scope |
 | [Garage workflow](docs/GARAGE.md) | Stages, gates, alerts, evidence, and handovers |
+| [Dispatch lab](docs/DISPATCH_LAB.md) | The dispatch simulation: model, rules, metric definitions and limits |
 | [Case study](docs/CASE_STUDY.md) | The demo fleet's findings, the build choices behind them, and a pilot plan |
 | [GCC compliance rules](docs/GCC_COMPLIANCE.md) | The six countries' rules, sources, confidence and what is not confirmed |
 | [Three Clocks Doctrine](docs/DOCTRINE.md) | Operating model behind the KPI system |

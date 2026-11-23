@@ -6,7 +6,7 @@ import type { ReactNode } from "react";
 import {
   BookOpenText, Car, ChartPieSlice, CircleNotch, FileArrowUp, Garage, Graph, IdentificationCard, Moon, ShieldCheck, Smiley, Sun,
   HardDrives, TreeStructure, WifiSlash, Wrench,
-  SteeringWheel,
+  SteeringWheel, Truck,
 } from "@phosphor-icons/react";
 import { useTheme } from "./chart";
 import { LiveBadge, LiveDriver } from "./live";
@@ -26,6 +26,7 @@ const NAV = [
     { href: "/", label: "My garage", icon: Garage },
     { href: "/overview/", label: "Analytics", icon: ChartPieSlice },
     { href: "/network/", label: "Metric network", icon: Graph },
+    { href: "/dispatch/", label: "Dispatch lab", icon: Truck },
     { href: "/customer/", label: "Customer clock", icon: Smiley },
     { href: "/workshop/", label: "Workshop", icon: Wrench },
     { href: "/ledger/", label: "Ledger & assets", icon: Car },
