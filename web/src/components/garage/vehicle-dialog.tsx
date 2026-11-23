@@ -33,7 +33,7 @@ export function VehicleDialog({ vehicle, state, context, change, saving, error, 
   const nextStage = async () => {
     if (!vehicle.incident) return;
     const at = new Date().toISOString();
-    if (await change((s) => advanceIncident(saveGarageReview(s, r, current, draft, at), vehicle.incident!.id, at))) setMessage("Recovery stage updated.");
+    if (await change((s) => advanceIncident(s, vehicle.incident!.id, at))) setMessage("Recovery stage updated.");
   };
   const handover = async () => {
     const at = new Date().toISOString();
