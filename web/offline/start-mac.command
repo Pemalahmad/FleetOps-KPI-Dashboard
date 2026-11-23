@@ -7,7 +7,7 @@ URL="http://127.0.0.1:$PORT/"
 if command -v python3 >/dev/null 2>&1; then python3 -m http.server "$PORT" --bind 127.0.0.1 >/dev/null 2>&1 &
 elif command -v ruby >/dev/null 2>&1; then ruby -run -e httpd . -b 127.0.0.1 -p "$PORT" >/dev/null 2>&1 &
 elif command -v php >/dev/null 2>&1; then php -S "127.0.0.1:$PORT" >/dev/null 2>&1 &
-elif command -v npx >/dev/null 2>&1; then npx --yes http-server -a 127.0.0.1 -p "$PORT" -s &
+elif command -v node >/dev/null 2>&1; then node ../serve.mjs "$PORT" >/dev/null 2>&1 &   # bundled, no downloads
 else echo "No local web server found. Install Python 3 (python.org) and run this again."; read -r; exit 1; fi
 SERVER=$!
 sleep 1

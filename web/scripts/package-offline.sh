@@ -7,7 +7,7 @@ cd "$(dirname "$0")/.."
 NEXT_PUBLIC_BASE_PATH="" npm run build
 rm -rf dist && mkdir -p "dist/FleetOps-offline/app"
 cp -R out/. "dist/FleetOps-offline/app/"
-cp offline/start-mac.command offline/start-linux.sh offline/start-windows.bat offline/serve.ps1 offline/README.txt dist/FleetOps-offline/
+cp offline/start-mac.command offline/start-linux.sh offline/start-windows.bat offline/serve.ps1 offline/serve.mjs offline/README.txt dist/FleetOps-offline/
 chmod +x dist/FleetOps-offline/start-mac.command dist/FleetOps-offline/start-linux.sh
 # Licence, EULA, privacy and copyright policy, and the licence text of every bundled open-source component
 cp ../LICENSE.md ../EULA.md ../PRIVACY.md ../DMCA.md dist/FleetOps-offline/
