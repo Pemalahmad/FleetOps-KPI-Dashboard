@@ -7,7 +7,7 @@ import { BASE, useEngine, useSql } from "@/components/engine-provider";
 import { Card, PageHeader, SectionTitle, Skeleton } from "@/components/ui";
 import { extractFields, isSafeDocumentPreview, readDocument, type DocType, type KnownVehicle } from "@/lib/docscan";
 import { vinModelYear } from "@/lib/vin";
-import { deleteFile, emptyWorkspace, loadFile, saveFile, uid, type SavedDocument } from "@/lib/workspace";
+import { deleteFile, loadFile, saveFile, uid, type SavedDocument } from "@/lib/workspace";
 
 const TYPES: DocType[] = ["Registration", "Insurance", "Inspection", "Permit", "Other"];
 const STATUS_COLOR: Record<string, string> = { Valid: "#94A3B8", Expiring: "var(--warn)", Expired: "var(--bad)", Unknown: "var(--border)" };
@@ -39,7 +39,6 @@ export default function DocumentsPage() {
 
   async function onFiles(list: FileList | null) {
     if (!list?.length) return;
-    let ws = workspace ?? emptyWorkspace();
     const vehicles = known.data ?? [];
     for (const file of [...list]) {
       setScans((s) => [...s, { name: file.name, stage: "queued", pct: 0 }]);
@@ -55,8 +54,7 @@ export default function DocumentsPage() {
           confirmed: false, ocr_text: text, added: new Date().toISOString(),
           create_vehicle: !x.vehicle_id, vin: x.vin_in_text, plate: x.plate_in_text,
         };
-        ws = { ...ws, documents: [...ws.documents, doc] };
-        await commit(ws, { rebuild: false });   // saved; it counts only once confirmed
+        await commit((c) => ({ ...c, documents: [...c.documents, doc] }), { rebuild: false });   // saved; it counts only once confirmed
       } catch (e) {
         setScans((s) => s.map((x) => (x.name === file.name ? { ...x, stage: `failed: ${(e as Error).message}`, pct: 1 } : x)));
         await new Promise((r) => setTimeout(r, 2500));
@@ -67,14 +65,15 @@ export default function DocumentsPage() {
 
   async function patch(id: string, p: Partial<SavedDocument>, rebuild = false) {
     if (!workspace) return;
-    await commit({ ...workspace, documents: workspace.documents.map((d) => (d.id === id ? { ...d, ...p } : d)) }, { rebuild });
+    await commit((c) => ({ ...c, documents: c.documents.map((d) => (d.id === id ? { ...d, ...p } : d)) }), { rebuild });
   }
 
   async function remove(id: string) {
     if (!workspace) return;
-    await deleteFile(id);
     const wasConfirmed = workspace.documents.find((d) => d.id === id)?.confirmed;
-    await commit({ ...workspace, documents: workspace.documents.filter((d) => d.id !== id) }, { rebuild: !!wasConfirmed });
+    // Drop the listing first: if that save fails the scan is still there; a leftover scan is harmless.
+    await commit((c) => ({ ...c, documents: c.documents.filter((d) => d.id !== id) }), { rebuild: !!wasConfirmed });
+    await deleteFile(id);
   }
 
   const shown = confirmed.filter((d) => !filter || `${d.vehicle_ref} ${d.doc_type} ${d.issuer} ${d.file_name}`.toLowerCase().includes(filter.toLowerCase()));

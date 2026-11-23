@@ -154,8 +154,10 @@ export async function unlockVault(passphrase: string): Promise<boolean> {
   const header = await readVault();
   if (!header) return true;
   const key = await openVault(header, passphrase);
-  if (key) vaultKey = key;
-  return !!key;
+  if (!key) return false;
+  vaultKey = key;
+  await sealStragglers(key);
+  return true;
 }
 
 /** Forget the key: the data stays sealed until the passphrase is entered again. */
@@ -167,29 +169,68 @@ async function allFileIds(): Promise<string[]> {
   return ((await tx("files", "readonly", (s) => s.getAllKeys())) as IDBValidKey[]).map(String);
 }
 
-/** Protect the saved fleet with a passphrase: seals the workspace and every stored file. */
+/**
+ * One readwrite transaction over both stores: every record changes, or (on a closed tab, quota error or thrown
+ * write) none does. All values must be prepared before calling: an `await` inside `write` would end the transaction.
+ */
+async function atomic(write: (kv: IDBObjectStore, files: IDBObjectStore) => void): Promise<void> {
+  const db = await open();
+  return new Promise((resolve, reject) => {
+    const t = db.transaction(["kv", "files"], "readwrite");
+    t.oncomplete = () => { db.close(); resolve(); };
+    t.onabort = () => { db.close(); reject(t.error ?? new Error("Storage transaction aborted")); };
+    try { write(t.objectStore("kv"), t.objectStore("files")); }
+    catch (error) { try { t.abort(); } catch { /* already finished */ } db.close(); reject(error); }
+  });
+}
+
+/** Protect the saved fleet with a passphrase: seals the workspace and every stored file in one transaction. */
 export async function protectWorkspace(passphrase: string): Promise<void> {
   if (await readVault()) throw new Error("This fleet is already protected.");
   const ws = await loadWorkspace();
   const files = await Promise.all((await allFileIds()).map(async (id) => [id, await loadFile(id)] as const));
   const { header, key } = await newVault(passphrase);
-  // header first: if the tab closes midway, unsealed and sealed records are both still readable with the key
-  await tx("kv", "readwrite", (s) => s.put(header, "vault"));
+  // Seal everything in memory first, then swap it in at once: the header never exists beside a plaintext record.
+  const sealedFiles = await Promise.all(files.filter(([, b]) => b).map(async ([id, b]) => [id, await seal(key, await b!.arrayBuffer(), b!.type)] as const));
+  const sealedWs = ws ? await sealJson(key, { ...ws, updated: new Date().toISOString() }) : null;
+  await atomic((kv, store) => {
+    kv.put(header, "vault");
+    if (sealedWs) kv.put(sealedWs, "workspace");
+    for (const [id, sealed] of sealedFiles) store.put(sealed, id);
+  });
   vaultKey = key;
-  for (const [id, blob] of files) if (blob) await saveFile(id, blob);
-  if (ws) await saveWorkspace(ws);
 }
 
-/** Remove the passphrase (vault must be unlocked): stores everything unsealed again. */
+/** Remove the passphrase (vault must be unlocked): stores everything unsealed again, in one transaction. */
 export async function unprotectWorkspace(): Promise<void> {
   if (!vaultKey) throw new Error("Unlock the fleet first.");
   const ws = await loadWorkspace();
   const files = await Promise.all((await allFileIds()).map(async (id) => [id, await loadFile(id)] as const));
-  // write everything unsealed first, then drop the header, so nothing is ever left sealed without a way to open it
-  for (const [id, blob] of files) if (blob) await tx("files", "readwrite", (s) => s.put(blob, id));
-  if (ws) await tx("kv", "readwrite", (s) => s.put({ ...ws, updated: new Date().toISOString() }, "workspace"));
-  await tx("kv", "readwrite", (s) => s.delete("vault"));
+  await atomic((kv, store) => {
+    for (const [id, blob] of files) if (blob) store.put(blob, id);
+    if (ws) kv.put({ ...ws, updated: new Date().toISOString() }, "workspace");
+    kv.delete("vault");
+  });
   vaultKey = null;
+}
+
+/**
+ * Fleets protected by an earlier version could be left half-sealed if the tab closed during protection. Once the
+ * passphrase is known again, seal any record still stored in the clear.
+ */
+async function sealStragglers(key: CryptoKey): Promise<void> {
+  const raw = await tx("kv", "readonly", (s) => s.get("workspace"));
+  const ids = await allFileIds();
+  const plainFiles = (await Promise.all(ids.map(async (id) => [id, await tx("files", "readonly", (s) => s.get(id))] as const)))
+    .filter(([, v]) => v && !isSealed(v)) as [string, Blob][];
+  const plainWs = raw && !isSealed(raw) ? (raw as Workspace) : null;
+  if (!plainWs && !plainFiles.length) return;
+  const sealedFiles = await Promise.all(plainFiles.map(async ([id, b]) => [id, await seal(key, await b.arrayBuffer(), b.type)] as const));
+  const sealedWs = plainWs ? await sealJson(key, plainWs) : null;
+  await atomic((kv, store) => {
+    if (sealedWs) kv.put(sealedWs, "workspace");
+    for (const [id, sealed] of sealedFiles) store.put(sealed, id);
+  });
 }
 
 class VaultLocked extends Error {
@@ -213,8 +254,10 @@ export async function loadWorkspace(): Promise<Workspace | null> {
     return null;   // private mode or storage blocked: the app still works, it just won't remember
   }
   if (!raw) return null;
+  // A protected fleet never opens without its passphrase, even if a record was left in the clear.
+  if (!vaultKey && (await readVault().catch(() => null))) return null;   // locked: the caller checks vaultStatus()
   if (!isSealed(raw)) return raw as Workspace;
-  if (!vaultKey) return null;   // locked: the caller checks vaultStatus()
+  if (!vaultKey) return null;
   return unsealJson<Workspace>(vaultKey, raw);
 }
 
@@ -234,6 +277,7 @@ export async function saveFile(id: string, blob: Blob): Promise<void> {
 export async function loadFile(id: string): Promise<Blob | null> {
   const raw = (await tx("files", "readonly", (s) => s.get(id))) as Blob | Sealed | undefined;
   if (!raw) return null;
+  if (!vaultKey && (await readVault())) throw new VaultLocked();
   if (!isSealed(raw)) return raw;
   if (!vaultKey) throw new VaultLocked();
   return new Blob([await unseal(vaultKey, raw)], { type: raw.type ?? "" });
