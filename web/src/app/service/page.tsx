@@ -126,7 +126,7 @@ export default function ServicePage() {
             {STAGES.map((s) => {
               const orders = board.state!.orders.filter((o) => o.stage === s.id).sort((a, b) => Date.parse(a.history.at(-1)!.at) - Date.parse(b.history.at(-1)!.at));
               return (
-                <section key={s.id} aria-label={s.label} className="w-[220px] shrink-0 rounded-2xl border border-border bg-panel-2/60 p-2.5">
+                <section key={s.id} aria-label={s.label} className="min-w-[200px] flex-1 rounded-2xl border border-border bg-panel-2/60 p-2.5">
                   <h3 className="mb-2 flex items-center justify-between px-1 text-[12.5px] font-semibold">{s.label}<span className="garage-count tnum">{orders.length}</span></h3>
                   <div className="max-h-[560px] space-y-2 overflow-y-auto">
                     {orders.length === 0 && <p className="px-1 py-4 text-center text-[12px] text-faint">Empty</p>}

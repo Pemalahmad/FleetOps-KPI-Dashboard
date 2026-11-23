@@ -4,6 +4,11 @@ What changed in each version of FleetOps KPI. Dates are release dates; the newes
 
 ## Unreleased
 
+### Fills the screen, and an easier dark mode (2026-11-23)
+- The dashboard now uses the full width of the window instead of a 1,480 px column, so wide and ultra-wide screens show no empty side bands. Summary strips wrap and stretch to fill every row (no empty slot at the end), and the service board's columns share the full width.
+- The theme switch now reads "Dark mode" / "Light mode" next to its icon, and reports its state to screen readers. It still follows your system setting until you choose.
+- Fixed: KPI trend lines could show a gap when a tile was very wide.
+
 ### Service board (2026-11-23)
 - New **Service board** page under Operate: every repair order moves Scheduled → Arrived → Service ready → In service → Diagnosis → Service complete → Delivered, with **On hold** (waiting for parts, approval or a bay) available from any active stage and resuming where it left off. Each move records who made it, when, and the technician it is assigned to.
 - Each order has a full job sheet: condition at arrival and delivery (odometer in and out, fuel or charge, body, interior, warning lights, and tread, pressure and condition of all four tyres), work lines with the issue, diagnosis, work done and pay type (customer pay, warranty, recall or retrofit, with the claim or campaign number), estimated vs logged technician hours, parts changed, comments from technicians, advisors and owners, an invoice split by pay type, and the vehicle's full service history.

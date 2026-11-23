@@ -112,10 +112,10 @@ button:disabled { cursor: not-allowed; }
 
 /* KPI widgets */
 .kpi-delta { font-weight: 600; }
-.stat-strip { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); overflow: hidden; border: 1px solid var(--border); border-radius: 12px; background: var(--border); gap: 1px; }
-@media (min-width: 768px) { .stat-strip { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
-@media (min-width: 1280px) { .stat-strip { grid-template-columns: repeat(8, minmax(0, 1fr)); } }
-.stat-strip-item { min-width: 0; padding: 12px 14px; background: var(--panel); }
+/* Tiles wrap and grow to fill every row, so a strip never ends in an empty slot at any width or tile count. */
+.stat-strip { display: flex; flex-wrap: wrap; overflow: hidden; border: 1px solid var(--border); border-radius: 12px; background: var(--border); gap: 1px; }
+.stat-strip-item { flex: 1 1 150px; min-width: 0; padding: 12px 14px; background: var(--panel); }
+@media (max-width: 767px) { .stat-strip-item { flex-basis: calc(50% - 1px); } }
 .ov-hero { position: relative; isolation: isolate; display: grid; overflow: hidden; border: 1px solid var(--border); border-radius: 14px; background: var(--border); box-shadow: var(--shadow); gap: 1px; animation: ov-board-in 240ms cubic-bezier(.2,.8,.2,1) both; }
 @media (min-width: 1024px) { .ov-hero { grid-template-columns: minmax(0, 1fr) minmax(0, 1.85fr); } }
 .ov-north { position: relative; min-width: 0; overflow: hidden; padding: 22px 24px; background: var(--panel); }
@@ -175,7 +175,7 @@ button:disabled { cursor: not-allowed; }
 /* Frame, labels and section rhythm */
 .app-frame { --gutter: 1rem; min-height: 100vh; }
 @media (min-width: 768px) { .app-frame { --gutter: 2rem; } }
-@media (min-width: 1024px) { .app-frame { border-left: 1px solid var(--border); border-right: 1px solid var(--border); background: color-mix(in srgb, var(--panel) 55%, var(--bg)); } }
+@media (min-width: 1024px) { .app-frame { border-left: 1px solid var(--border); background: color-mix(in srgb, var(--panel) 55%, var(--bg)); } }
 .mono-label { display: inline-flex; align-items: center; gap: 8px; font-family: var(--font-mono); font-size: 11px; font-weight: 500; letter-spacing: 0.1em; text-transform: uppercase; color: var(--accent-ink); }
 .mono-mark { width: 7px; height: 7px; border: 1.5px solid currentColor; border-radius: 1.5px; transform: rotate(45deg); }
 .page-head { margin: -2rem calc(-1 * var(--gutter)) 1.75rem; padding: 2.5rem var(--gutter) 2rem; border-bottom: 1px solid var(--border); }
@@ -237,8 +237,9 @@ button:disabled { cursor: not-allowed; }
 .page-dots { position: absolute; inset: 0; z-index: 0; -webkit-mask-image: linear-gradient(to left, #000 15%, transparent 70%); mask-image: linear-gradient(to left, #000 15%, transparent 70%); }
 
 /* Motion */
-@keyframes spark-draw { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }
-.spark-line { stroke-dasharray: 1; stroke-dashoffset: 0; animation: spark-draw 1.1s cubic-bezier(.3,.7,.2,1) both; }
+/* The dash pattern exists only while drawing: a resting dash can leave a gap when a wide tile stretches the line. */
+@keyframes spark-draw { from { stroke-dasharray: 1; stroke-dashoffset: 1; } 99.9% { stroke-dasharray: 1; stroke-dashoffset: 0; } to { stroke-dasharray: none; stroke-dashoffset: 0; } }
+.spark-line { animation: spark-draw 1.1s cubic-bezier(.3,.7,.2,1) backwards; }
 @supports (animation-timeline: view()) { .spark-line { animation-timeline: view(); animation-range: entry 0% entry 100%; } }
 @keyframes route-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 .route-in { animation: route-in 360ms cubic-bezier(.2,.8,.2,1) both; }

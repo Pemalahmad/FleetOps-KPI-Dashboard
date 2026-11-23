@@ -48,9 +48,10 @@ function ThemeToggle() {
     try { localStorage.setItem("theme", next ? "dark" : "light"); } catch {}
   };
   return (
-    <button onClick={flip} aria-label="Toggle light / dark"
-      className="flex h-11 w-11 items-center justify-center rounded-lg border border-border bg-panel text-muted transition hover:text-text active:scale-95">
-      {dark ? <Sun size={17} /> : <Moon size={17} />}
+    <button onClick={flip} aria-label="Dark mode" aria-pressed={dark} title={dark ? "Switch to light mode" : "Switch to dark mode"}
+      className="flex h-11 min-w-11 items-center justify-center gap-2 rounded-lg border border-border bg-panel px-3 text-[13px] text-muted transition hover:text-text active:scale-95">
+      {dark ? <Sun size={17} aria-hidden /> : <Moon size={17} aria-hidden />}
+      <span className="hidden sm:inline">{dark ? "Light mode" : "Dark mode"}</span>
     </button>
   );
 }
@@ -151,8 +152,8 @@ export function Shell({ children }: { children: ReactNode }) {
           </nav>
           <div className="mt-2.5"><Regions /></div>
         </div>
-        <main id="main-content" tabIndex={-1} className="app-frame mx-auto max-w-[1480px] px-4 py-8 md:px-8"><UnlockBanner /><LiveDriver /><div key={path} className="route-in">{children}</div></main>
-        <footer className="mx-auto max-w-[1480px] px-4 pb-8 md:px-8 lg:hidden"><LegalLinks /></footer>
+        <main id="main-content" tabIndex={-1} className="app-frame w-full px-4 py-8 md:px-8"><UnlockBanner /><LiveDriver /><div key={path} className="route-in">{children}</div></main>
+        <footer className="w-full px-4 pb-8 md:px-8 lg:hidden"><LegalLinks /></footer>
       </div>
     </div>
   );
