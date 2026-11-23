@@ -48,6 +48,10 @@ The included Sahra Mobility demo is synthetic: 6,500 vehicles, 15 workshops, 7 m
 | ![A 3D fleet garage with road-ready, repair, renewal, accident, dispatch, and safety zones](docs/web-garage.gif) | ![An interactive graph connecting fleet KPIs through identities and measured drivers](docs/web-metric-network.gif) |
 | Vehicles appear in their registered colour and body style. Open one to inspect its documents, repair milestones, release gates, owner, and target return date. | Select any metric to inspect its definition, live identity, change decomposition, regression evidence, and downstream impact. |
 
+**Service board.** Repair orders from booking to delivery, with the check-in, tyres, work lines, hours, parts and invoice on one job sheet:
+
+![The service board: a stage-by-stage board of repair orders and a job sheet with check-in condition, tyres, work lines, invoice and vehicle history](docs/web-service-board.gif)
+
 **Dispatch lab.** The same simulated day run through four dispatch rules, for vans, buses or trucks, with 95% confidence intervals:
 
 ![The dispatch lab comparing shortest-distance, highest-margin, least-deadhead and earliest-deadline dispatch on on-time delivery, empty miles, utilisation, turnaround and margin](docs/web-dispatch-lab.gif)
