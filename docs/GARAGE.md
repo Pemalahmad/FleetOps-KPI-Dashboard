@@ -21,11 +21,26 @@ Queues follow the report date shown on screen. They describe recorded status, no
 2. Review every source requirement. Expired documents, open repairs, overdue service, unresolved recalls and unknown evidence remain blockers.
 3. Track registration and insurance renewal stages. Marking a document Received does not make an expired date valid; confirm the renewed source document.
 4. Follow the recorded repair milestones. Blank timestamps are explicitly unrecorded. One ready job never conceals a second unfinished job.
-5. For an accident, advance through Reported, Assessment, Repair, Quality checks and Ready for review. Release checkboxes become available during Quality checks.
+5. For an accident, follow [SOP-09](../fleetkpi/sops/SOP-09-vehicle-damage-escalation.md). Record severity, drivability, safety facts and the operational hold before advancing through Reported, Assessment, Repair, Quality checks and Ready for review.
 6. Record the review owner, target date, notes, safety walkaround, required repair/road-test signoff and keys/dispatch handover.
 7. Save the review, then record the handover when all requirements pass.
 
-A live handover rechecks document dates against today. It also requires current report and vehicle usage coverage. Missing operational or affected-recall records cannot be treated as clearance. A source rebuild invalidates queued actions; changed source evidence or a new incident resets signoffs. Prior notes are archived, and completed handovers retain their signed review and source gates.
+A live handover rechecks document dates against today. It also requires current report and vehicle usage coverage. Missing operational or affected-recall records cannot be treated as clearance. A source rebuild invalidates queued actions; changed source or damage evidence resets signoffs. Prior notes are archived, and completed handovers retain their signed review, source gates and immutable damage-case closure snapshot.
+
+## Damage escalation controls
+
+The damage case is a recorded, append-only operational trail:
+
+1. Intake classifies severity and drivability, records injury/emergency, third-party, public-property and towing facts, and places an active vehicle hold.
+2. Police, insurer and management requirements are explicit decisions. Required actions have deadlines from the applicable authority, insurer, contract or company policy. FleetOps does not invent a universal GCC deadline.
+3. The assessment gate requires referenced photos/statements and conditional third-party, police and insurer evidence, plus a complete estimate and authorised approval.
+4. The repair gate requires supplier, work order, start/completion times, invoice and completion evidence.
+5. The quality gate requires a named reviewer, review time, scope/safety/warning-light/test/final-photo checks, and a quality reference.
+6. The handover re-runs every damage and source gate. The hold is released only after the handover record succeeds; the closed damage snapshot cannot be edited.
+
+Overdue required notifications appear as critical in-app alerts. They are operational reminders only: FleetOps does not send police reports, claims, email, SMS or other network messages. Complete the action through the approved external channel and record the time, responsible person and reference in Garage.
+
+Legacy GarageState v1 records remain readable. An older incident without damage fields is normalised conservatively to an unclassified case with an active hold, so missing historical detail never becomes an automatic clearance.
 
 The tool records a human review; source evidence and physical checks still determine actual road readiness.
 
@@ -39,4 +54,4 @@ Missions point to the relevant queues. A recorded handover earns 50 crew XP once
 
 Owner incidents, reviews, read status and handovers are saved with the existing Workspace in this browser. If passphrase protection is enabled, the existing encryption applies to garage records too. Saved progress survives reloads; deleting the fleet removes it. Demo practice is separate tab memory, survives internal navigation and resets on reload.
 
-The garage sends no external notifications. It updates when new source records are imported or someone records an operation here.
+The garage sends no external notifications. It updates when new source records are imported or someone records an operation here. Damage photos and documents remain references in the case unless separately stored in the document vault; avoid unnecessary personal or medical detail.

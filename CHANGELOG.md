@@ -4,6 +4,12 @@ What changed in each version of FleetOps KPI. Dates are release dates; the newes
 
 ## Unreleased
 
+### Complete vehicle damage escalation (2026-11-23)
+- Garage accident intake now records severity, drivability, safety facts, an active operational hold, and explicit police, insurer and management decisions with authority/policy-derived deadlines. FleetOps records these actions but makes no network calls and assumes no universal GCC deadline.
+- Each damage case tracks referenced evidence, notification completion, estimate and authorization, repair records, quality checks, overdue alerts and an append-only audit history. Every recovery stage is blocked until its recorded gate passes.
+- Dispatch rechecks current source and damage evidence, keeps the hold active until a successful handover, and retains an immutable closure snapshot. Legacy GarageState v1 incidents are normalised conservatively instead of being treated as clear.
+- Added SOP-09, **Vehicle damage escalation and controlled return**, linked from Garage and available in Doctrine with a live open-case signal. Garage, privacy and operating documentation now describe the workflow and storage boundary.
+
 ### Design checklist completed (2026-11-20)
 - Every data page now says when its numbers are from: "Data as of September 2026 · simulated demo fleet" (or "your fleet, on this device") under the page title, on the garage, Analytics, Fleet register, Drivers, Workshop, Ledger, Licence, Customer clock and Metric network.
 - Loading placeholders no longer wait for ever: if the warehouse build or a query fails, they turn into a plain error state ("This view could not load", the reason, and a reload button). Tables with no rows (Fleet register and Drivers searches, Workshop open jobs, Ledger, Licence expiries and repeat offenders) say so instead of showing an empty grid.
