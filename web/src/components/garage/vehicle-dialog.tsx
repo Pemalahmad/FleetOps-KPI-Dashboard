@@ -3,9 +3,10 @@ import Link from "next/link";
 import * as Dialog from "@radix-ui/react-dialog";
 import { useState } from "react";
 import { CheckCircle, Clock, FileText, LockSimple, Warning, X } from "@phosphor-icons/react";
-import { CHECKS, LANES, RECOVERY_STAGES, advanceIncident, localDate, recordHandover, releaseBlockers, saveGarageReview, sourceGates, vehicleLabel,
+import { CHECKS, LANES, RECOVERY_STAGES, advanceIncident, damageStageBlockers, localDate, recordHandover, releaseBlockers, saveGarageReview, sourceGates, vehicleLabel,
   type GarageContext, type GarageReview, type GarageState, type GarageVehicle, type PaperworkStage } from "@/lib/garage";
 import { GarageCar } from "./car";
+import { DamageCasePanel } from "./damage-case-panel";
 
 type Change = (update: (state: GarageState) => GarageState) => Promise<boolean>;
 const labelDate = (date: string | null) => date ? date.slice(0, 16).replace("T", " ") : "Not recorded";
@@ -23,6 +24,7 @@ export function VehicleDialog({ vehicle, state, context, change, saving, error, 
   const total = gates.length + CHECKS.length;
   const dirty = JSON.stringify({ ...draft, updatedAt: "" }) !== JSON.stringify({ ...vehicle.review, updatedAt: "" });
   const recoveryIndex = vehicle.incident ? RECOVERY_STAGES.findIndex((s) => s.id === vehicle.incident!.stage) : -1;
+  const stageBlockers = vehicle.incident ? damageStageBlockers(vehicle.incident) : [];
   const canCheck = !vehicle.incident || recoveryIndex >= 3;
   const save = async () => {
     const at = new Date().toISOString();
@@ -65,8 +67,10 @@ export function VehicleDialog({ vehicle, state, context, change, saving, error, 
         <ol className="garage-stages mt-4">{RECOVERY_STAGES.map((s, i) => <li key={s.id} className={i <= recoveryIndex ? "garage-stage-done" : ""}>
           <span className="garage-stage-dot">{i < recoveryIndex ? <CheckCircle size={15} weight="fill" /> : i + 1}</span><span>{s.label}</span>
         </li>)}</ol>
-        {recoveryIndex < 4 && <button disabled={saving} className="ops-button mt-3" onClick={() => void nextStage()}>Move to {RECOVERY_STAGES[recoveryIndex + 1].label.toLowerCase()}</button>}
+        {recoveryIndex < 4 && <><button disabled={saving || stageBlockers.length > 0} aria-describedby={stageBlockers.length ? "damage-stage-blockers" : undefined} className="ops-button mt-3" onClick={() => void nextStage()}>Move to {RECOVERY_STAGES[recoveryIndex + 1].label.toLowerCase()}</button>{stageBlockers.length > 0 && <p id="damage-stage-blockers" className="mt-2 text-xs text-warn">Complete the damage case blockers below before advancing.</p>}</>}
       </section>}
+
+      {vehicle.incident && <DamageCasePanel key={vehicle.incident.updatedAt} incident={vehicle.incident} change={change} saving={saving} onSaved={setMessage} />}
 
       {r.work_order_id && <section className="mt-6">
         <div className="flex flex-wrap items-center justify-between gap-2"><h3 className="text-base font-semibold">Repair milestones</h3><span className="text-xs text-muted">{r.work_order_id} · {r.job_type}</span></div>
@@ -124,7 +128,7 @@ export function VehicleDialog({ vehicle, state, context, change, saving, error, 
           <button disabled={saving || blockers.length > 0 || vehicle.released} onClick={() => void handover()} className="garage-primary">{vehicle.released ? "Handover recorded" : context.demo ? "Practice handover" : "Record handover"}</button></div>
       </div>
       <div className="mt-4 flex flex-wrap justify-between gap-3 text-xs">
-        <Link href="/doctrine/#SOP-03" className="text-accent-ink hover:underline">Open recovery procedure</Link>
+        <span className="flex gap-3"><Link href="/doctrine/#SOP-03" className="text-accent-ink hover:underline">Open recovery procedure</Link>{vehicle.incident && <Link href="/doctrine/#SOP-09" className="text-accent-ink hover:underline">Open damage escalation SOP</Link>}</span>
         {!vehicle.incident && <button disabled={saving} onClick={onIncident} className="font-medium text-bad">Report accident for this vehicle</button>}
       </div>
       {handovers.length > 0 && <section className="mt-5 border-t border-border pt-4"><h3 className="text-sm font-semibold">Recent recorded handovers</h3>{handovers.map((h) => <div key={h.id} className="mt-3 rounded-lg border border-border p-3 text-xs text-muted">
