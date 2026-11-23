@@ -3,9 +3,34 @@ export type GarageLane = "road" | "repair" | "renewal" | "incident" | "dispatch"
 export type RecoveryStage = "reported" | "assessment" | "repair" | "quality" | "ready";
 export type PaperworkStage = "not_started" | "submitted" | "received";
 export type CheckId = "walkaround" | "road_test" | "handover";
+export type DamageSeverity = "unclassified" | "minor" | "moderate" | "major" | "critical";
+export type DamageDrivability = "unknown" | "drivable" | "not_drivable";
+export type DamageNotificationKind = "police" | "insurer" | "management";
+export type DamageNotificationStatus = "pending" | "sent" | "not_required";
+export type DamageEvidenceId = "scene_photos" | "vehicle_photos" | "driver_statement" | "third_party_details" | "police_reference" | "insurer_reference" | "estimate" | "repair_completion" | "quality_record";
+export type DamageQualityCheckId = "scope_complete" | "safety_defects_clear" | "warning_lights_clear" | "road_or_functional_test" | "final_photos";
+export interface DamageEvidence { required: boolean; complete: boolean; reference: string; recordedAt: string }
+export interface DamageNotification {
+  required: boolean; status: DamageNotificationStatus; dueAt: string; sentAt: string;
+  notifiedBy: string; reference: string; waiverReason: string;
+}
+export interface DamageHistoryEntry { id: string; at: string; actor: string; action: string; detail: string }
+export interface DamageCase {
+  severity: DamageSeverity; drivability: DamageDrivability;
+  facts: { injuryOrEmergency: boolean; thirdParty: boolean; publicProperty: boolean; towRequired: boolean };
+  hold: { active: boolean; reason: string; placedAt: string; releasedAt: string };
+  evidence: Record<DamageEvidenceId, DamageEvidence>;
+  notifications: Record<DamageNotificationKind, DamageNotification>;
+  estimate: { supplier: string; currency: string; amount: number | null; reference: string; receivedAt: string };
+  authorization: { status: "pending" | "approved" | "rejected"; approvedBy: string; decidedAt: string; reference: string; reason: string };
+  repair: { supplier: string; workOrder: string; startedAt: string; completedAt: string; invoiceReference: string; completionReference: string };
+  quality: { reviewer: string; reviewedAt: string; checks: Record<DamageQualityCheckId, boolean>; reference: string };
+  history: DamageHistoryEntry[];
+}
 export interface GarageIncident {
   id: string; vehicleId: string; summary: string; owner: string; occurredAt: string;
   stage: RecoveryStage; createdAt: string; updatedAt: string; resolvedAt?: string;
+  damage?: DamageCase;
 }
 export interface GarageReview {
   revision: string; owner: string; due: string; notes: string; updatedAt: string;
@@ -16,6 +41,7 @@ export interface GarageHandover {
   id: string; vehicleId: string; revision: string; reviewer: string; at: string;
   incidentIds: string[]; snapshot: string;
   review: GarageReview; source: ReadinessGate[];
+  damageSnapshot?: DamageCase;
 }
 export interface GarageState {
   version: 1; incidents: GarageIncident[]; reviews: Record<string, GarageReview>;
@@ -53,6 +79,109 @@ export const CHECKS: { id: CheckId; label: string; detail: string }[] = [
   { id: "road_test", label: "Repair / road test signed off", detail: "A competent reviewer confirms the required repair checks and test." },
   { id: "handover", label: "Keys and dispatch handover", detail: "Driver or dispatcher, keys, documents and next service confirmed." },
 ];
+export const DAMAGE_EVIDENCE: DamageEvidenceId[] = ["scene_photos", "vehicle_photos", "driver_statement", "third_party_details", "police_reference", "insurer_reference", "estimate", "repair_completion", "quality_record"];
+export const DAMAGE_QUALITY_CHECKS: DamageQualityCheckId[] = ["scope_complete", "safety_defects_clear", "warning_lights_clear", "road_or_functional_test", "final_photos"];
+const DAMAGE_NOTIFICATIONS: DamageNotificationKind[] = ["police", "insurer", "management"];
+
+const validTimestamp = (value: string) => Boolean(value) && Number.isFinite(Date.parse(value));
+const copyDamage = (damage: DamageCase): DamageCase => JSON.parse(JSON.stringify(damage)) as DamageCase;
+const emptyEvidence = (): Record<DamageEvidenceId, DamageEvidence> => Object.fromEntries(DAMAGE_EVIDENCE.map((id) => [id, { required: false, complete: false, reference: "", recordedAt: "" }])) as Record<DamageEvidenceId, DamageEvidence>;
+const emptyNotifications = (): Record<DamageNotificationKind, DamageNotification> => Object.fromEntries(DAMAGE_NOTIFICATIONS.map((id) => [id, { required: id === "management", status: "pending", dueAt: "", sentAt: "", notifiedBy: "", reference: "", waiverReason: "" }])) as Record<DamageNotificationKind, DamageNotification>;
+export function createDamageCase(at: string, actor = ""): DamageCase {
+  return {
+    severity: "unclassified", drivability: "unknown",
+    facts: { injuryOrEmergency: false, thirdParty: false, publicProperty: false, towRequired: false },
+    hold: { active: true, reason: "Pending damage assessment and controlled release", placedAt: at, releasedAt: "" },
+    evidence: emptyEvidence(), notifications: emptyNotifications(),
+    estimate: { supplier: "", currency: "", amount: null, reference: "", receivedAt: "" },
+    authorization: { status: "pending", approvedBy: "", decidedAt: "", reference: "", reason: "" },
+    repair: { supplier: "", workOrder: "", startedAt: "", completedAt: "", invoiceReference: "", completionReference: "" },
+    quality: { reviewer: "", reviewedAt: "", checks: Object.fromEntries(DAMAGE_QUALITY_CHECKS.map((id) => [id, false])) as Record<DamageQualityCheckId, boolean>, reference: "" },
+    history: [{ id: `reported:${at}`, at, actor, action: "Damage reported", detail: "Vehicle placed on an operational hold." }],
+  };
+}
+/** Safely upgrades a legacy v1 incident without weakening any release gate. */
+export function normaliseDamageCase(incident: Pick<GarageIncident, "damage" | "createdAt" | "owner">): DamageCase {
+  const base = createDamageCase(incident.createdAt, incident.owner), saved = incident.damage;
+  if (!saved) return base;
+  const merged: DamageCase = {
+    ...base, ...saved,
+    facts: { ...base.facts, ...saved.facts }, hold: { ...base.hold, ...saved.hold },
+    evidence: Object.fromEntries(DAMAGE_EVIDENCE.map((id) => [id, { ...base.evidence[id], ...saved.evidence?.[id] }])) as DamageCase["evidence"],
+    notifications: Object.fromEntries(DAMAGE_NOTIFICATIONS.map((id) => [id, { ...base.notifications[id], ...saved.notifications?.[id] }])) as DamageCase["notifications"],
+    estimate: { ...base.estimate, ...saved.estimate }, authorization: { ...base.authorization, ...saved.authorization },
+    repair: { ...base.repair, ...saved.repair }, quality: { ...base.quality, ...saved.quality, checks: { ...base.quality.checks, ...saved.quality?.checks } },
+    history: Array.isArray(saved.history) ? saved.history.map((entry) => ({ ...entry })) : base.history,
+  };
+  const policeRequired = merged.facts.injuryOrEmergency || merged.facts.thirdParty || merged.facts.publicProperty || merged.facts.towRequired || merged.severity === "major" || merged.severity === "critical";
+  const insurerRequired = merged.facts.thirdParty || merged.facts.publicProperty || merged.facts.towRequired || ["moderate", "major", "critical"].includes(merged.severity);
+  if (policeRequired) { merged.notifications.police.required = true; if (merged.notifications.police.status === "not_required") merged.notifications.police.status = "pending"; }
+  if (insurerRequired) { merged.notifications.insurer.required = true; if (merged.notifications.insurer.status === "not_required") merged.notifications.insurer.status = "pending"; }
+  merged.notifications.management.required = true;
+  const requiredEvidence: DamageEvidenceId[] = ["scene_photos", "vehicle_photos", "driver_statement", "estimate", "repair_completion", "quality_record"];
+  if (merged.facts.thirdParty || merged.facts.publicProperty) requiredEvidence.push("third_party_details");
+  if (merged.notifications.police.required) requiredEvidence.push("police_reference");
+  if (merged.notifications.insurer.required) requiredEvidence.push("insurer_reference");
+  for (const id of DAMAGE_EVIDENCE) merged.evidence[id].required = requiredEvidence.includes(id);
+  return merged;
+}
+
+function commonDamageBlockers(damage: DamageCase): string[] {
+  const blockers: string[] = [];
+  if (damage.severity === "unclassified") blockers.push("Classify damage severity.");
+  if (damage.drivability === "unknown") blockers.push("Record whether the vehicle is drivable.");
+  if (!damage.hold.active) blockers.push("The vehicle damage hold must remain active until handover.");
+  if (!damage.hold.reason.trim()) blockers.push("Record the operational hold reason.");
+  if (!validTimestamp(damage.hold.placedAt)) blockers.push("Record a valid hold placement time.");
+  if (damage.estimate.amount !== null && (!Number.isFinite(damage.estimate.amount) || damage.estimate.amount < 0)) blockers.push("Estimate amount must be a non-negative finite number.");
+  if (damage.estimate.amount !== null && !/^[A-Z]{3}$/.test(damage.estimate.currency)) blockers.push("Estimate currency must be a three-letter code.");
+  for (const kind of DAMAGE_NOTIFICATIONS) {
+    const note = damage.notifications[kind];
+    if (note.required && note.status === "not_required") blockers.push(`${kind} notification cannot be waived for the recorded facts.`);
+    if (note.required && !validTimestamp(note.dueAt)) blockers.push(`Record the ${kind} notification deadline.`);
+    if (!note.required && note.status !== "not_required") blockers.push(`Record why ${kind} notification is not required.`);
+    if (note.status === "not_required" && !note.waiverReason.trim()) blockers.push(`Record the rationale for no ${kind} notification.`);
+    if (note.status === "sent" && (!validTimestamp(note.sentAt) || !note.notifiedBy.trim() || !note.reference.trim())) blockers.push(`Record when, by whom and under which reference the ${kind} notification was made.`);
+  }
+  return blockers;
+}
+export function damageStageBlockers(incident: GarageIncident): string[] {
+  const damage = normaliseDamageCase(incident), blockers = commonDamageBlockers(damage);
+  if (incident.stage === "reported") return blockers;
+  if (incident.stage === "assessment") {
+    for (const id of DAMAGE_EVIDENCE.filter((id) => damage.evidence[id].required && !["repair_completion", "quality_record"].includes(id))) {
+      const evidence = damage.evidence[id];
+      if (!evidence.complete || !evidence.reference.trim() || !validTimestamp(evidence.recordedAt)) blockers.push(`Complete required evidence: ${id.replaceAll("_", " ")}.`);
+    }
+    for (const kind of DAMAGE_NOTIFICATIONS) if (damage.notifications[kind].required && damage.notifications[kind].status !== "sent") blockers.push(`Record the required ${kind} notification before repair.`);
+    if (!damage.estimate.supplier.trim() || damage.estimate.amount === null || !damage.estimate.reference.trim() || !validTimestamp(damage.estimate.receivedAt)) blockers.push("Record the supplier, amount, reference and receipt time for the estimate.");
+    if (damage.authorization.status !== "approved" || !damage.authorization.approvedBy.trim() || !validTimestamp(damage.authorization.decidedAt) || !damage.authorization.reference.trim()) blockers.push("Record approved repair authorization with approver, time and reference.");
+  }
+  if (incident.stage === "repair") {
+    if (!damage.repair.supplier.trim() || !damage.repair.workOrder.trim() || !validTimestamp(damage.repair.startedAt) || !validTimestamp(damage.repair.completedAt) || !damage.repair.invoiceReference.trim() || !damage.repair.completionReference.trim()) blockers.push("Record the repair supplier, work order, dates, invoice and completion evidence.");
+    if (validTimestamp(damage.repair.startedAt) && validTimestamp(damage.repair.completedAt) && Date.parse(damage.repair.completedAt) < Date.parse(damage.repair.startedAt)) blockers.push("Repair completion cannot precede repair start.");
+    const evidence = damage.evidence.repair_completion;
+    if (!evidence.complete || !evidence.reference.trim() || !validTimestamp(evidence.recordedAt)) blockers.push("Record repair completion evidence.");
+  }
+  if (incident.stage === "quality") {
+    if (!validTimestamp(damage.repair.completedAt)) blockers.push("Repair must be completed before quality review.");
+    if (!damage.quality.reviewer.trim() || !validTimestamp(damage.quality.reviewedAt) || !damage.quality.reference.trim()) blockers.push("Record the quality reviewer, review time and reference.");
+    for (const id of DAMAGE_QUALITY_CHECKS) if (!damage.quality.checks[id]) blockers.push(`Complete quality check: ${id.replaceAll("_", " ")}.`);
+    const evidence = damage.evidence.quality_record;
+    if (!evidence.complete || !evidence.reference.trim() || !validTimestamp(evidence.recordedAt)) blockers.push("Record quality review evidence.");
+  }
+  return [...new Set(blockers)];
+}
+export function damageHandoverBlockers(incident: GarageIncident, at: string): string[] {
+  const damage = normaliseDamageCase(incident), blockers = damageStageBlockers({ ...incident, stage: "quality" });
+  if (incident.stage !== "ready") blockers.push("Accident recovery must reach Ready for review.");
+  for (const kind of DAMAGE_NOTIFICATIONS) {
+    const note = damage.notifications[kind];
+    if (note.required && note.status !== "sent") blockers.push(`The required ${kind} notification is still pending.`);
+    if (note.required && validTimestamp(note.dueAt) && Date.parse(note.dueAt) < Date.parse(at) && note.status !== "sent") blockers.push(`${kind} notification is overdue.`);
+  }
+  return [...new Set(blockers)];
+}
 export const LANES: { id: GarageLane; label: string; description: string; color: string }[] = [
   { id: "road", label: "Road ready", description: "Available in the loaded report", color: "var(--good)" },
   { id: "repair", label: "Repair bays", description: "Workshop work still open", color: "var(--accent-ink)" },
@@ -79,7 +208,8 @@ export function sourceRevision(row: GarageRow, context: GarageContext, incident:
   return JSON.stringify([row.vehicle_id, context.snapshot, context.operations, context.recallCoverage,
     row.registration_expiry, row.insurance_expiry, row.repair_revision, row.open_jobs, row.unfinished_jobs,
     row.work_order_id, row.opened_at, row.key_in_at, row.ready_at, row.key_out_at, row.closed_at,
-    row.back_in_service_at, row.pm_state, row.has_usage, row.usage_end, row.open_recalls, incident?.id ?? null]);
+    row.back_in_service_at, row.pm_state, row.has_usage, row.usage_end, row.open_recalls,
+    incident ? [incident.id, incident.stage, normaliseDamageCase(incident)] : null]);
 }
 export function emptyReview(revision: string): GarageReview {
   return { revision, owner: "", due: "", notes: "", updatedAt: "",
@@ -147,20 +277,43 @@ export function reportAccident(state: GarageState, input: Omit<GarageIncident, "
   const reviews = { ...state.reviews }; delete reviews[input.vehicleId];
   const previous = state.reviews[input.vehicleId];
   const reviewHistory = previous ? [{ vehicleId: input.vehicleId, review: previous, archivedAt: at, reason: "New incident" }, ...(state.reviewHistory ?? [])] : state.reviewHistory;
-  return { ...state, reviews, reviewHistory, incidents: [{ ...input, summary: input.summary.trim(), owner: input.owner.trim(), stage: "reported", createdAt: at, updatedAt: at }, ...state.incidents] };
+  const draft: GarageIncident = { ...input, summary: input.summary.trim(), owner: input.owner.trim(), stage: "reported", createdAt: at, updatedAt: at };
+  draft.damage = normaliseDamageCase(draft);
+  return { ...state, reviews, reviewHistory, incidents: [draft, ...state.incidents] };
+}
+export function updateDamageCase(state: GarageState, incidentId: string, next: DamageCase, actor: string, at: string): GarageState {
+  const incident = state.incidents.find((item) => item.id === incidentId && !item.resolvedAt);
+  if (!incident) throw new Error("The incident is no longer open.");
+  if (!validTimestamp(at) || !actor.trim()) throw new Error("Record a valid update time and responsible person.");
+  const damage = normaliseDamageCase({ ...incident, damage: next });
+  const validation = commonDamageBlockers(damage).filter((item) => !item.includes("deadline") && !item.includes("still pending") && !item.includes("must remain active"));
+  if (validation.some((item) => item.includes("non-negative") || item.includes("three-letter") || item.includes("cannot be waived") || item.includes("when, by whom") || item.includes("rationale"))) throw new Error(validation[0]);
+  const prior = normaliseDamageCase(incident);
+  if (prior.hold.releasedAt && (damage.hold.active || damage.hold.releasedAt !== prior.hold.releasedAt)) throw new Error("A released damage hold is immutable after handover.");
+  const history = [...prior.history, { id: `update:${at}:${prior.history.length}`, at, actor: actor.trim(), action: "Damage case updated", detail: `Recorded during ${incident.stage} stage.` }];
+  damage.history = history;
+  const reviews = { ...state.reviews }; delete reviews[incident.vehicleId];
+  const previous = state.reviews[incident.vehicleId];
+  const reviewHistory = previous ? [{ vehicleId: incident.vehicleId, review: previous, archivedAt: at, reason: "Damage case evidence changed" }, ...(state.reviewHistory ?? [])] : state.reviewHistory;
+  return { ...state, reviews, reviewHistory, incidents: state.incidents.map((item) => item.id === incidentId ? { ...item, damage, updatedAt: at } : item) };
 }
 export function advanceIncident(state: GarageState, incidentId: string, at: string): GarageState {
   const incident = state.incidents.find((i) => i.id === incidentId && !i.resolvedAt);
   if (!incident) throw new Error("The incident is no longer open.");
   const index = RECOVERY_STAGES.findIndex((s) => s.id === incident.stage);
   if (index >= RECOVERY_STAGES.length - 1) throw new Error("Complete the dispatch checklist to close this incident.");
-  return { ...state, incidents: state.incidents.map((i) => i.id === incidentId ? { ...i, stage: RECOVERY_STAGES[index + 1].id, updatedAt: at } : i) };
+  const blockers = damageStageBlockers(incident);
+  if (blockers.length) throw new Error(blockers[0]);
+  const damage = normaliseDamageCase(incident);
+  damage.history = [...damage.history, { id: `stage:${at}:${damage.history.length}`, at, actor: incident.owner, action: `Advanced to ${RECOVERY_STAGES[index + 1].label}`, detail: "All recorded stage gates passed." }];
+  const reviews = { ...state.reviews }; delete reviews[incident.vehicleId];
+  return { ...state, reviews, incidents: state.incidents.map((i) => i.id === incidentId ? { ...i, damage, stage: RECOVERY_STAGES[index + 1].id, updatedAt: at } : i) };
 }
 export function releaseBlockers(row: GarageRow, state: GarageState, context: GarageContext, review: GarageReview): string[] {
   const v = deriveVehicle(row, state, context);
   const reasons = sourceGates(row, context, true).filter((g) => g.status !== "pass").map((g) => g.label + ": " + g.detail);
   if (review.revision !== v.revision) reasons.push("Evidence changed. Review the new source records and repeat the release checks.");
-  if (v.incident && v.incident.stage !== "ready") reasons.push("Accident recovery must reach Ready for review.");
+  if (v.incident) reasons.push(...damageHandoverBlockers(v.incident, new Date().toISOString()));
   if (!review.owner.trim()) reasons.push("Name the person reviewing this handover.");
   for (const check of CHECKS) if (!review.checks[check.id]) reasons.push(check.label + " is not signed off.");
   return reasons;
@@ -172,11 +325,23 @@ export function recordHandover(state: GarageState, row: GarageRow, context: Gara
   if (blockers.length) throw new Error(blockers[0]);
   const reviewed = saveGarageReview(state, row, context, review, at);
   const incidentIds = state.incidents.filter((i) => i.vehicleId === row.vehicle_id && !i.resolvedAt).map((i) => i.id);
-  const incidents = state.incidents.map((i) => incidentIds.includes(i.id) ? { ...i, resolvedAt: at, updatedAt: at } : i);
+  const closing = state.incidents.filter((i) => incidentIds.includes(i.id));
+  for (const incident of closing) {
+    const damageBlockers = damageHandoverBlockers(incident, at);
+    if (damageBlockers.length) throw new Error(damageBlockers[0]);
+  }
+  const damageSnapshot = closing[0] ? copyDamage(normaliseDamageCase(closing[0])) : undefined;
+  const incidents = state.incidents.map((i) => {
+    if (!incidentIds.includes(i.id)) return i;
+    const damage = normaliseDamageCase(i);
+    damage.hold = { ...damage.hold, active: false, releasedAt: at };
+    damage.history = [...damage.history, { id: `closed:${at}`, at, actor: review.owner.trim(), action: "Handover recorded", detail: "Hold released only after source, quality and dispatch gates passed." }];
+    return { ...i, damage, resolvedAt: at, updatedAt: at };
+  });
   const result = { ...reviewed, incidents, reviews: { ...reviewed.reviews, [row.vehicle_id]: { ...review, updatedAt: at } },
     handovers: [{ id, vehicleId: row.vehicle_id, revision: review.revision, reviewer: review.owner.trim(), at, incidentIds, snapshot: context.snapshot,
       review: { ...review, checks: { ...review.checks }, paperwork: { ...review.paperwork } },
-      source: sourceGates(row, context, true).map((g) => ({ ...g })) }, ...state.handovers] };
+      source: sourceGates(row, context, true).map((g) => ({ ...g })), damageSnapshot }, ...state.handovers] };
   // The resolved incident no longer participates in the vehicle revision. Keep the successful review linked to that state too.
   const nextRevision = sourceRevision(row, context, null);
   return { ...result, reviews: { ...result.reviews, [row.vehicle_id]: { ...review, revision: nextRevision, updatedAt: at } },
@@ -200,7 +365,14 @@ export function buildAlerts(vehicles: GarageVehicle[]): GarageAlert[] {
   const alerts: GarageAlert[] = [];
   for (const v of vehicles) {
     const r = v.row, label = vehicleLabel(r);
-    if (v.incident) alerts.push({ id: "incident:" + v.incident.id, vehicleId: r.vehicle_id, title: label + " · accident reported", detail: v.incident.summary, priority: "critical" });
+    if (v.incident) {
+      const damage = normaliseDamageCase(v.incident);
+      alerts.push({ id: "incident:" + v.incident.id, vehicleId: r.vehicle_id, title: label + " · accident reported", detail: v.incident.summary, priority: "critical" });
+      for (const kind of DAMAGE_NOTIFICATIONS) {
+        const note = damage.notifications[kind];
+        if (note.required && note.status !== "sent" && validTimestamp(note.dueAt) && Date.parse(note.dueAt) < Date.now()) alerts.push({ id: `damage-overdue:${v.incident.id}:${kind}`, vehicleId: r.vehicle_id, title: `${label} · ${kind} notification overdue`, detail: "Escalate the recorded deadline. No message is sent by this app.", priority: "critical" });
+      }
+    }
     else if (r.collision_jobs > 0) alerts.push({ id: "collision:" + r.vehicle_id + ":" + r.repair_revision, vehicleId: r.vehicle_id, title: label + " · collision job open", detail: "Imported work-order evidence; confirm the recovery owner.", priority: "critical" });
     for (const kind of ["registration", "insurance"] as const) {
       const gate = v.gates.find((g) => g.id === kind)!;
