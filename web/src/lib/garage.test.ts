@@ -53,7 +53,8 @@ describe("garage source gates and lanes", () => {
   it("rechecks expiry and stale source records at actual handover time", () => {
     const old = { ...context, snapshot: "2026-10-01" };
     const v = deriveVehicle({ ...row, registration_expiry: "2026-10-20" }, emptyGarage(), old);
-    expect(v.gates[0].status).toBe("pass");
+    // Expired on 20 Oct; today is 18 Nov. An owner fleet is judged against today, not the old report date.
+    expect(v.gates[0].status).toBe("blocked");
     expect(releaseBlockers(v.row, emptyGarage(), old, signed(v.revision)).some((s) => s.startsWith("Registration current"))).toBe(true);
     expect(releaseBlockers(row, emptyGarage(), old, signed(deriveVehicle(row, emptyGarage(), old).revision)).some((s) => s.startsWith("Current source records"))).toBe(true);
   });
@@ -152,5 +153,29 @@ describe("recorded recovery operations", () => {
     const result = recordHandover(state, refreshed, context, draft, at);
     expect(result.reviewHistory?.[0].review.notes).toBe("Earlier evidence");
     expect(result.handovers[0].review.notes).toBe("Current evidence");
+  });
+});
+
+describe("a recorded handover after a document expires", () => {
+  const expiringToday = { ...row, registration_expiry: "2026-11-18" };
+  const handedOver = () => {
+    const state = emptyGarage(), review = signed(deriveVehicle(expiringToday, state, context).revision);
+    return recordHandover(state, expiringToday, context, review, at);
+  };
+  it("is released on the handover day", () => {
+    const v = deriveVehicle(expiringToday, handedOver(), context);
+    expect(v.released).toBe(true); expect(v.lane).toBe("road");
+  });
+  it("is no longer road ready the next day, and raises an expired-registration alert", () => {
+    const nextDay = { ...context, today: "2026-11-19" };   // same report, open tab, after midnight
+    const v = deriveVehicle(expiringToday, handedOver(), nextDay);
+    expect(v.handoverRecorded).toBe(true);
+    expect(v.released).toBe(false);
+    expect(v.lane).toBe("renewal");
+    expect(buildAlerts([v]).some((a) => a.title.endsWith("registration expired"))).toBe(true);
+  });
+  it("keeps the practice fleet on its report date", () => {
+    const demo = { ...context, demo: true, today: "2026-12-31" };
+    expect(deriveVehicle(row, emptyGarage(), demo).gates[0].status).toBe("pass");
   });
 });

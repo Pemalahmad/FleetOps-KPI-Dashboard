@@ -67,7 +67,7 @@ export interface GarageContext {
 export interface ReadinessGate { id: string; label: string; status: "pass" | "blocked" | "unknown"; detail: string; href: string }
 export interface GarageVehicle {
   row: GarageRow; lane: GarageLane; gates: ReadinessGate[]; incident: GarageIncident | null;
-  review: GarageReview; revision: string; sourceClear: boolean; released: boolean; readiness: number;
+  review: GarageReview; revision: string; sourceClear: boolean; released: boolean; handoverRecorded: boolean; readiness: number;
   blockers: string[]; milestones: { label: string; at: string | null }[];
 }
 export const RECOVERY_STAGES: { id: RecoveryStage; label: string }[] = [
@@ -239,7 +239,10 @@ export function emptyReview(revision: string): GarageReview {
     paperwork: { registration: "not_started", insurance: "not_started" } };
 }
 export function sourceGates(row: GarageRow, context: GarageContext, current = false): ReadinessGate[] {
-  const date = current && !context.demo ? context.today : context.snapshot.slice(0, 10);
+  // Owner fleets: a document that expired after the report was built is expired now, so check dates against today
+  // (or the report date, if that is later). The demo keeps its report date so the practice fleet stays stable.
+  const snapshotDate = context.snapshot.slice(0, 10);
+  const date = context.demo ? snapshotDate : current || context.today > snapshotDate ? context.today : snapshotDate;
   const usageGap = row.usage_end ? (Date.parse(context.snapshot.slice(0, 10) + "T00:00:00Z") - Date.parse(row.usage_end.slice(0, 10) + "T00:00:00Z")) / 864e5 : Infinity;
   const usageCurrent = row.has_usage && Number.isFinite(usageGap) && usageGap >= 0 && usageGap <= 1;
   const document = (id: string, title: string, expiry: string | null): ReadinessGate => {
@@ -272,8 +275,10 @@ export function deriveVehicle(row: GarageRow, state: GarageState, context: Garag
   const review = saved?.revision === revision ? saved : { ...emptyReview(revision), owner: saved?.owner ?? incident?.owner ?? "", due: saved?.due ?? "", paperwork: saved?.paperwork ?? emptyReview(revision).paperwork };
   const gates = sourceGates(row, context);
   const sourceClear = gates.every((g) => g.status === "pass");
-  const released = state.handovers.some((h) => h.vehicleId === row.vehicle_id && h.revision === revision);
+  const handoverRecorded = state.handovers.some((h) => h.vehicleId === row.vehicle_id && h.revision === revision);
   const documentBlock = gates.slice(0, 2).some((g) => g.status !== "pass");
+  // A recorded handover is history; the vehicle is released only while its documents are still current.
+  const released = handoverRecorded && !documentBlock;
   const recovery = incident?.stage;
   let lane: GarageLane;
   if (recovery === "reported" || recovery === "assessment" || (!incident && row.collision_jobs > 0 && row.unfinished_jobs > 0)) lane = "incident";
@@ -282,7 +287,7 @@ export function deriveVehicle(row: GarageRow, state: GarageState, context: Garag
   else if (incident || row.ready_jobs > 0 || (row.ready_at && !row.back_in_service_at && !released)) lane = "dispatch";
   else if (!sourceClear) lane = "verify";
   else lane = "road";
-  return { row, lane, gates, incident, revision, review, sourceClear, released,
+  return { row, lane, gates, incident, revision, review, sourceClear, released, handoverRecorded,
     readiness: gates.filter((g) => g.status === "pass").length,
     blockers: gates.filter((g) => g.status !== "pass").map((g) => g.label),
     milestones: [

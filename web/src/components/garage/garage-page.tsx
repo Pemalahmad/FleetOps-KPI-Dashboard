@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import * as Dialog from "@radix-ui/react-dialog";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Bell, Car, ChartPieSlice, CheckCircle, Flag, MagnifyingGlass, ShieldCheck, Trophy, Warning, Wrench, X } from "@phosphor-icons/react";
 import { useEngine, useSql } from "../engine-provider";
 import { AsOf, Card, Label, Skeleton } from "../ui";
@@ -10,6 +10,17 @@ import { Glare, HeaderDots, Pull, Sparks } from "../bits/fleetops-bits";
 import { buildAlerts, deriveVehicle, LANES, localDate, vehicleLabel, type GarageAlert, type GarageContext, type GarageLane, type GarageRow, type GarageVehicle } from "@/lib/garage";
 import { GARAGE_SQL } from "@/lib/garage-query";
 import { GarageCar } from "./car";
+
+/** Today's local date, refreshed just after midnight so an open garage re-checks document expiry on its own. */
+function useToday() {
+  const [today, setToday] = useState(localDate);
+  useEffect(() => {
+    const now = new Date(), next = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 0, 0, 5);
+    const timer = window.setTimeout(() => setToday(localDate()), next.getTime() - now.getTime());
+    return () => window.clearTimeout(timer);
+  }, [today]);
+  return today;
+}
 import { Garage3D } from "./garage-3d";
 import { useCarStyles } from "./use-car-styles";
 import { IncidentDialog } from "./incident-dialog";
@@ -30,7 +41,7 @@ export function GaragePage() {
   const [selectedId, setSelectedId] = useState<string | null>(null), [incidentFor, setIncidentFor] = useState<string | null | undefined>(undefined);
   const [notifications, setNotifications] = useState(false), [search, setSearch] = useState(""), [filter, setFilter] = useState<GarageLane | "all">("all"), [page, setPage] = useState(0);
   const [alertKind, setAlertKind] = useState<GarageAlert["priority"] | "all">("all"), [alertPage, setAlertPage] = useState(0);
-  const today = localDate();
+  const today = useToday();
   const context = useMemo<GarageContext>(() => ({
     snapshot: engine.log?.snapshot ?? "", today, demo: engine.dataset === "demo", operations: engine.log?.mode === "operations",
     recallCoverage: ["recalls", "recall_vehicles", "work_orders"].every((table) => engine.log?.loads.some((l) => l.table === table && l.source)),
