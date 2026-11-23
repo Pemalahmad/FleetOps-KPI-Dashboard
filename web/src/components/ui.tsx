@@ -280,6 +280,7 @@ export const fmt = (v: number | null | undefined, d = 1) =>
   : (Math.abs(v) < 0.5 * 10 ** -d ? 0 : v).toLocaleString("en-US", { maximumFractionDigits: d, minimumFractionDigits: d });
 
 export function pFmt(p: number) {
+  if (!Number.isFinite(p)) return "n/a";   // a test that cannot be computed is shown as such, never as "NaN"
   return p < 0.001 ? "< 0.001" : p.toFixed(3);
 }
 

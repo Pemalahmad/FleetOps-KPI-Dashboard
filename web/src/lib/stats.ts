@@ -276,14 +276,18 @@ export interface RiskRatio {
 
 /** Risk ratio of an event in exposed (a of n1) vs unexposed (c of n0), log-method CI. */
 export function riskRatio(a: number, n1: number, c: number, n0: number): RiskRatio | null {
+  const count = (x: number) => Number.isFinite(x) && x >= 0;
+  if (![a, n1, c, n0].every(count) || a > n1 || c > n0) return null;   // impossible counts: no result, not NaN
   if (n1 === 0 || n0 === 0 || a === 0 || c === 0) return null;
   const p1 = a / n1, p0 = c / n0;
   const rr = p1 / p0;
-  const se = Math.sqrt(1 / a - 1 / n1 + 1 / c - 1 / n0);
+  const se = Math.sqrt(Math.max(0, 1 / a - 1 / n1 + 1 / c - 1 / n0));
   const zc = normInv(0.975);
   const pp = (a + c) / (n1 + n0);
-  const z = (p1 - p0) / Math.sqrt(pp * (1 - pp) * (1 / n1 + 1 / n0));
-  return { rr, ci: [rr * Math.exp(-zc * se), rr * Math.exp(zc * se)], p: 2 * (1 - normCdf(Math.abs(z))), p1, p0, n1, n0 };
+  const variance = pp * (1 - pp) * (1 / n1 + 1 / n0);
+  // Every observation in both groups had the event: the rates are identical, so there is no evidence of a difference.
+  const p = variance > 0 ? 2 * (1 - normCdf(Math.abs((p1 - p0) / Math.sqrt(variance)))) : 1;
+  return { rr, ci: [rr * Math.exp(-zc * se), rr * Math.exp(zc * se)], p, p1, p0, n1, n0 };
 }
 
 export interface Welch {

@@ -47,6 +47,15 @@ describe("two-group tests", () => {
     expect(r.ci[0]).toBeCloseTo(0.98656, 4);
     expect(r.ci[1]).toBeCloseTo(4.05448, 4);
   });
+  it("risk ratio never returns NaN: all-success groups, zero events and impossible counts", () => {
+    const all = riskRatio(40, 40, 25, 25)!;   // every observation in both groups had the event
+    expect(all.rr).toBe(1); expect(all.p).toBe(1); expect(all.ci).toEqual([1, 1]);
+    expect(riskRatio(0, 40, 0, 25)).toBeNull();                        // no events at all
+    expect(riskRatio(50, 40, 5, 25)).toBeNull();                       // more events than observations
+    expect(riskRatio(-1, 40, 5, 25)).toBeNull();
+    expect(riskRatio(Number.NaN, 40, 5, 25)).toBeNull();
+    for (const r of [riskRatio(20, 100, 10, 100)!, riskRatio(99, 100, 100, 100)!]) expect(Number.isFinite(r.p)).toBe(true);
+  });
 });
 
 describe("logistic regression", () => {
