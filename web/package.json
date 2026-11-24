@@ -14,7 +14,8 @@
     "test": "vitest run",
     "test:e2e": "playwright test",
     "test:watch": "vitest",
-    "demo-preview": "npm run build && node scripts/demo-preview.mjs && npm run build"
+    "demo-preview": "npm run build && node scripts/demo-preview.mjs && npm run build",
+    "gifs": "node scripts/capture-gifs.mjs"
   },
   "dependencies": {
     "@duckdb/duckdb-wasm": "^1.33.1-dev57.0",
