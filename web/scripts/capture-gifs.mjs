@@ -92,6 +92,36 @@ const SCENES = {
     for (let y = 0; y < 5; y++) { await page.mouse.wheel(0, 280); await page.waitForTimeout(150); await frame(3); }
     await frame(6);
   }),
+  overview: () => record('web-overview', '/overview/', async (page, frame) => {
+    await frame(12);
+    // Hover the north-star chart, then walk down the KPI wall.
+    const chart = page.locator('section[aria-label="Headline indicators"] svg').first();
+    const b = await chart.boundingBox().catch(() => null);
+    if (b) for (let i = 0; i <= 10; i++) { await page.mouse.move(b.x + (b.width * i) / 10, b.y + b.height / 2); await page.waitForTimeout(60); await frame(); }
+    for (let y = 0; y < 10; y++) { await page.mouse.wheel(0, 320); await page.waitForTimeout(220); await frame(4); }
+    await frame(6);
+  }),
+  network: () => record('web-metric-network', '/network/', async (page, frame) => {
+    await frame(10);
+    const select = page.getByRole('combobox', { name: /Inspect metric/ }).first();
+    const options = await select.locator('option').evaluateAll((o) => o.map((x) => x.value)).catch(() => []);
+    for (const v of options.slice(1, 4)) { await select.selectOption(v); await page.waitForTimeout(700); await frame(6); }
+    const focus = page.getByRole('button', { name: 'Focus connections' });
+    if (await focus.isVisible().catch(() => false)) { await focus.click(); await page.waitForTimeout(600); await frame(8); await focus.click(); await page.waitForTimeout(300); }
+    // Move the first two levers and let the effect table recompute.
+    const sliders = page.locator('input[type="range"]');
+    await sliders.first().scrollIntoViewIfNeeded().catch(() => {});
+    await page.evaluate(() => window.scrollBy(0, -80));
+    await frame(4);
+    for (const [k, to] of [[0, 0.8], [1, 0.25]]) {
+      const el = sliders.nth(k);
+      if (!(await el.isVisible().catch(() => false))) continue;
+      const box = await el.boundingBox();
+      await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2); await page.mouse.down();
+      for (let i = 1; i <= 12; i++) { await page.mouse.move(box.x + box.width * (0.5 + (to - 0.5) * (i / 12)), box.y + box.height / 2); await page.waitForTimeout(60); await frame(); }
+      await page.mouse.up(); await frame(6);
+    }
+  }),
 };
 
 const wanted = process.argv.slice(2).length ? process.argv.slice(2) : Object.keys(SCENES);
