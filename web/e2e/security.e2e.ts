@@ -212,3 +212,21 @@ test("the saved demo preview matches the engine and fills widgets before the eng
   await expect(page.getByText("Showing saved demo results while the live SQL engine loads…")).toBeVisible({ timeout: 30_000 });
   await expect(page.getByText(/Road ready\s*[\d,]{3,}/).first()).toBeVisible({ timeout: 30_000 });
 });
+
+test("the deployed build requests the matching SQL revision and keeps it available offline", async ({ page, request }) => {
+  const [manifest, precache, worker] = await Promise.all([
+    request.get("/engine/manifest.json"), request.get("/precache.json"), request.get("/sw.js"),
+  ]);
+  const { createHash } = await import("node:crypto");
+  const fingerprint = createHash("sha256").update(await manifest.body()).digest("hex");
+  const offline = await precache.json();
+  const versionedPath = `/engine/manifest.json?revision=${fingerprint}`;
+  expect(offline.core).toContain(versionedPath);
+  expect((await worker.text()).startsWith(`// FleetOps build ${offline.version}\n`)).toBe(true);
+  await page.route((url) => url.pathname === "/engine/manifest.json" && !url.search, (route) => route.abort());
+  const revisionLoaded = page.waitForResponse((response) => new URL(response.url()).pathname + new URL(response.url()).search === versionedPath);
+  await page.goto("/");
+  expect((await revisionLoaded).ok()).toBe(true);
+  await expect(page.getByText(/SQL models and \d+ tests ran/)).toBeVisible({ timeout: 90_000 });
+  await expect(page.getByRole("region", { name: "Daily fleet command" })).toBeVisible();
+});
