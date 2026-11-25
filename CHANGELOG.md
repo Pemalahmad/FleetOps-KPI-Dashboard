@@ -4,6 +4,10 @@ What changed in each version of FleetOps KPI. Dates are release dates; the newes
 
 ## Unreleased
 
+### Procedures page, set like a document (2026-11-26)
+- Doctrine & SOPs is rebuilt as a plain reading page: the illustration, emoji, slogan, uppercase label and left-accent boxes are gone. Purple now marks only the selected procedure and ticked steps.
+- The list shows which procedures need attention with a shape and a word. Each procedure opens with its purpose, why it is flagged, who is accountable and numbered steps. On a phone, choosing a procedure scrolls to it.
+
 ### Vehicle release review (2026-11-25)
 - Garage rechecks applicable GCC operating-card, insurance-period and inspection evidence before recording a handover. Daily Command shows the same release blockers and links to the rule evidence.
 - Daily Command provides searchable queues for held vehicles, missing evidence, review-ready handovers, renewals and every SOP-09 stage. Export the shift handoff or a recorded vehicle release.
