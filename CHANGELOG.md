@@ -10,6 +10,7 @@ What changed in each version of FleetOps KPI. Dates are release dates; the newes
 
 - Garage and Daily Command now use the official registration type to check Bahrain's technical inspection requirement. Private cars use the exact manufacture date to determine the five-year exemption.
 - Release holds identify missing registration class, manufacture date or current inspection evidence. Recorded handovers include the class and inspection outcome.
+- Fixed a browser import error when workbooks include a document ID column.
 
 ### Procedures page, set like a document (2026-11-26)
 - Doctrine & SOPs is rebuilt as a plain reading page: the illustration, emoji, slogan, uppercase label and left-accent boxes are gone. Purple now marks only the selected procedure and ticked steps.

@@ -266,17 +266,20 @@ export class Engine {
         });
         selects.push(`SELECT ${cols.join(", ")} FROM ${raw}`);
         // Count what a mapped column would silently lose: values that fail conversion, and blank required cells.
-        const checks: string[] = [], keys: [string, "u" | "b", string][] = [];
+        const values: string[] = [], checks: string[] = [], keys: [string, "u" | "b", string][] = [];
         t.columns.forEach((c, k) => {
           const m = inp.mapping[c.name];
           if (!m) return;
           const src = m.startsWith("=") ? lit(m.slice(1)) : `${qid(m)}::VARCHAR`;
-          checks.push(`count(*) FILTER (WHERE nullif(trim(${src}), '') IS NOT NULL AND (${c.expr.replaceAll("{src}", src)}) IS NULL) AS u${k}`);
+          values.push(`${src} AS source_${k}`, `${c.expr.replaceAll("{src}", src)} AS parsed_${k}`);
+          checks.push(`count(*) FILTER (WHERE nullif(trim(source_${k}), '') IS NOT NULL AND parsed_${k} IS NULL) AS u${k}`);
           keys.push([`u${k}`, "u", c.name]);
-          if (required.includes(c.name)) { checks.push(`count(*) FILTER (WHERE nullif(trim(${src}), '') IS NULL) AS b${k}`); keys.push([`b${k}`, "b", c.name]); }
+          if (required.includes(c.name)) { checks.push(`count(*) FILTER (WHERE nullif(trim(source_${k}), '') IS NULL) AS b${k}`); keys.push([`b${k}`, "b", c.name]); }
         });
         if (checks.length) {
-          const [counts] = await this.query<Record<string, number | bigint>>(`SELECT ${checks.join(", ")} FROM ${raw}`);
+          // Resolve row_number() defaults for generated IDs before aggregating diagnostics.
+          const [counts] = await this.query<Record<string, number | bigint>>(
+            `SELECT ${checks.join(", ")} FROM (SELECT ${values.join(", ")} FROM ${raw})`);
           for (const [key, kind, col] of keys) {
             const found = Number(counts[key] ?? 0);
             if (!found) continue;
