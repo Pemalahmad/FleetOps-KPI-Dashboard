@@ -32,6 +32,7 @@ The included Sahra Mobility demo is synthetic: 6,500 vehicles, 15 workshops, 7 m
 
 | Operational question | FleetOps answer |
 |---|---|
+| **What needs action today?** | The Daily command board puts critical holds, overdue damage deadlines, renewals, dispatch review, handovers, owners and direct vehicle actions in one operating surface. |
 | **Can this vehicle legally and safely drive?** | Registration, insurance, licence class, preventive maintenance, recalls, repair gates, and source freshness resolve to one next action. |
 | **Where is each car in the workshop, and what was done to it?** | The Service board tracks every repair order from Scheduled to Delivered with a technician on each stage: check-in condition, tyres and odometer in and out, issue, diagnosis and work done, warranty, customer-pay, recall or retrofit lines with claim numbers, estimated vs logged hours, parts, comments, invoices and each vehicle's full service history ([how it works](docs/SERVICE_BOARD.md)). |
 | **Which dispatch rule should we run?** | The Dispatch lab runs the same simulated day through shortest-distance, highest-margin, least-deadhead and earliest-deadline dispatch for vans, buses or trucks, and compares on-time delivery, empty-mile ratio, driver utilisation, turnaround and margin with 95% confidence intervals ([model](docs/DISPATCH_LAB.md)). |
@@ -43,7 +44,7 @@ The included Sahra Mobility demo is synthetic: 6,500 vehicles, 15 workshops, 7 m
 
 ## Product tour
 
-| Visual garage | Metric network |
+| Daily command and visual garage | Metric network |
 |---|---|
 | ![A 3D fleet garage with road-ready, repair, renewal, accident, dispatch, and safety zones](docs/web-garage.gif) | ![An interactive graph connecting fleet KPIs through identities and measured drivers](docs/web-metric-network.gif) |
 | Vehicles appear in their registered colour and body style. Open one to inspect its documents, repair milestones, release gates, owner, and target return date. | Select any metric to inspect its definition, live identity, change decomposition, regression evidence, and downstream impact. |

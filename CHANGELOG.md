@@ -4,6 +4,12 @@ What changed in each version of FleetOps KPI. Dates are release dates; the newes
 
 ## Unreleased
 
+### Daily fleet command (2026-11-25)
+- The Garage now opens as a daily command board: critical holds, overdue damage notifications, accident recovery, renewals, dispatch review and today’s handovers are visible in one continuous full-width operating surface.
+- Priority exceptions show their owner and nearest notification deadline with a direct vehicle action. The damage recovery pipeline follows SOP-09, and country-level registration and insurance evidence links directly to the GCC compliance desk.
+- Operate is now the first navigation group, **Daily command** is the first tab, and the mobile tab strip keeps the active destination centred so moving between wide and narrow workspaces no longer loses the current tab.
+- Removed the Garage pointer, glare and decorative dot effects. Safety holds, evidence requirements and encrypted local-only storage are unchanged.
+
 ### Fills the screen, and an easier dark mode (2026-11-23)
 - The dashboard now uses the full width of the window instead of a 1,480 px column, so wide and ultra-wide screens show no empty side bands. Summary strips wrap and stretch to fill every row (no empty slot at the end), and the service board's columns share the full width.
 - The theme switch now reads "Dark mode" / "Light mode" next to its icon, and reports its state to screen readers. It still follows your system setting until you choose.

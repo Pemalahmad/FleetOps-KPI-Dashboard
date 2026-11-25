@@ -8,6 +8,8 @@ const ready = async (page: import("@playwright/test").Page) => {
 test("garage has real queues and retains analytical access", async ({ page }) => {
   await ready(page);
   await expect(page.getByRole("heading", { name: "Every vehicle has a next move." })).toBeVisible();
+  await expect(page.getByRole("region", { name: "Daily fleet command" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Damage SOP-09" })).toBeVisible();
   await expect(page.getByRole("region", { name: "Road ready queue" })).toBeVisible();
   await page.getByRole("main").getByRole("link", { name: "Analytics", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Fleet operations, as one system" })).toBeVisible();
@@ -21,6 +23,13 @@ test("mobile garage contains the wide queue without horizontal page overflow", a
   }));
   expect(pageWidth.content).toBeLessThanOrEqual(pageWidth.viewport);
   await expect(page.getByRole("region", { name: "Renewal desk queue", exact: true })).toBeVisible();
+  await expect(page.getByRole("navigation", { name: "Mobile navigation" }).getByRole("link", { name: "Daily command" })).toHaveAttribute("aria-current", "page");
+});
+test("daily command sends an exception into its working queue", async ({ page }) => {
+  await ready(page);
+  const command = page.getByRole("region", { name: "Daily fleet command" });
+  await command.getByRole("button", { name: /Accident holds/ }).click();
+  await expect(page.getByRole("group", { name: "Garage queue filters" }).getByRole("button", { name: /Accident intake/ })).toHaveAttribute("aria-pressed", "true");
 });
 test("accident recovery holds a vehicle and requires the complete handover workflow", async ({ page }) => {
   await ready(page);
@@ -115,7 +124,7 @@ test("the owner can choose a car shape per model and the garage keeps it", async
   await expect(picker).toHaveValue("auto");
   await picker.selectOption("pickup");
   await expect(picker).toHaveValue("pickup");
-  await page.getByRole("link", { name: /My garage/ }).first().click();
+  await page.getByRole("link", { name: /Daily command/ }).first().click();
   await expect(page.getByRole("region", { name: "Visual fleet garage" })).toBeVisible();
   await page.getByRole("link", { name: "Match car shapes" }).click();
   await expect(page.getByRole("combobox", { name: /Car shape for/ }).first()).toHaveValue("pickup");

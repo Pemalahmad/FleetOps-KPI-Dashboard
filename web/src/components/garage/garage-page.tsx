@@ -3,10 +3,9 @@
 import Link from "next/link";
 import * as Dialog from "@radix-ui/react-dialog";
 import { useEffect, useMemo, useState } from "react";
-import { Bell, Car, ChartPieSlice, CheckCircle, Flag, MagnifyingGlass, ShieldCheck, Trophy, Warning, Wrench, X } from "@phosphor-icons/react";
+import { Bell, ChartPieSlice, CheckCircle, Flag, MagnifyingGlass, ShieldCheck, Trophy, Warning, X } from "@phosphor-icons/react";
 import { useEngine, useSql } from "../engine-provider";
 import { AsOf, Card, Label, Skeleton } from "../ui";
-import { Glare, HeaderDots, Pull, Sparks } from "../bits/fleetops-bits";
 import { buildAlerts, deriveVehicle, LANES, localDate, vehicleLabel, type GarageAlert, type GarageContext, type GarageLane, type GarageRow, type GarageVehicle } from "@/lib/garage";
 import { GARAGE_SQL } from "@/lib/garage-query";
 import { GarageCar } from "./car";
@@ -29,6 +28,7 @@ import { useGarageOperations } from "./use-garage";
 import { LivePanel } from "../live";
 import Button from "../arc/button";
 import { PageArt } from "../art";
+import { DailyCommandBoard } from "./command-board";
 
 const EMPTY: GarageRow[] = [];
 const NUM = new Intl.NumberFormat("en");
@@ -89,16 +89,15 @@ export function GaragePage() {
   const markRead = async (items: GarageAlert[]) => {
     await operations.change((s) => ({ ...s, acknowledged: [...new Set([...s.acknowledged, ...items.map((a) => a.id)])] }));
   };
-  return <Sparks>
-    <header className="garage-header page-head page-head-dots">
-      <HeaderDots />
+  return <>
+    <header className="garage-header page-head">
       <PageArt kind="garage" />
       <div><Label>Fleet garage</Label><h1 className="mt-3 text-[30px] font-semibold leading-[1.1] tracking-[-0.03em] md:text-[38px]">Every vehicle <span className="text-faint">has a next move.</span></h1><AsOf />
         <p className="mt-2 max-w-2xl text-[14px] leading-relaxed text-muted">See what is holding each car back, work through its checks, and bring it back to the road.</p></div>
       <div className="flex flex-wrap gap-2">
         <Link className="ops-button" href="/overview/"><ChartPieSlice size={17} /> Analytics</Link>
         <button className="ops-button" disabled={!ready} onClick={() => setNotifications(true)}><Bell size={17} /> Alerts <span className="garage-count">{unread > 99 ? "99+" : unread}</span></button>
-        <Pull><Button className="arc-accent" size="lg" disabled={!ready || !vehicles.length} onClick={() => setIncidentFor(null)}><Warning size={17} /> Report accident</Button></Pull>
+        <Button className="arc-accent" size="lg" disabled={!ready || !vehicles.length} onClick={() => setIncidentFor(null)}><Warning size={17} /> Report accident</Button>
       </div>
     </header>
     <div className="garage-context">
@@ -113,19 +112,14 @@ export function GaragePage() {
           <p className="mt-0.5 text-xs text-muted">Incident holds and expired documents stay visible until the underlying evidence changes.</p></div>
         <button onClick={() => setNotifications(true)} className="ops-button ml-auto shrink-0">Review alerts</button>
       </div>}
-      <section className="garage-pulse" aria-label="Garage summary">
-        <Pulse icon={<Car size={20} />} value={groups.road.length} label="Road ready in report" color="var(--good)" onClick={() => filterQueue("road")} />
-        <Pulse icon={<Wrench size={20} />} value={groups.repair.length} label="In repair bays" color="var(--accent)" onClick={() => filterQueue("repair")} />
-        <Pulse icon={<ShieldCheck size={20} />} value={groups.renewal.length} label="At the renewal desk" color="var(--warn)" onClick={() => filterQueue("renewal")} />
-        <Pulse icon={<CheckCircle size={20} />} value={groups.dispatch.length} label="For dispatch review" color="var(--good)" onClick={() => filterQueue("dispatch")} />
-      </section>
+      <DailyCommandBoard vehicles={vehicles} alerts={alerts} handovers={handovers} today={today} onOpenVehicle={openVehicle} onFilter={filterQueue} onOpenAlerts={() => setNotifications(true)} />
 
       <LivePanel focus="garage" />
       <section className="garage-floor" aria-label="Visual fleet garage">
         <div className="garage-floor-header"><div><h2 className="text-lg font-semibold">The garage floor</h2><p className="mt-1 text-xs text-muted">{NUM.format(vehicles.length)} vehicles across six work zones. Accident holds flash; repair bays lift the car.</p></div>
           <div className="flex items-center gap-2"><Link href="/fleet/#car-shapes" className="garage-report-badge hover:text-accent-ink">Match car shapes</Link><span className="garage-report-badge">Live from the loaded report</span></div></div>
         <Garage3D groups={groups} onOpen={openVehicle} styleFor={carStyles.styleFor} />
-        <div className="garage-zones">{LANES.map((lane) => <section key={lane.id} className="garage-zone" aria-label={lane.label + " queue"}><Glare>
+        <div className="garage-zones">{LANES.map((lane) => <section key={lane.id} className="garage-zone" aria-label={lane.label + " queue"}>
           <header className="flex items-baseline justify-between gap-2"><h3 className="flex items-center gap-2 text-[13px] font-semibold"><span className="h-2 w-2 rounded-full" style={{ background: lane.color }} />{lane.label}</h3>
             <span className="tnum text-lg font-semibold" style={{ color: lane.color }}>{NUM.format(groups[lane.id].length)}</span></header>
           <p className="mt-0.5 text-[11px] text-muted">{lane.description}</p>
@@ -136,7 +130,7 @@ export function GaragePage() {
             {!groups[lane.id].length && <div className="garage-zone-empty"><CheckCircle size={16} /> Clear</div>}
           </div>
           <button className="garage-zone-footer" onClick={() => filterQueue(lane.id)}>View all<span aria-hidden="true">→</span></button>
-        </Glare></section>)}</div>
+        </section>)}</div>
       </section>
 
       <section className="garage-progress-grid" aria-label="Garage missions">
@@ -162,7 +156,7 @@ export function GaragePage() {
       <section id="garage-queue" className="garage-queue mt-7">
         <div className="mb-4 flex flex-wrap items-end justify-between gap-3"><div><h2 className="text-xl font-semibold">Vehicle queue</h2><p className="mt-1 text-xs text-muted">Urgent holds first. Open any vehicle to work its next move.</p></div>
           <label className="garage-search"><MagnifyingGlass size={17} className="text-muted" /><input aria-label="Search garage vehicles" placeholder="Search plate, vehicle, model or site" value={search} onChange={(e) => { setSearch(e.target.value); setPage(0); }} /></label></div>
-        <div className="mb-4 flex flex-wrap gap-2" aria-label="Garage queue filters">
+        <div className="mb-4 flex flex-wrap gap-2" role="group" aria-label="Garage queue filters">
           <button aria-pressed={filter === "all"} className={"ops-chip " + (filter === "all" ? "ops-chip-active" : "")} onClick={() => { setFilter("all"); setPage(0); }}>All vehicles <span className="ml-2">{NUM.format(vehicles.length)}</span></button>
           {LANES.map((l) => <button key={l.id} aria-pressed={filter === l.id} className={"ops-chip " + (filter === l.id ? "ops-chip-active" : "")} onClick={() => { setFilter(l.id); setPage(0); }}>{l.label}<span className="ml-2">{NUM.format(groups[l.id].length)}</span></button>)}
         </div>
@@ -202,12 +196,9 @@ export function GaragePage() {
       {!filteredAlerts.length && <div className="py-12 text-center"><ShieldCheck size={32} className="mx-auto text-good" /><p className="mt-3 text-sm">No alerts of this type in the loaded evidence for this scope.</p></div>}
       {operations.error && <p role="alert" className="mt-4 text-sm text-bad">{operations.error}</p>}
     </Dialog.Content></Dialog.Portal></Dialog.Root>
-  </Sparks>;
+  </>;
 }
 const RECOVERY_LABEL = { reported: "Assign assessment and protect the vehicle", assessment: "Assess damage and arrange repair", repair: "Complete repair work", quality: "Complete the safety checks", ready: "Review and record handover" };
-function Pulse({ icon, value, label, color, onClick }: { icon: React.ReactNode; value: number; label: string; color: string; onClick: () => void }) {
-  return <button className="garage-pulse-item" onClick={onClick}><span className="garage-pulse-icon" style={{ color }}>{icon}</span><span><b className="tnum">{NUM.format(value)}</b><span className="mt-0.5 block text-xs text-muted">{label}</span></span></button>;
-}
 function Mission({ title, text, count, total, color, onClick }: { title: string; text: string; count: number; total: number; color: string; onClick: () => void }) {
   const share = total ? Math.min(100, (100 * count) / total) : 0;
   return <button onClick={onClick} className="garage-mission">
