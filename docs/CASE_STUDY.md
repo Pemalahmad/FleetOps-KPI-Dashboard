@@ -35,14 +35,12 @@ the hardest to answer:
 | Finding | Vehicles |
 |---|---|
 | GCC vehicles checked against their country's rules | 4,700 |
-| Non-compliant today (expired registration, insurance or operating card) | 157 |
-| Saudi goods vehicles with no TGA operating card on file | 182 |
-| Renewals or inspections due soon | 784 |
 | Fleet-register actions: ground now (registration or insurance expired) | 224 |
 | Fleet-register actions: renew registration / insurance | 520 / 447 |
 | Registration cards still to upload | 814 |
 
-The 1,800 vehicles in Türkiye are reported as "not covered" by the GCC rules rather than silently passed.
+The 1,800 vehicles in Türkiye are outside the GCC rule pack. The Licence report shows current demo counts for expired
+documents, missing operating cards and upcoming renewals or inspections.
 
 ## How it is built, and why
 
@@ -55,14 +53,26 @@ The 1,800 vehicles in Türkiye are reported as "not covered" by the GCC rules ra
   AES-256 encryption at rest that is all-or-nothing, hostile-spreadsheet and clickjacking tests, and releases that
   publish only after the full security suite passes.
 
-## What a real pilot would measure
+## Four-week depot pilot
 
-A four-week pilot on one depot (20–100 vehicles) would track, before and after:
+Start with one Dubai rental depot of 20–100 vehicles, one fleet lead who runs the morning review and one named
+release reviewer. Keep the current booking and workshop systems in place. The maintainer runs one working
+session with the fleet lead using the depot’s own export on its device.
 
-- vehicles driven while non-compliant (target: zero),
-- days from document expiry to renewal,
-- off-road hours per vehicle per month,
-- damage-case cycle time from report to controlled return.
+| Week | What to do | What to record |
+|---|---|---|
+| 1 | Watch the lead make release decisions using the current process. Match each case to the documents, workshop record and named approval. | Minutes from starting a review to producing a decision another reviewer can verify. Record the case type and missing evidence. |
+| 2 | Import the same categories of records into FleetOps. Work the release desk alongside the existing process. | Timing for comparable cases, agreement with the reviewer, and any clearance that the source evidence does not support. |
+| 3 | Run the queue at each shift. Use real incidents when they occur and replay approved, de-identified historical cases for rare scenarios. | Overdue open escalations, time off road and handovers completed with evidence. Count actual use without collecting telemetry. |
+| 4 | Compare the medians and report the number of cases behind them. Ask the depot lead whether they would pay to continue using the workflow. | Same-task time change, incorrect clearances, consecutive shifts of independent use and willingness to pay. |
+
+The primary target is a tenfold improvement in time to assemble a reviewable decision, measured against the depot’s
+own baseline. If the median is 20 minutes, the target is two. Treat zero unsupported releases as a separate acceptance
+condition. Replays and genuine incidents are reported separately. The demo walkthrough illustrates the workflow and
+the pilot provides customer evidence.
+
+Before expanding, record which missing document types, source formats or rule edge cases slowed down each
+review. Turn repeatable findings into regression fixtures and keep each rule’s source and confidence reviewable.
 
 ## About
 

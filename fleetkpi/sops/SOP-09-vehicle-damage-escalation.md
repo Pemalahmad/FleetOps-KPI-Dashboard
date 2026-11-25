@@ -15,15 +15,16 @@ This procedure is an operational control, not legal advice. GCC jurisdictions, p
 ## Steps
 - [ ] Make the scene safe, arrange emergency assistance where needed, and do not use FleetOps as an emergency channel.
 - [ ] Open the vehicle in **Garage**, classify severity and drivability, record the safety facts, and keep the operational hold active.
-- [ ] Decide whether police and insurer notification is required from the facts and applicable instruction; record the management escalation deadline. A required decision needs its real deadline.
+- [ ] Record the hold as soon as the vehicle, owner and incident are known. Complete outstanding classification and notification decisions before moving to Assessment.
+- [ ] Record whether police and insurer notification is required. For every required action, including management, record the actual deadline and its authority, insurer, contract or policy reference. Record the reason for any decision that a notification is unnecessary.
 - [ ] Preserve scene and vehicle photos, the driver statement and, where relevant, third-party details. Record references rather than unnecessary personal or medical detail.
 - [ ] Complete every required notification outside FleetOps, then record when it was made, who made it and the authority, insurer or management reference.
 - [ ] Obtain a written estimate and record supplier, currency, amount, reference and receipt time.
 - [ ] Record approval from an authorised person before repair starts. Rejected or pending authorization does not permit progression.
 - [ ] Record the repair supplier, work order, start and completion times, invoice reference and completion evidence.
 - [ ] Have a competent reviewer complete every quality check: agreed scope, safety defects, warning lights, road or functional test, and final photos.
-- [ ] At handover, recheck current registration, insurance, maintenance, recalls, all open repairs, the damage evidence and recorded deadlines. Record the named dispatch review only when every gate passes.
-- [ ] Retain the immutable closure snapshot and audit history with the fleet record. Reopen a new incident if later damage or evidence changes the operational facts.
+- [ ] At handover, recheck current registration, insurance, applicable country evidence, maintenance, recalls, all open repairs, the damage evidence and recorded deadlines. Record the named dispatch review only when every gate passes.
+- [ ] Retain the closure snapshot and audit history. Use **Download release record** to hand over evidence to an authorised colleague. Open a new incident if later damage changes the vehicle's condition.
 
 ## Severity and escalation guide
 
@@ -36,7 +37,7 @@ The facts can require a higher escalation than the provisional severity. Injury/
 
 ## Stage gates
 
-1. **Reported → Assessment:** severity, drivability, safety facts, active hold/reason, police and insurer decisions, and management/required-notification deadlines recorded.
+1. **Reported → Assessment:** severity, drivability, safety facts, active hold/reason, notification decisions, required deadlines and the source of each deadline recorded.
 2. **Assessment → Repair:** required evidence referenced, required notifications completed, estimate complete, and authorized approval recorded.
 3. **Repair → Quality:** repair supplier/work order, start/completion, invoice and completion evidence recorded.
 4. **Quality → Ready:** named reviewer, review time, all quality checks and quality evidence recorded.
@@ -47,3 +48,6 @@ The vehicle has a recorded handover against current source evidence; the immutab
 
 ## Escalation
 Escalate an overdue required notification immediately to the fleet safety and recovery lead and the accountable manager. Escalate conflicting authority, insurer or internal instructions to authorised legal/compliance and safety leadership. Never clear the hold to meet a utilization, cost, rank or timing target.
+
+Daily Command shows overdue pending notifications and lets the shift lead filter every recovery stage. Record the
+actual completion time even after the deadline. The record preserves the late completion for follow-up.

@@ -2,6 +2,12 @@
 
 The home page turns the fleet register into an operating workspace. The previous KPI dashboard is available under Analytics at /overview/. Original light and dark colors are retained.
 
+Start in **Daily command**. Filter **Held**, **Needs evidence**, **Ready for review**, **Renewal due** or an SOP-09
+stage, then search by plate, fleet number, site or owner. One row per vehicle shows its next action, assigned owner
+or assignment gap, and the recorded deadline. **Download shift handoff** exports the scope’s outstanding actions
+and today’s recorded handovers. A named reviewer can download an individual release record from the vehicle’s
+handover history.
+
 ## Queues
 
 | Queue | What puts a vehicle here | Next move |
@@ -25,7 +31,11 @@ Queues follow the report date shown on screen. They describe recorded status, no
 6. Record the review owner, target date, notes, safety walkaround, required repair/road-test signoff and keys/dispatch handover.
 7. Save the review, then record the handover when all requirements pass.
 
-A live handover rechecks document dates against today. It also requires current report and vehicle usage coverage. Missing operational or affected-recall records cannot be treated as clearance. A source rebuild invalidates queued actions; changed source or damage evidence resets signoffs. Prior notes are archived, and completed handovers retain their signed review, source gates and immutable damage-case closure snapshot.
+A live handover rechecks document dates against today, including applicable GCC operating-card, renewal-inspection
+and insurance-period requirements. It also requires current report and vehicle usage coverage. Missing operational
+or affected-recall records remain evidence gaps. A source rebuild invalidates queued actions. Changed source or damage
+evidence resets signoffs. Prior notes are archived, and completed handovers retain their signed review, source gates
+and damage-case closure snapshot. Use the country rule links to confirm local requirements.
 
 ## Damage escalation controls
 

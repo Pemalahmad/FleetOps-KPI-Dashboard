@@ -4,6 +4,12 @@ What changed in each version of FleetOps KPI. Dates are release dates; the newes
 
 ## Unreleased
 
+### Vehicle release review (2026-11-25)
+- Garage rechecks applicable GCC operating-card, insurance-period and inspection evidence before recording a handover. Daily Command shows the same release blockers and links to the rule evidence.
+- Daily Command provides searchable queues for held vehicles, missing evidence, review-ready handovers, renewals and every SOP-09 stage. Export the shift handoff or a recorded vehicle release.
+- Place a damage hold immediately, then complete classification, escalation deadlines with sources, repair approvals and quality checks. The case keeps late completion and recovery owner changes in its records.
+- Added a guided synthetic damage case and a four-week depot pilot protocol.
+
 ### Daily fleet command (2026-11-25)
 - The Garage now opens as a daily command board: critical holds, overdue damage notifications, accident recovery, renewals, dispatch review and today’s handovers are visible in one continuous full-width operating surface.
 - Priority exceptions show their owner and nearest notification deadline with a direct vehicle action. The damage recovery pipeline follows SOP-09, and country-level registration and insurance evidence links directly to the GCC compliance desk.

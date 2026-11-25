@@ -2,12 +2,12 @@
 import * as Dialog from "@radix-ui/react-dialog";
 import { useMemo, useState } from "react";
 import { X, Warning } from "@phosphor-icons/react";
-import { createDamageCase, vehicleLabel, type DamageDrivability, type DamageSeverity, type GarageRow, type GarageState, reportAccident } from "@/lib/garage";
+import { createDamageCase, requiredDamageNotifications, vehicleLabel, type DamageDrivability, type DamageSeverity, type GarageRow, type GarageState, reportAccident } from "@/lib/garage";
 
 type Change = (update: (state: GarageState) => GarageState) => Promise<boolean>;
 function localTime() { const d = new Date(); return new Date(d.getTime() - d.getTimezoneOffset() * 60_000).toISOString().slice(0, 16); }
-export function IncidentDialog({ rows, preset, onClose, change, saving, error }: {
-  rows: GarageRow[]; preset?: string; onClose: () => void; change: Change; saving: boolean; error: string | null;
+export function IncidentDialog({ rows, preset, onClose, onRecorded, change, saving, error }: {
+  rows: GarageRow[]; preset?: string; onClose: () => void; onRecorded: (vehicleId: string) => void; change: Change; saving: boolean; error: string | null;
 }) {
   const [search, setSearch] = useState(""), [vehicle, setVehicle] = useState(preset ?? "");
   const [owner, setOwner] = useState(""), [summary, setSummary] = useState(""), [time, setTime] = useState(localTime);
@@ -16,6 +16,8 @@ export function IncidentDialog({ rows, preset, onClose, change, saving, error }:
   const [holdReason, setHoldReason] = useState("Pending damage assessment and controlled release");
   const [policeRequired, setPoliceRequired] = useState(""), [insurerRequired, setInsurerRequired] = useState("");
   const [policeDue, setPoliceDue] = useState(""), [insurerDue, setInsurerDue] = useState(""), [managementDue, setManagementDue] = useState("");
+  const [policeReason, setPoliceReason] = useState(""), [insurerReason, setInsurerReason] = useState("");
+  const required = requiredDamageNotifications(facts, severity);
   const options = useMemo(() => {
     const q = search.toLowerCase();
     const matches = rows.filter((r) => [r.vehicle_id, r.plate_number, r.make, r.model].some((v) => v?.toLowerCase().includes(q))).slice(0, 30);
@@ -28,20 +30,22 @@ export function IncidentDialog({ rows, preset, onClose, change, saving, error }:
     if (!rows.some((r) => r.vehicle_id === vehicle)) { setFormError("Choose a vehicle from this fleet."); return; }
     const occurred = new Date(time);
     if (!Number.isFinite(occurred.getTime())) { setFormError("Enter a valid incident time."); return; }
-    if (severity === "unclassified" || drivability === "unknown") { setFormError("Classify severity and drivability before recording the hold."); return; }
-    if (!policeRequired || !insurerRequired || !managementDue) { setFormError("Record police and insurer decisions plus the management escalation deadline."); return; }
     const now = new Date().toISOString();
     const damage = createDamageCase(now, owner);
     damage.severity = severity; damage.drivability = drivability; damage.facts = facts; damage.hold.reason = holdReason;
-    const setDecision = (kind: "police" | "insurer", required: string, due: string) => {
-      damage.notifications[kind] = { ...damage.notifications[kind], required: required === "yes", status: required === "yes" ? "pending" : "not_required", dueAt: required === "yes" && due ? new Date(due).toISOString() : "", waiverReason: required === "no" ? "Recorded as not required after initial fact review" : "" };
+    const setDecision = (kind: "police" | "insurer", decision: string, due: string, rationale: string) => {
+      const mandatory = required[kind] || decision === "yes";
+      damage.notifications[kind] = { ...damage.notifications[kind], required: mandatory,
+        status: !mandatory && decision === "no" && rationale.trim() ? "not_required" : "pending",
+        dueAt: mandatory && due ? new Date(due).toISOString() : "", waiverReason: mandatory ? "" : rationale.trim() };
     };
-    setDecision("police", policeRequired, policeDue); setDecision("insurer", insurerRequired, insurerDue);
-    damage.notifications.management.dueAt = new Date(managementDue).toISOString();
+    setDecision("police", policeRequired, policeDue, policeReason);
+    setDecision("insurer", insurerRequired, insurerDue, insurerReason);
+    if (managementDue) damage.notifications.management.dueAt = new Date(managementDue).toISOString();
     const ok = await change((state) => reportAccident(state, {
       id: crypto.randomUUID(), vehicleId: vehicle, owner, summary, occurredAt: occurred.toISOString(), damage,
     }, now));
-    if (ok) onClose();
+    if (ok) onRecorded(vehicle);
   };
   return <Dialog.Root open onOpenChange={(open) => { if (!open && !saving) onClose(); }}>
     <Dialog.Portal><Dialog.Overlay className="garage-overlay" /><Dialog.Content className="garage-dialog garage-incident-dialog">
@@ -67,10 +71,10 @@ export function IncidentDialog({ rows, preset, onClose, change, saving, error }:
           <label className="garage-field">Operational hold reason<input className="ops-input" required value={holdReason} onChange={(e) => setHoldReason(e.target.value)} /></label>
         </fieldset>
         <fieldset className="garage-damage-section"><legend>Recorded escalation decisions</legend>
-          <p className="mb-3 text-xs text-muted">This app records decisions and evidence only. It does not contact police, insurers or management. Use the deadline supplied by the responsible authority or policy; the app does not impose a universal GCC deadline.</p>
-          <div className="grid gap-4 sm:grid-cols-2"><label className="garage-field">Police notification<select className="ops-input" value={policeRequired} onChange={(e) => setPoliceRequired(e.target.value)}><option value="">Select decision</option><option value="yes">Required</option><option value="no">Not required, record rationale</option></select></label>{policeRequired === "yes" && <label className="garage-field">Police deadline<input className="ops-input" type="datetime-local" value={policeDue} onChange={(e) => setPoliceDue(e.target.value)} required /></label>}
-          <label className="garage-field">Insurer notification<select className="ops-input" value={insurerRequired} onChange={(e) => setInsurerRequired(e.target.value)}><option value="">Select decision</option><option value="yes">Required</option><option value="no">Not required, record rationale</option></select></label>{insurerRequired === "yes" && <label className="garage-field">Insurer deadline<input className="ops-input" type="datetime-local" value={insurerDue} onChange={(e) => setInsurerDue(e.target.value)} required /></label>}
-          <label className="garage-field">Management escalation deadline<input className="ops-input" type="datetime-local" value={managementDue} onChange={(e) => setManagementDue(e.target.value)} required /></label></div>
+          <p className="mb-3 text-xs text-muted">Record the hold as soon as possible. Fill in outstanding decisions, deadlines and their sources in the damage case before advancing.</p>
+          <div className="grid gap-4 sm:grid-cols-2"><label className="garage-field">Police notification<select className="ops-input" disabled={required.police} value={required.police ? "yes" : policeRequired} onChange={(e) => setPoliceRequired(e.target.value)}><option value="">Decision pending</option><option value="yes">Required</option><option value="no">Not required</option></select></label>{required.police || policeRequired === "yes" ? <label className="garage-field">Police deadline<input className="ops-input" type="datetime-local" value={policeDue} onChange={(e) => setPoliceDue(e.target.value)} /></label> : policeRequired === "no" && <label className="garage-field">Police rationale<input className="ops-input" value={policeReason} onChange={(e) => setPoliceReason(e.target.value)} /></label>}
+          <label className="garage-field">Insurer notification<select className="ops-input" disabled={required.insurer} value={required.insurer ? "yes" : insurerRequired} onChange={(e) => setInsurerRequired(e.target.value)}><option value="">Decision pending</option><option value="yes">Required</option><option value="no">Not required</option></select></label>{required.insurer || insurerRequired === "yes" ? <label className="garage-field">Insurer deadline<input className="ops-input" type="datetime-local" value={insurerDue} onChange={(e) => setInsurerDue(e.target.value)} /></label> : insurerRequired === "no" && <label className="garage-field">Insurer rationale<input className="ops-input" value={insurerReason} onChange={(e) => setInsurerReason(e.target.value)} /></label>}
+          <label className="garage-field">Management escalation deadline<input className="ops-input" type="datetime-local" value={managementDue} onChange={(e) => setManagementDue(e.target.value)} /></label></div>
         </fieldset>
         {(formError || error) && <p role="alert" className="text-sm text-bad">{formError || error}</p>}
         <div className="flex justify-end gap-2 pt-2"><Dialog.Close disabled={saving} className="ops-button">Cancel</Dialog.Close>

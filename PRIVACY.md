@@ -1,6 +1,6 @@
 # Privacy Policy
 
-**Effective 23 November 2026.** Applies to the FleetOps web app at pemalahmad.github.io/FleetOps-KPI-Dashboard, the
+**Effective 25 November 2026.** Applies to the FleetOps web app at pemalahmad.github.io/FleetOps-KPI-Dashboard, the
 downloadable offline package and this repository.
 
 **In short: FleetOps does not collect your data. There is no FleetOps server to send it to.** Everything you import is
@@ -18,7 +18,8 @@ send us (for example a bug report or a support question).
 | You provide | Where it goes | How long it stays |
 |---|---|---|
 | Spreadsheets (vehicle lists, work orders…) | Read and processed in your browser; saved in your browser's IndexedDB for this site | Until you click "Delete my fleet data" (Import page) or clear the site's data |
-| Garage incidents, damage facts, evidence references, notification decisions/deadlines, estimates, approvals, repair/quality records, review notes, audit history and handovers | Saved with the device-local workspace, under the same optional passphrase encryption; demo actions stay in tab memory. FleetOps records notifications but sends none | Until fleet data is deleted; demo progress resets on reload |
+| Garage incidents, damage facts, evidence references, notification decisions, deadlines and their sources, estimates, approvals, repair/quality records, review notes, audit history and handovers with the applicable country evidence | Saved with the device-local workspace, under the same optional passphrase encryption; demo actions stay in tab memory. FleetOps records notifications but sends none | Until fleet data is deleted; demo progress resets on reload |
+| Shift handoff or release record you download | The browser saves a plain-text file on your device. It may include vehicle identifiers, names, timestamps and evidence references. It is outside workspace passphrase protection | Until you delete the downloaded file |
 | Service orders: bookings, stage history and assignments, check-in and check-out condition (odometer, fuel or charge, body, interior, warning lights, tyre tread, pressure and condition), work lines (issue, diagnosis, work done, pay type, claim or campaign numbers), parts, technician hours, comments by technicians, advisors and owners, and invoices | Saved with the device-local workspace, under the same optional passphrase encryption; never sent anywhere; demo orders stay in tab memory | Until fleet data is deleted; demo orders reset on reload |
 | Activity log of your own changes (imports, garage records, procedures, settings) | Saved with the device-local workspace, under the same optional passphrase encryption; never sent anywhere; the demo keeps none | Until fleet data is deleted; the newest 400 entries are kept |
 | Drivers and trips you import (names, licence numbers and expiry, telematics summaries) | Read and processed in your browser; saved in IndexedDB like your other sheets | Until you delete your fleet data |

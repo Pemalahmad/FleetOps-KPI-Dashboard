@@ -1,34 +1,42 @@
 "use client";
 import Link from "next/link";
 import { useState } from "react";
-import { DAMAGE_EVIDENCE, DAMAGE_QUALITY_CHECKS, damageStageBlockers, normaliseDamageCase, updateDamageCase, type DamageCase, type DamageDrivability, type DamageEvidenceId, type DamageNotificationKind, type DamageQualityCheckId, type DamageSeverity, type GarageIncident, type GarageState } from "@/lib/garage";
+import { DAMAGE_EVIDENCE, DAMAGE_QUALITY_CHECKS, damageStageBlockers, normaliseDamageCase, requiredDamageNotifications, updateDamageCase, type DamageCase, type DamageDrivability, type DamageEvidenceId, type DamageNotificationKind, type DamageQualityCheckId, type DamageSeverity, type GarageIncident, type GarageState } from "@/lib/garage";
 
 type Change = (update: (state: GarageState) => GarageState) => Promise<boolean>;
-const localValue = (value: string) => value ? new Date(new Date(value).getTime() - new Date(value).getTimezoneOffset() * 60_000).toISOString().slice(0, 16) : "";
+const localValue = (value: string) => Number.isFinite(Date.parse(value)) ? new Date(new Date(value).getTime() - new Date(value).getTimezoneOffset() * 60_000).toISOString().slice(0, 16) : "";
 const iso = (value: string) => value && Number.isFinite(new Date(value).getTime()) ? new Date(value).toISOString() : "";
 const title = (value: string) => value.replaceAll("_", " ").replace(/^./, (letter) => letter.toUpperCase());
 
-export function DamageCasePanel({ incident, change, saving, onSaved }: { incident: GarageIncident; change: Change; saving: boolean; onSaved: (message: string) => void }) {
+export function DamageCasePanel({ incident, now, change, saving, onSaved }: { incident: GarageIncident; now: number; change: Change; saving: boolean; onSaved: (message: string) => void }) {
   const [draft, setDraft] = useState<DamageCase>(() => normaliseDamageCase(incident));
+  const [owner, setOwner] = useState(incident.owner);
+  const required = requiredDamageNotifications(draft.facts, draft.severity);
+  const effective = normaliseDamageCase({ ...incident, damage: draft });
   const blockers = damageStageBlockers({ ...incident, damage: draft });
   const save = async () => {
     const at = new Date().toISOString();
-    if (await change((state) => updateDamageCase(state, incident.id, draft, incident.owner, at))) onSaved("Damage case and audit history saved.");
+    if (await change((state) => updateDamageCase(state, incident.id, draft, incident.owner, at, owner))) onSaved("Damage case and audit history saved.");
   };
   const notification = (kind: DamageNotificationKind, patch: Partial<DamageCase["notifications"][DamageNotificationKind]>) => setDraft({ ...draft, notifications: { ...draft.notifications, [kind]: { ...draft.notifications[kind], ...patch } } });
   const evidence = (id: DamageEvidenceId, patch: Partial<DamageCase["evidence"][DamageEvidenceId]>) => setDraft({ ...draft, evidence: { ...draft.evidence, [id]: { ...draft.evidence[id], ...patch } } });
   return <section className="garage-damage-panel mt-6" aria-labelledby="damage-case-title">
     <div className="flex flex-wrap items-start justify-between gap-3"><div><h3 id="damage-case-title" className="text-base font-semibold">Damage escalation case</h3><p className="mt-1 text-xs text-muted">Recorded controls only. No notification is sent by FleetOps.</p></div><Link href="/doctrine/#SOP-09" className="text-xs font-medium text-accent-ink hover:underline">Open SOP-09</Link></div>
     <fieldset className="garage-damage-section"><legend>Classification and hold</legend>
+      <label className="garage-field mb-3">Recovery owner<input className="ops-input" value={owner} maxLength={120} onChange={(e) => setOwner(e.target.value)} /></label>
       <div className="grid gap-3 sm:grid-cols-2"><label className="garage-field">Severity<select className="ops-input" value={draft.severity} onChange={(e) => setDraft({ ...draft, severity: e.target.value as DamageSeverity })}><option value="unclassified">Unclassified</option><option value="minor">Minor</option><option value="moderate">Moderate</option><option value="major">Major</option><option value="critical">Critical</option></select></label>
       <label className="garage-field">Drivability<select className="ops-input" value={draft.drivability} onChange={(e) => setDraft({ ...draft, drivability: e.target.value as DamageDrivability })}><option value="unknown">Unknown</option><option value="drivable">Drivable under controls</option><option value="not_drivable">Not drivable</option></select></label></div>
       <div className="garage-fact-grid">{([ ["injuryOrEmergency", "Injury / emergency"], ["thirdParty", "Third party"], ["publicProperty", "Public property"], ["towRequired", "Tow required"] ] as const).map(([id, label]) => <label key={id}><input type="checkbox" checked={draft.facts[id]} onChange={(e) => setDraft({ ...draft, facts: { ...draft.facts, [id]: e.target.checked } })} /> {label}</label>)}</div>
       <label className="garage-field">Active operational hold reason<input className="ops-input" value={draft.hold.reason} onChange={(e) => setDraft({ ...draft, hold: { ...draft.hold, reason: e.target.value } })} /></label>
     </fieldset>
     <fieldset className="garage-damage-section"><legend>Escalation decisions and deadlines</legend><p className="mb-3 text-xs text-muted">Deadlines come from the applicable authority, insurer, contract or company policy. FleetOps does not create a universal GCC deadline.</p>
-      <div className="space-y-4">{(["police", "insurer", "management"] as DamageNotificationKind[]).map((kind) => { const note = draft.notifications[kind]; return <div key={kind} className="garage-damage-card"><b className="text-sm">{title(kind)}</b><div className="mt-2 grid gap-3 sm:grid-cols-3">
-        <label className="garage-field">Decision<select className="ops-input" value={note.status === "not_required" ? "not_required" : note.required ? "required" : "not_required"} disabled={kind === "management"} onChange={(e) => notification(kind, e.target.value === "required" ? { required: true, status: "pending", waiverReason: "" } : { required: false, status: "not_required", dueAt: "" })}><option value="required">Required</option><option value="not_required">Not required</option></select></label>
-        {note.required ? <><label className="garage-field">Deadline<input className="ops-input" type="datetime-local" value={localValue(note.dueAt)} onChange={(e) => notification(kind, { dueAt: iso(e.target.value) })} /></label><label className="garage-field">Status<select className="ops-input" value={note.status} onChange={(e) => notification(kind, { status: e.target.value as "pending" | "sent" })}><option value="pending">Pending</option><option value="sent">Sent / completed</option></select></label></> : <label className="garage-field sm:col-span-2">Rationale<input className="ops-input" value={note.waiverReason} onChange={(e) => notification(kind, { waiverReason: e.target.value })} /></label>}
+      <div className="space-y-4">{(["police", "insurer", "management"] as DamageNotificationKind[]).map((kind) => {
+        const note = effective.notifications[kind];
+        const timing = note.status === "sent" && Date.parse(note.sentAt) > Date.parse(note.dueAt) ? "Completed late" :
+          note.required && note.status !== "sent" && Date.parse(note.dueAt) <= now ? "Overdue" : "";
+        return <div key={kind} className="garage-damage-card"><b className="text-sm">{title(kind)}</b>{timing && <span className="ms-2 text-xs font-semibold text-warn">{timing}</span>}<div className="mt-2 grid gap-3 sm:grid-cols-3">
+        <label className="garage-field">Decision<select className="ops-input" value={note.required ? "required" : note.status === "not_required" ? "not_required" : ""} disabled={required[kind]} onChange={(e) => notification(kind, e.target.value === "required" ? { required: true, status: "pending", waiverReason: "" } : { required: false, status: e.target.value === "not_required" ? "not_required" : "pending", dueAt: "", deadlineSource: "", sentAt: "", notifiedBy: "", reference: "" })}><option value="">Decision pending</option><option value="required">Required</option><option value="not_required">Not required</option></select></label>
+        {note.required ? <><label className="garage-field">Deadline<input className="ops-input" type="datetime-local" value={localValue(note.dueAt)} onChange={(e) => notification(kind, { required: true, dueAt: iso(e.target.value) })} /></label><label className="garage-field">Status<select className="ops-input" value={note.status} onChange={(e) => notification(kind, { required: true, status: e.target.value as "pending" | "sent" })}><option value="pending">Pending</option><option value="sent">Sent / completed</option></select></label><label className="garage-field sm:col-span-3">{title(kind)} deadline source<input className="ops-input" value={note.deadlineSource ?? ""} onChange={(e) => notification(kind, { deadlineSource: e.target.value })} placeholder="Authority instruction, claim reference or policy" /></label></> : note.status === "not_required" && <label className="garage-field sm:col-span-2">Rationale<input className="ops-input" value={note.waiverReason} onChange={(e) => notification(kind, { waiverReason: e.target.value })} /></label>}
         {note.status === "sent" && <><label className="garage-field">Completed at<input className="ops-input" type="datetime-local" value={localValue(note.sentAt)} onChange={(e) => notification(kind, { sentAt: iso(e.target.value) })} /></label><label className="garage-field">Recorded by<input className="ops-input" value={note.notifiedBy} onChange={(e) => notification(kind, { notifiedBy: e.target.value })} /></label><label className="garage-field">Reference<input className="ops-input" value={note.reference} onChange={(e) => notification(kind, { reference: e.target.value })} /></label></>}
       </div></div>; })}</div>
     </fieldset>

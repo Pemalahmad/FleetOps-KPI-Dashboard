@@ -345,6 +345,9 @@ def test_visual_garage_uses_raw_repair_milestones_and_all_open_jobs(demo_build):
     con = _db(demo_build)
     rows = con.execute(sql).fetchdf()
     assert len(rows) == 6500
+    assert rows["gcc_assessed"].all()
+    assert set(rows["gcc_country_code"].dropna()) == {"AE", "SA", "QA", "KW", "BH", "OM"}
+    assert rows.loc[rows["gcc_country_code"] == "SA", "operating_card_required"].any()
     assert rows['ready_jobs'].sum() == 12
     assert (rows['collision_jobs'] > 0).any()
     assert (rows['unfinished_jobs'] + rows['ready_jobs'] == rows['open_jobs']).all()

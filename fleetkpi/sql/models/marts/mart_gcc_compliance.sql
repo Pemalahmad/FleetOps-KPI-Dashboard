@@ -3,9 +3,13 @@
 WITH docs AS (
     SELECT vehicle_id,
            max(expiry_date) FILTER (WHERE doc_type = 'Inspection') AS inspection_expiry,
-           max(expiry_date) FILTER (WHERE doc_type = 'Permit')     AS permit_expiry,
-           count(*) FILTER (WHERE doc_type = 'Permit')             AS permits
-    FROM stg_documents WHERE vehicle_id IS NOT NULL GROUP BY 1
+           max(expiry_date) FILTER (WHERE is_tga_card)             AS permit_expiry,
+           count(*) FILTER (WHERE is_tga_card)                     AS permits
+    FROM (
+        SELECT *, doc_type = 'Permit' AND regexp_matches(lower(coalesce(issuer, '')),
+            '(^|[^a-z])(tga|naql)([^a-z]|$)|transport general authority|general transport authority|الهيئة العامة للنقل|منصة نقل') AS is_tga_card
+        FROM stg_documents
+    ) d WHERE vehicle_id IS NOT NULL GROUP BY 1
 ),
 v AS (
     SELECT v.vehicle_id, v.plate_number, v.make, v.model, v.region, v.use_case,
@@ -26,6 +30,8 @@ v AS (
 ),
 rules AS (
     SELECT *,
+           CASE WHEN country_code = 'SA' THEN CASE WHEN nullif(trim(use_case), '') IS NULL THEN NULL ELSE is_goods END
+                ELSE FALSE END AS operating_card_required,
            CASE WHEN is_public AND inspection_from_years_public IS NOT NULL THEN inspection_from_years_public
                 WHEN (is_public OR is_goods) AND inspection_from_years_commercial IS NOT NULL THEN inspection_from_years_commercial
                 ELSE inspection_from_years END AS inspection_from
@@ -51,14 +57,15 @@ checks AS (
              WHEN age_years IS NULL THEN 'Inspection may be needed for renewal: add the model year or in-service date'
              WHEN age_years >= inspection_from AND (inspection_expiry IS NULL OR inspection_expiry < snapshot_date())
                   THEN 'Book the technical inspection before renewing (vehicle is ' || CAST(floor(age_years) AS INTEGER) || ' years old)' END AS insp_msg,
-        CASE WHEN country_code = 'SA' AND is_goods AND permits = 0 THEN 3
-             WHEN country_code = 'SA' AND is_goods THEN CASE doc_status(permit_expiry) WHEN 'Expired' THEN 4 WHEN 'Expiring' THEN 2 WHEN 'Unknown' THEN 3 ELSE 0 END
+        CASE WHEN operating_card_required IS NULL OR (operating_card_required AND permits = 0) THEN 3
+             WHEN operating_card_required THEN CASE doc_status(permit_expiry) WHEN 'Expired' THEN 4 WHEN 'Expiring' THEN 2 WHEN 'Unknown' THEN 3 ELSE 0 END
              ELSE 0 END AS card_level,
-        CASE WHEN country_code = 'SA' AND is_goods AND permits = 0 THEN 'TGA operating card not on file (goods-transport vehicle)'
+        CASE WHEN operating_card_required IS NULL THEN 'Record the vehicle use to determine whether a TGA operating card is required'
+             WHEN country_code = 'SA' AND is_goods AND permits = 0 THEN 'TGA operating card not on file (goods-transport vehicle)'
              WHEN country_code = 'SA' AND is_goods AND doc_status(permit_expiry) = 'Expired' THEN 'TGA operating card expired'
              WHEN country_code = 'SA' AND is_goods AND doc_status(permit_expiry) = 'Expiring' THEN 'TGA operating card expires ' || strftime(permit_expiry, '%Y-%m-%d')
              WHEN country_code = 'SA' AND is_goods AND doc_status(permit_expiry) = 'Unknown' THEN 'TGA operating card: no expiry date on file' END AS card_msg,
-        CASE WHEN insurance_covers_registration AND insurance_expiry < registration_expiry THEN 2 ELSE 0 END AS cover_level,
+        CASE WHEN insurance_covers_registration AND insurance_expiry < registration_expiry THEN 4 ELSE 0 END AS cover_level,
         CASE WHEN insurance_covers_registration AND insurance_expiry < registration_expiry
              THEN 'Insurance ends before the registration; it must cover the whole registration period' END AS cover_msg
     FROM rules
@@ -66,6 +73,9 @@ checks AS (
 SELECT vehicle_id, plate_number, make, model, region, use_case, country_code, country, registration_name, authority,
        registration_expiry, insurance_expiry, inspection_expiry, permit_expiry,
        CAST(floor(age_years) AS INTEGER) AS age_years, inspection_from AS inspection_from_years,
+       operating_card_required, insurance_covers_registration,
+       CASE WHEN confidence <> 'low' AND inspection_from IS NOT NULL
+            THEN registration_expiry - CAST(cfg_num('expiring_window_days') AS INTEGER) END AS inspection_review_from,
        CASE WHEN country_code IS NULL THEN 'Not covered'
             ELSE CASE greatest(reg_level, ins_level, insp_level, card_level, cover_level)
                  WHEN 4 THEN 'Non-compliant' WHEN 3 THEN 'Evidence missing' WHEN 2 THEN 'Expiring' ELSE 'Compliant' END END AS status,

@@ -36,7 +36,7 @@ SELECT * FROM (VALUES
     ('BH', 'Bahrain', 'bahrain|manama|muharraq|riffa',
      'Registration certificate', 'Ministry of Interior, General Directorate of Traffic',
      NULL, NULL, NULL,
-     'Inspection when the Traffic app says the vehicle needs one; the age threshold is not officially published.',
+     'The renewal portal distinguishes private and other registration classes for inspection. Check the registration class and inspection requirement in the Traffic portal.',
      TRUE,
      'Annual renewal. Late fee of 500 fils a day from the day after expiry (capped at 20 BHD a year). Civil-liability insurance must cover the whole registration period.',
      NULL,

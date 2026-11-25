@@ -59,3 +59,12 @@ export function safeCell(v: unknown): string | number | boolean | null {
 export const safeRows = (rows: Record<string, unknown>[]) =>
   rows.map((r) => Object.fromEntries(Object.entries(r).map(([k, v]) => [k, safeCell(v)])));
 
+export function downloadText(name: string, content: string) {
+  const url = URL.createObjectURL(new Blob([content], { type: "text/plain;charset=utf-8" }));
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = name;
+  link.click();
+  window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+

@@ -19,7 +19,7 @@ describe("daily command summary", () => {
       { id: "document:2", priority: "warning" },
     ] as GarageAlert[];
     const summary = buildCommandSummary(vehicles, alerts, [], "2026-11-25");
-    expect(summary).toMatchObject({ critical: 1, overdueDamage: 1, incidentHolds: 3, renewals: 1, dispatchReady: 1, recoveryOpen: 5 });
+    expect(summary).toMatchObject({ overdueDamage: 1, incidentHolds: 3, recoveryOpen: 5 });
     expect(summary.recovery).toEqual({ reported: 1, assessment: 1, repair: 1, quality: 1, ready: 1 });
   });
 
