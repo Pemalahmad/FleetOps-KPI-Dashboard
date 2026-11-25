@@ -27,7 +27,9 @@ self.addEventListener("install", (event) => {
     const m = await manifest();
     const cache = await caches.open(cacheName("core", m.version));
     // add in small batches so one slow file does not fail the whole install
-    for (let i = 0; i < m.core.length; i += 20) await cache.addAll(m.core.slice(i, i + 20));
+    for (let i = 0; i < m.core.length; i += 20) {
+      await cache.addAll(m.core.slice(i, i + 20).map((path) => new Request(new URL(path, self.location.origin), { cache: "reload" })));
+    }
     await self.skipWaiting();
   })());
 });
@@ -36,7 +38,8 @@ self.addEventListener("activate", (event) => {
   event.waitUntil((async () => {
     const m = await manifest().catch(() => null);
     if (m) {
-      const keep = new Set([cacheName("core", m.version), cacheName("ocr", m.version), RUNTIME]);
+      // Runtime assets can include unversioned files from the previous release.
+      const keep = new Set([cacheName("core", m.version), cacheName("ocr", m.version)]);
       for (const k of await caches.keys()) if (k.startsWith(PREFIX) && !keep.has(k)) await caches.delete(k);
     }
     await self.clients.claim();
@@ -64,7 +67,7 @@ self.addEventListener("fetch", (event) => {
     // pages: fresh when online, cached when not
     event.respondWith((async () => {
       try {
-        const res = await fetch(req);
+        const res = await fetch(req, { cache: "no-cache" });
         const c = await caches.open(RUNTIME);
         if (res.ok) await c.put(req, res.clone());
         return res;

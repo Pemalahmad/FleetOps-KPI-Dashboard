@@ -7,6 +7,7 @@
  * manifest it was recorded against. If the SQL changes, the preview is ignored until it is regenerated.
  */
 import type { PipelineLog, Row } from "./engine";
+import { engineManifestUrl } from "./engine-manifest-url.mjs";
 
 export interface DemoPreview {
   /** SHA-256 of public/engine/manifest.json when the preview was recorded. */
@@ -26,7 +27,10 @@ export async function sha256Hex(text: string): Promise<string> {
 
 export async function loadDemoPreview(base: string): Promise<DemoPreview | null> {
   try {
-    const [p, m] = await Promise.all([fetch(`${base}/demo-preview.json`), fetch(`${base}/engine/manifest.json`)]);
+    const [p, m] = await Promise.all([
+      fetch(`${base}/demo-preview.json`),
+      fetch(engineManifestUrl(base, process.env.NEXT_PUBLIC_FLEETOPS_ENGINE_REVISION)),
+    ]);
     if (!p.ok || !m.ok) return null;
     const [saved, manifest] = await Promise.all([p.json() as Promise<SavedPreview>, m.text()]);
     if (!saved || typeof saved.queries !== "object" || saved.fingerprint !== (await sha256Hex(manifest))) return null;

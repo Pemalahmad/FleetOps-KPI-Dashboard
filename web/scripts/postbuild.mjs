@@ -7,6 +7,7 @@ import { createHash } from "node:crypto";
 import { readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
+import { engineManifestUrl } from "../src/lib/engine-manifest-url.mjs";
 
 const out = join(fileURLToPath(new URL("..", import.meta.url)), "out");
 const base = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
@@ -22,7 +23,10 @@ function walk(dir) {
 const files = walk(out).map((p) => relative(out, p).split("\\").join("/"))
   // demo-preview.json only bridges a first visit while the engine downloads; offline copies already have the engine.
   .filter((f) => !f.endsWith(".map") && f !== "precache.json" && f !== "sw.js" && f !== "demo-preview.json");
-const url = (f) => `${base}/${f.endsWith("index.html") ? f.slice(0, -"index.html".length) : f}`;
+const enginePath = "engine/manifest.json";
+const engineRevision = files.includes(enginePath) ? createHash("sha256").update(readFileSync(join(out, enginePath))).digest("hex") : "";
+const url = (f) => f === enginePath ? engineManifestUrl(base, engineRevision) :
+  `${base}/${f.endsWith("index.html") ? f.slice(0, -"index.html".length) : f}`;
 const isOcr = (f) => f.startsWith("tesseract/") || f.startsWith("pdf/");
 const core = files.filter((f) => !isOcr(f)).map(url);
 const ocr = files.filter(isOcr).map(url);
@@ -69,6 +73,9 @@ for (const f of pages) {
 console.log(`CSP: written into ${pages.length} pages, ${hashed} inline scripts pinned by SHA-256, no 'unsafe-inline' for scripts`);
 
 writeFileSync(join(out, "precache.json"), JSON.stringify({ version, core, ocr }));
+// Browsers install a service-worker update only when its script bytes change.
+const workerPath = join(out, "sw.js");
+writeFileSync(workerPath, `// FleetOps build ${version}\n${readFileSync(workerPath, "utf8")}`);
 writeFileSync(join(out, "manifest.webmanifest"), JSON.stringify({
   name: "FleetOps KPI", short_name: "FleetOps",
   description: "Fleet register, documents and operations KPIs. Runs in your browser; your data stays on your device.",
