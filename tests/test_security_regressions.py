@@ -68,6 +68,7 @@ def _gcc(vehicles, documents=()):
         con.execute("CREATE MACRO snapshot_date() AS DATE '2026-11-23'")
         con.execute("""CREATE MACRO doc_status(e) AS CASE WHEN e IS NULL THEN 'Unknown' WHEN e < snapshot_date() THEN 'Expired'
                        WHEN e <= snapshot_date() + INTERVAL 30 DAY THEN 'Expiring' ELSE 'Valid' END""")
+        con.execute("CREATE MACRO cfg_num(k) AS 30")
         con.execute("CREATE TABLE stg_vehicles (vehicle_id VARCHAR, plate_number VARCHAR, make VARCHAR, model VARCHAR, region VARCHAR,"
                     " use_case VARCHAR, model_year INTEGER, age_months INTEGER, is_active BOOLEAN,"
                     " registration_expiry DATE, insurance_expiry DATE)")
@@ -75,9 +76,9 @@ def _gcc(vehicles, documents=()):
         con.execute("CREATE TABLE stg_vehicles2 AS SELECT *, doc_status(registration_expiry) AS registration_status,"
                     " doc_status(insurance_expiry) AS insurance_status FROM stg_vehicles")
         con.execute("DROP TABLE stg_vehicles; ALTER TABLE stg_vehicles2 RENAME TO stg_vehicles")
-        con.execute("CREATE TABLE stg_documents (vehicle_id VARCHAR, doc_type VARCHAR, expiry_date DATE)")
+        con.execute("CREATE TABLE stg_documents (vehicle_id VARCHAR, doc_type VARCHAR, expiry_date DATE, issuer VARCHAR)")
         if documents:
-            con.executemany("INSERT INTO stg_documents VALUES (?, ?, ?)", documents)
+            con.executemany("INSERT INTO stg_documents VALUES (?, ?, ?, ?)", documents)
         con.execute("CREATE TABLE stg_gcc_rules AS " + (root / "staging/stg_gcc_rules.sql").read_text())
         rows = con.execute("SELECT vehicle_id, status, reasons FROM (" + (root / "marts/mart_gcc_compliance.sql").read_text() + ")").fetchall()
         return {r[0]: (r[1], r[2]) for r in rows}
@@ -100,15 +101,23 @@ def test_gcc_rules_per_country():
     assert got["expired-ksa"] == ("Non-compliant", "Istimara (vehicle registration) expired 2026-11-01")
     assert got["truck-ksa"][0] == "Evidence missing" and "TGA operating card" in got["truck-ksa"][1]
     assert got["old-qatar"][0] == "Expiring" and "Book the technical inspection" in got["old-qatar"][1]
-    assert got["bh-cover"][0] == "Expiring" and "must cover the whole registration period" in got["bh-cover"][1]
+    assert got["bh-cover"][0] == "Non-compliant" and "must cover the whole registration period" in got["bh-cover"][1]
     assert got["tr"] == ("Not covered", "No GCC rule pack for this region")
     assert got["no-date"][0] == "Evidence missing"
 
 
-def test_gcc_inspection_on_file_and_unknown_bahrain_threshold():
+def test_gcc_inspection_on_file_and_unmodelled_bahrain_registration_class():
     soon, far = "2026-12-10", "2027-09-01"
     got = _gcc([("qa", "Doha", "Pool car", 2020, 70, soon, far), ("bh", "Manama", "Pool car", 2015, 130, soon, far)],
-               documents=[("qa", "Inspection", "2027-01-15")])
+               documents=[("qa", "Inspection", "2027-01-15", "FAHES")])
     assert "inspection" not in got["qa"][1].lower()        # a current inspection on file clears the reminder
-    assert "inspection" not in got["bh"][1].lower()        # Bahrain publishes no age threshold: FleetOps does not invent one
+    assert "inspection" not in got["bh"][1].lower()        # Bahrain's registration class is not captured in this contract
     assert got["qa"][0] == got["bh"][0] == "Expiring"       # the registration itself is still due soon
+
+
+def test_only_identified_tga_card_can_clear_saudi_goods_check():
+    far = "2027-09-01"
+    fleet = [("truck", "Riyadh", "Delivery", 2025, 6, far, far)]
+    got = _gcc(fleet, documents=[("truck", "Permit", far, "Parking department")])
+    assert got["truck"][0] == "Evidence missing"
+    assert _gcc(fleet, documents=[("truck", "Permit", far, "Naql")])["truck"][0] == "Compliant"

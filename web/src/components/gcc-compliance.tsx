@@ -30,7 +30,7 @@ export function GccCompliance() {
 
   return (
     <>
-      <SectionTitle sub={`Each vehicle checked against its country's published registration, insurance, inspection and operating-card rules (rules as of ${RULES_AS_OF}). FleetOps checks the records you hold; it does not certify a vehicle. Confirm with the authority before acting.`}>
+      <SectionTitle sub={`Country requirements checked against the report (rules reviewed ${RULES_AS_OF}). Garage rechecks applicable evidence on the date of handover. Confirm requirements with the authority before acting.`}>
         GCC compliance by country
       </SectionTitle>
       {!rows.data ? <Skeleton height={220} /> : countries.length === 0 ? (

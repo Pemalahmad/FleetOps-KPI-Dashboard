@@ -10,13 +10,16 @@ const row: GarageRow = {
   open_jobs: 0, unfinished_jobs: 0, collision_jobs: 0, ready_jobs: 0, work_order_id: "WO-1", job_type: "Repair",
   opened_at: "2026-11-01", key_in_at: "2026-11-01", ready_at: "2026-11-02", key_out_at: "2026-11-02",
   closed_at: "2026-11-02", back_in_service_at: "2026-11-02", repair_revision: "1:closed", pm_state: "OK", has_usage: true, usage_end: "2026-11-17", open_recalls: 0,
+  gcc_assessed: true, gcc_country_code: "AE", gcc_country: "United Arab Emirates", gcc_authority: "Dubai RTA",
+  gcc_source_url: "https://www.rta.ae/", gcc_confidence: "high", operating_card_required: false, permit_expiry: null,
+  insurance_covers_registration: false, inspection_review_from: "2027-01-30", inspection_expiry: null, inspection_from_years: 3, age_years: 2,
 };
 const signed = (revision: string) => ({ ...emptyReview(revision), owner: "Reviewer", checks: { walkaround: true, road_test: true, handover: true } });
 const at = "2026-11-18T10:00:00Z";
 const completeDamage = (): DamageCase => {
   const damage = createDamageCase(at, "Recovery lead");
   damage.severity = "moderate"; damage.drivability = "not_drivable"; damage.hold.reason = "Collision assessment";
-  for (const note of Object.values(damage.notifications)) Object.assign(note, { required: true, status: "sent", dueAt: "2026-11-18T11:00:00Z", sentAt: at, notifiedBy: "Recovery lead", reference: "REF-1" });
+  for (const note of Object.values(damage.notifications)) Object.assign(note, { required: true, status: "sent", dueAt: "2026-11-18T11:00:00Z", deadlineSource: "Test policy", sentAt: at, notifiedBy: "Recovery lead", reference: "REF-1" });
   for (const evidence of Object.values(damage.evidence)) Object.assign(evidence, { complete: true, reference: "DOC-1", recordedAt: at });
   damage.estimate = { supplier: "Repair Co", currency: "AED", amount: 2500, reference: "EST-1", receivedAt: at };
   damage.authorization = { status: "approved", approvedBy: "Fleet manager", decidedAt: at, reference: "AUTH-1", reason: "" };
@@ -28,7 +31,7 @@ const incident = { id: "INC-1", vehicleId: row.vehicle_id, summary: "Rear bumper
 describe("garage source gates and lanes", () => {
   it("recognises a fully assessed vehicle and records only raw milestones", () => {
     const v = deriveVehicle(row, emptyGarage(), context);
-    expect(v.lane).toBe("road"); expect(v.readiness).toBe(5);
+    expect(v.lane).toBe("road"); expect(v.readiness).toBe(6);
     expect(deriveVehicle({ ...row, ready_at: null }, emptyGarage(), context).milestones[2].at).toBeNull();
   });
   it("keeps expired registration and unknown insurance out of the road-ready zone", () => {
@@ -57,6 +60,26 @@ describe("garage source gates and lanes", () => {
     expect(v.gates[0].status).toBe("blocked");
     expect(releaseBlockers(v.row, emptyGarage(), old, signed(v.revision)).some((s) => s.startsWith("Registration current"))).toBe(true);
     expect(releaseBlockers(row, emptyGarage(), old, signed(deriveVehicle(row, emptyGarage(), old).revision)).some((s) => s.startsWith("Current source records"))).toBe(true);
+  });
+  it("requires the applicable operating card, insurance term and renewal inspection before handover", () => {
+    const blockersFor = (vehicle: GarageRow) => releaseBlockers(vehicle, emptyGarage(), context, signed(deriveVehicle(vehicle, emptyGarage(), context).revision));
+    const saudi = { ...row, gcc_country_code: "SA", operating_card_required: true };
+    expect(blockersFor(saudi)).toContain("TGA operating card: Add the TGA or Naql operating card and its expiry.");
+    expect(blockersFor({ ...saudi, permit_expiry: "2026-11-17" })[0]).toContain("expired");
+    expect(blockersFor({ ...saudi, permit_expiry: context.today })).toEqual([]);
+    expect(blockersFor({ ...saudi, operating_card_required: null })[0]).toContain("applicability");
+    expect(blockersFor({ ...row, gcc_country_code: "BH", insurance_covers_registration: true, insurance_expiry: "2027-01-01" })[0]).toContain("Insurance covers the registration");
+    const renewal = { ...row, age_years: 4, inspection_review_from: context.today };
+    expect(blockersFor(renewal)[0]).toContain("Inspection evidence for renewal");
+    expect(blockersFor({ ...renewal, inspection_expiry: context.today })).toEqual([]);
+    expect(blockersFor({ ...row, gcc_assessed: false })[0]).toContain("Country rules");
+  });
+  it("rechecks a GCC expiry after midnight and invalidates the review when evidence changes", () => {
+    const truck = { ...row, gcc_country_code: "SA", operating_card_required: true, permit_expiry: context.today };
+    const review = signed(deriveVehicle(truck, emptyGarage(), context).revision);
+    const state = recordHandover(emptyGarage(), truck, context, review, at);
+    expect(deriveVehicle(truck, state, { ...context, today: "2026-11-19" }).released).toBe(false);
+    expect(deriveVehicle({ ...truck, permit_expiry: "2027-01-01" }, { ...state, reviews: { [truck.vehicle_id]: review } }, context).review.checks.handover).toBe(false);
   });
 });
 describe("recorded recovery operations", () => {
@@ -106,6 +129,17 @@ describe("recorded recovery operations", () => {
     expect(reportAccident(state, incident, at)).toBe(state);
     expect(() => reportAccident(state, { ...incident, id: "INC-2" }, at)).toThrow("already has");
     expect(() => reportAccident(emptyGarage(), { ...incident, occurredAt: "2026-11-19T12:00:00Z" }, at)).toThrow("future");
+  });
+  it("rejects a release if previously signed-off damage evidence is removed at the ready stage", () => {
+    let state = reportAccident(emptyGarage(), incident, at);
+    for (let i = 0; i < 4; i++) state = advanceIncident(state, incident.id, at);
+    const damage = normaliseDamageCase(state.incidents[0]);
+    damage.evidence.scene_photos.complete = false;
+    state = updateDamageCase(state, incident.id, damage, "Recovery lead", at);
+    const review = signed(deriveVehicle(row, state, context).revision);
+    expect(() => recordHandover(state, row, context, review, at)).toThrow("scene photos");
+    expect(state.handovers).toHaveLength(0);
+    expect(state.incidents[0].damage?.hold.active).toBe(true);
   });
   it("resets manual checks when incidents or source work-order evidence changes", () => {
     const v = deriveVehicle(row, emptyGarage(), context), state = { ...emptyGarage(), reviews: { [row.vehicle_id]: { ...signed(v.revision), notes: "Prior repair evidence" } } };

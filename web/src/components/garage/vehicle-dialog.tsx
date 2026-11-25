@@ -7,18 +7,20 @@ import { CHECKS, LANES, RECOVERY_STAGES, advanceIncident, damageStageBlockers, l
   type GarageContext, type GarageReview, type GarageState, type GarageVehicle, type PaperworkStage } from "@/lib/garage";
 import { GarageCar } from "./car";
 import { DamageCasePanel } from "./damage-case-panel";
+import { downloadText } from "@/lib/exporters";
+import { releaseRecord } from "@/lib/garage-command";
 
 type Change = (update: (state: GarageState) => GarageState) => Promise<boolean>;
 const labelDate = (date: string | null) => date ? date.slice(0, 16).replace("T", " ") : "Not recorded";
-export function VehicleDialog({ vehicle, state, context, change, saving, error, onClose, onIncident }: {
-  vehicle: GarageVehicle; state: GarageState; context: GarageContext; change: Change; saving: boolean;
+export function VehicleDialog({ vehicle, state, context, now, change, saving, error, onClose, onIncident }: {
+  vehicle: GarageVehicle; state: GarageState; context: GarageContext; now: number; change: Change; saving: boolean;
   error: string | null; onClose: () => void; onIncident: () => void;
 }) {
   const [draft, setDraft] = useState<GarageReview>(() => vehicle.review);
   const [message, setMessage] = useState("");
   const r = vehicle.row, lane = LANES.find((l) => l.id === vehicle.lane)!;
-  const current = { ...context, today: localDate() };
-  const gates = sourceGates(r, current, true);
+  const current = { ...context, today: localDate(new Date(now)) };
+  const gates = sourceGates(r, current);
   const blockers = releaseBlockers(r, state, current, draft);
   const done = gates.filter((g) => g.status === "pass").length + CHECKS.filter((c) => draft.checks[c.id]).length;
   const total = gates.length + CHECKS.length;
@@ -36,8 +38,10 @@ export function VehicleDialog({ vehicle, state, context, change, saving, error, 
     if (await change((s) => advanceIncident(s, vehicle.incident!.id, at))) setMessage("Recovery stage updated.");
   };
   const handover = async () => {
-    const at = new Date().toISOString();
-    if (await change((s) => recordHandover(s, r, { ...current, today: localDate() }, draft, at))) setMessage(context.demo ? "Practice handover completed. This vehicle's recovery is recorded." : "Handover recorded with reviewer and timestamp.");
+    if (await change((s) => {
+      const time = new Date();
+      return recordHandover(s, r, { ...current, today: localDate(time) }, draft, time.toISOString());
+    })) setMessage(context.demo ? "Practice handover completed. This vehicle's recovery is recorded." : "Handover recorded with reviewer and timestamp.");
   };
   const handovers = state.handovers.filter((h) => h.vehicleId === r.vehicle_id).slice(0, 4);
   const oldReview = state.reviews[r.vehicle_id];
@@ -70,7 +74,12 @@ export function VehicleDialog({ vehicle, state, context, change, saving, error, 
         {recoveryIndex < 4 && <><button disabled={saving || stageBlockers.length > 0} aria-describedby={stageBlockers.length ? "damage-stage-blockers" : undefined} className="ops-button mt-3" onClick={() => void nextStage()}>Move to {RECOVERY_STAGES[recoveryIndex + 1].label.toLowerCase()}</button>{stageBlockers.length > 0 && <p id="damage-stage-blockers" className="mt-2 text-xs text-warn">Complete the damage case blockers below before advancing.</p>}</>}
       </section>}
 
-      {vehicle.incident && <DamageCasePanel key={vehicle.incident.updatedAt} incident={vehicle.incident} change={change} saving={saving} onSaved={setMessage} />}
+      {vehicle.incident && <DamageCasePanel key={vehicle.incident.updatedAt} incident={vehicle.incident} now={now} change={change} saving={saving} onSaved={setMessage} />}
+
+      {!vehicle.incident && r.collision_jobs > 0 && <div className="garage-safety-banner mt-5">
+        <Warning size={20} className="shrink-0 text-bad" /><p className="text-sm">An imported collision order is still open. Start a damage case to record the hold and assign recovery.</p>
+        <button className="ops-button shrink-0" disabled={saving} onClick={onIncident}>Start SOP-09 case</button>
+      </div>}
 
       {r.work_order_id && <section className="mt-6">
         <div className="flex flex-wrap items-center justify-between gap-2"><h3 className="text-base font-semibold">Repair milestones</h3><span className="text-xs text-muted">{r.work_order_id} · {r.job_type}</span></div>
@@ -101,9 +110,12 @@ export function VehicleDialog({ vehicle, state, context, change, saving, error, 
       </section>
 
       <section className="mt-6"><h3 className="text-base font-semibold">Source requirements</h3>
+        {r.gcc_assessed && !r.gcc_country_code && r.region?.trim() && <p className="mt-2 text-xs text-muted">Outside the GCC rule pack. Confirm any local requirements in the recorded review.</p>}
         <ul className="mt-2 divide-y divide-border">{gates.map((g) => <li key={g.id} className="flex items-start gap-3 py-3">
           <span className={g.status === "pass" ? "text-good" : g.status === "blocked" ? "text-bad" : "text-warn"}>{g.status === "pass" ? <CheckCircle weight="fill" size={20} /> : g.status === "blocked" ? <LockSimple size={20} /> : <Warning size={20} />}</span>
-          <div className="min-w-0 flex-1"><p className="text-sm font-medium">{g.label}<span className="ml-2 text-xs font-normal text-muted">{g.status === "pass" ? "Passed" : g.status === "blocked" ? "Blocked" : "Verify"}</span></p><p className="mt-0.5 text-xs text-muted">{g.detail}</p></div>
+          <div className="min-w-0 flex-1"><p className="text-sm font-medium">{g.label}<span className="ms-2 text-xs font-normal text-muted">{g.status === "pass" ? "Passed" : g.status === "blocked" ? "Blocked" : "Verify"}</span></p><p className="mt-0.5 text-xs text-muted">{g.detail}</p>
+            {g.rule && <p className="mt-1 text-xs text-muted"><a className="text-accent-ink underline" href={g.rule.source} target="_blank" rel="noopener noreferrer">{g.rule.authority}</a> · {g.rule.confidence} confidence · evidence checked {g.rule.checkedOn}</p>}
+          </div>
           {g.status !== "pass" && <Link href={g.href} className="shrink-0 text-xs font-medium text-accent-ink">Review</Link>}
         </li>)}</ul>
       </section>
@@ -133,6 +145,7 @@ export function VehicleDialog({ vehicle, state, context, change, saving, error, 
       </div>
       {handovers.length > 0 && <section className="mt-5 border-t border-border pt-4"><h3 className="text-sm font-semibold">Recent recorded handovers</h3>{handovers.map((h) => <div key={h.id} className="mt-3 rounded-lg border border-border p-3 text-xs text-muted">
         <p className="font-medium text-text">{h.reviewer} · {labelDate(h.at)}</p><p className="mt-1">Source {h.snapshot.slice(0, 10)} · release checks and source gates recorded</p>{h.review?.notes && <p className="mt-2 whitespace-pre-wrap">{h.review.notes}</p>}
+        <button className="ops-button mt-2" onClick={() => downloadText("fleetops-release-record.txt", releaseRecord(h, vehicleLabel(r), context.demo))}>Download release record</button>
       </div>)}</section>}
       {history.length > 0 && <details className="mt-5 border-t border-border pt-4"><summary className="cursor-pointer text-sm font-semibold">Previous review evidence ({history.length})</summary>
         {history.map((h, i) => <div key={i} className="mt-3 rounded-lg border border-border p-3 text-xs text-muted"><p className="font-medium text-text">{h.reason} · {labelDate(h.archivedAt || null)}</p>

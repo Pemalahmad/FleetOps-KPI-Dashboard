@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import type { ReactNode } from "react";
+import { useEffect, useRef, type ReactNode } from "react";
 import {
   BookOpenText, Car, ChartPieSlice, CircleNotch, FileArrowUp, Garage, Graph, IdentificationCard, Moon, ShieldCheck, Smiley, Sun,
   HardDrives, TreeStructure, WifiSlash, Wrench,
@@ -15,15 +15,8 @@ import { OfflineRegistration } from "./offline";
 import { UnlockBanner } from "./vault";
 
 const NAV = [
-  { group: "Fleet", items: [
-    { href: "/fleet/", label: "Fleet register", icon: Garage },
-    { href: "/drivers/", label: "Drivers & trips", icon: SteeringWheel },
-  { href: "/documents/", label: "Documents", icon: IdentificationCard },
-    { href: "/import/", label: "Import", icon: FileArrowUp },
-    { href: "/plan/", label: "Plan & offline", icon: WifiSlash },
-  ] },
   { group: "Operate", items: [
-    { href: "/", label: "My garage", icon: Garage },
+    { href: "/", label: "Daily command", icon: Garage },
     { href: "/overview/", label: "Analytics", icon: ChartPieSlice },
     { href: "/network/", label: "Metric network", icon: Graph },
     { href: "/dispatch/", label: "Dispatch lab", icon: Truck },
@@ -33,12 +26,40 @@ const NAV = [
     { href: "/ledger/", label: "Ledger & assets", icon: Car },
     { href: "/licence/", label: "Licence", icon: ShieldCheck },
   ] },
+  { group: "Fleet", items: [
+    { href: "/fleet/", label: "Fleet register", icon: Garage },
+    { href: "/drivers/", label: "Drivers & trips", icon: SteeringWheel },
+    { href: "/documents/", label: "Documents", icon: IdentificationCard },
+    { href: "/import/", label: "Import", icon: FileArrowUp },
+    { href: "/plan/", label: "Plan & offline", icon: WifiSlash },
+  ] },
   { group: "Govern", items: [
     { href: "/pipeline/", label: "Pipeline & your data", icon: TreeStructure },
     { href: "/system/", label: "System design", icon: HardDrives },
     { href: "/doctrine/", label: "Doctrine & SOPs", icon: BookOpenText },
   ] },
 ];
+
+const isActive = (href: string, path: string) => href === "/" ? path === "/" : path.startsWith(href);
+
+function MobileNav({ path }: { path: string }) {
+  const nav = useRef<HTMLElement>(null);
+  useEffect(() => {
+    const active = nav.current?.querySelector<HTMLElement>('[aria-current="page"]');
+    active?.scrollIntoView({ behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "nearest", inline: "center" });
+  }, [path]);
+  return (
+    <nav ref={nav} aria-label="Mobile navigation" className="mt-2 flex gap-1 overflow-x-auto lg:hidden">
+      {NAV.flatMap((group) => group.items).map(({ href, label }) => {
+        const active = isActive(href, path);
+        return <Link key={href} href={href} aria-current={active ? "page" : undefined}
+          className={`shrink-0 rounded-full px-3 py-1 text-[12.5px] ${active ? "bg-accent-soft font-medium text-accent-ink" : "text-muted"}`}>
+          {label}
+        </Link>;
+      })}
+    </nav>
+  );
+}
 
 function ThemeToggle() {
   const dark = useTheme();
@@ -119,9 +140,9 @@ export function Shell({ children }: { children: ReactNode }) {
             <div key={g.group}>
               <p className="mb-1.5 px-2 text-[12px] font-semibold text-faint">{g.group}</p>
               {g.items.map(({ href, label, icon: Icon }) => {
-                const active = href === "/" ? path === "/" : path.startsWith(href);
+                const active = isActive(href, path);
                 return (
-                  <Link key={href} href={href} aria-current={(href === "/" ? path === "/" : path.startsWith(href)) ? "page" : undefined}
+                  <Link key={href} href={href} aria-current={active ? "page" : undefined}
                     className={`mb-0.5 flex items-center gap-2.5 rounded-lg px-2 py-1.5 text-[13.5px] transition ${active ? "bg-accent-soft font-medium text-accent-ink" : "text-muted hover:bg-panel-2 hover:text-text"}`}>
                     <Icon size={17} weight={active ? "fill" : "regular"} />
                     {label}
@@ -142,14 +163,7 @@ export function Shell({ children }: { children: ReactNode }) {
             <Status />
             <ThemeToggle />
           </div>
-          <nav aria-label="Mobile navigation" className="mt-2 flex gap-1 overflow-x-auto lg:hidden">
-            {NAV.flatMap((g) => g.items).map(({ href, label }) => (
-              <Link key={href} href={href} aria-current={(href === "/" ? path === "/" : path.startsWith(href)) ? "page" : undefined}
-                className={`shrink-0 rounded-full px-3 py-1 text-[12.5px] ${(href === "/" ? path === "/" : path.startsWith(href)) ? "bg-accent-soft text-accent-ink" : "text-muted"}`}>
-                {label}
-              </Link>
-            ))}
-          </nav>
+          <MobileNav path={path} />
           <div className="mt-2.5"><Regions /></div>
         </div>
         <main id="main-content" tabIndex={-1} className="app-frame w-full px-4 py-8 md:px-8"><UnlockBanner /><LiveDriver /><div key={path} className="route-in">{children}</div></main>

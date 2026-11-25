@@ -2,7 +2,7 @@
 
 # FleetOps KPI
 
-**A local-first fleet operations cockpit, metric network, and tested analytics warehouse.**
+**Review vehicle holds, work the damage case, and record who cleared the vehicle for return to service.**
 
 [![CI](https://github.com/Pemalahmad/FleetOps-KPI-Dashboard/actions/workflows/ci.yml/badge.svg)](https://github.com/Pemalahmad/FleetOps-KPI-Dashboard/actions/workflows/ci.yml)
 [![CodeQL](https://github.com/Pemalahmad/FleetOps-KPI-Dashboard/actions/workflows/codeql.yml/badge.svg)](https://github.com/Pemalahmad/FleetOps-KPI-Dashboard/actions/workflows/codeql.yml)
@@ -10,7 +10,7 @@
 [![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/Pemalahmad/FleetOps-KPI-Dashboard/badge)](https://securityscorecards.dev/viewer/?uri=github.com/Pemalahmad/FleetOps-KPI-Dashboard)
 [![License](https://img.shields.io/badge/license-FSL--1.1--MIT-6366f1)](LICENSE.md)
 
-[Open dashboard](https://pemalahmad.github.io/FleetOps-KPI-Dashboard/) · [Try your data](#try-it-in-30-seconds) · [Run locally](#run-locally) · [Read the docs](#documentation)
+[Open dashboard](https://pemalahmad.github.io/FleetOps-KPI-Dashboard/) · [Practice a damage case](#practice-the-release-workflow) · [Run locally](#run-locally) · [Read the docs](#documentation)
 
 <img src="docs/social-preview.png" alt="FleetOps KPI visual garage with operational work zones" width="100%" />
 
@@ -19,6 +19,15 @@
 FleetOps KPI turns Excel, CSV, Parquet, JSON, and document scans into a device-local fleet workspace. The browser runs the same DuckDB pipeline used by the Python CLI: **70 SQL models, 47 validation rules, and 29 data tests**. There is no application server and fleet data is not uploaded.
 
 The included Sahra Mobility demo is synthetic: 6,500 vehicles, 15 workshops, 7 markets, and 18 months of operational history. It is large enough to exercise the full pipeline without presenting fictional results as industry benchmarks.
+
+## Practice the release workflow
+
+1. Use [the sample fleet import](#try-it-in-30-seconds) to see how missing or expired evidence lands in the vehicle queue. Return to the built-in demo to practice a full release.
+2. In **Daily command**, select **Practice a damage case**. Record the initial hold on a synthetic UAE vehicle, then assign or update the case owner and work the SOP-09 steps.
+3. Record the deadline sources, evidence, approval, repairs and quality review. Use the **Overdue damage** or stage filter to find the case again.
+4. Complete the current source checks and the named reviewer’s handover. Download the release record or the shift handoff directly from the browser.
+
+The first pilot is designed for a Dubai rental depot with 20–100 vehicles, using its existing fleet and workshop exports. [Four-week pilot and scorecard](docs/CASE_STUDY.md#four-week-depot-pilot)
 
 ![Analytics dashboard: the north star and KPI tiles with dot labels, thin tabular numbers and status words, then the full KPI wall](docs/web-overview.gif)
 
@@ -32,6 +41,7 @@ The included Sahra Mobility demo is synthetic: 6,500 vehicles, 15 workshops, 7 m
 
 | Operational question | FleetOps answer |
 |---|---|
+| **What needs action today?** | The Daily command board puts critical holds, overdue damage deadlines, renewals, dispatch review, handovers, owners and direct vehicle actions in one operating surface. |
 | **Can this vehicle legally and safely drive?** | Registration, insurance, licence class, preventive maintenance, recalls, repair gates, and source freshness resolve to one next action. |
 | **Where is each car in the workshop, and what was done to it?** | The Service board tracks every repair order from Scheduled to Delivered with a technician on each stage: check-in condition, tyres and odometer in and out, issue, diagnosis and work done, warranty, customer-pay, recall or retrofit lines with claim numbers, estimated vs logged hours, parts, comments, invoices and each vehicle's full service history ([how it works](docs/SERVICE_BOARD.md)). |
 | **Which dispatch rule should we run?** | The Dispatch lab runs the same simulated day through shortest-distance, highest-margin, least-deadhead and earliest-deadline dispatch for vans, buses or trucks, and compares on-time delivery, empty-mile ratio, driver utilisation, turnaround and margin with 95% confidence intervals ([model](docs/DISPATCH_LAB.md)). |
@@ -43,7 +53,7 @@ The included Sahra Mobility demo is synthetic: 6,500 vehicles, 15 workshops, 7 m
 
 ## Product tour
 
-| Visual garage | Metric network |
+| Daily command and visual garage | Metric network |
 |---|---|
 | ![A 3D fleet garage with road-ready, repair, renewal, accident, dispatch, and safety zones](docs/web-garage.gif) | ![An interactive graph connecting fleet KPIs through identities and measured drivers](docs/web-metric-network.gif) |
 | Vehicles appear in their registered colour and body style. Open one to inspect its documents, repair milestones, release gates, owner, and target return date. | Select any metric to inspect its definition, live identity, change decomposition, regression evidence, and downstream impact. |

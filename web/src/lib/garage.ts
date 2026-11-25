@@ -12,7 +12,7 @@ export type DamageQualityCheckId = "scope_complete" | "safety_defects_clear" | "
 export interface DamageEvidence { required: boolean; complete: boolean; reference: string; recordedAt: string }
 export interface DamageNotification {
   required: boolean; status: DamageNotificationStatus; dueAt: string; sentAt: string;
-  notifiedBy: string; reference: string; waiverReason: string;
+  notifiedBy: string; reference: string; waiverReason: string; deadlineSource?: string;
 }
 export interface DamageHistoryEntry { id: string; at: string; actor: string; action: string; detail: string }
 export interface DamageCase {
@@ -41,6 +41,7 @@ export interface GarageHandover {
   id: string; vehicleId: string; revision: string; reviewer: string; at: string;
   incidentIds: string[]; snapshot: string;
   review: GarageReview; source: ReadinessGate[];
+  countryScope?: string;
   damageSnapshot?: DamageCase;
 }
 export interface GarageState {
@@ -60,11 +61,16 @@ export interface GarageRow {
   opened_at: string | null; key_in_at: string | null; ready_at: string | null;
   key_out_at: string | null; closed_at: string | null; back_in_service_at: string | null;
   repair_revision: string | null; pm_state: string | null; has_usage: boolean; usage_end: string | null; open_recalls: number;
+  gcc_assessed: boolean; gcc_country_code: string | null; gcc_country: string | null;
+  gcc_authority: string | null; gcc_source_url: string | null; gcc_confidence: string | null;
+  operating_card_required: boolean | null; permit_expiry: string | null;
+  insurance_covers_registration: boolean | null; inspection_review_from: string | null;
+  inspection_expiry: string | null; inspection_from_years: number | null; age_years: number | null;
 }
 export interface GarageContext {
   snapshot: string; today: string; demo: boolean; operations: boolean; recallCoverage: boolean;
 }
-export interface ReadinessGate { id: string; label: string; status: "pass" | "blocked" | "unknown"; detail: string; href: string }
+export interface ReadinessGate { id: string; label: string; status: "pass" | "blocked" | "unknown"; detail: string; href: string; rule?: { authority: string; source: string; confidence: string; checkedOn: string } }
 export interface GarageVehicle {
   row: GarageRow; lane: GarageLane; gates: ReadinessGate[]; incident: GarageIncident | null;
   review: GarageReview; revision: string; sourceClear: boolean; released: boolean; handoverRecorded: boolean; readiness: number;
@@ -113,8 +119,7 @@ export function normaliseDamageCase(incident: Pick<GarageIncident, "damage" | "c
     repair: { ...base.repair, ...saved.repair }, quality: { ...base.quality, ...saved.quality, checks: { ...base.quality.checks, ...saved.quality?.checks } },
     history: Array.isArray(saved.history) ? saved.history.map((entry) => ({ ...entry })) : base.history,
   };
-  const policeRequired = merged.facts.injuryOrEmergency || merged.facts.thirdParty || merged.facts.publicProperty || merged.facts.towRequired || merged.severity === "major" || merged.severity === "critical";
-  const insurerRequired = merged.facts.thirdParty || merged.facts.publicProperty || merged.facts.towRequired || ["moderate", "major", "critical"].includes(merged.severity);
+  const { police: policeRequired, insurer: insurerRequired } = requiredDamageNotifications(merged.facts, merged.severity);
   if (policeRequired) { merged.notifications.police.required = true; if (merged.notifications.police.status === "not_required") merged.notifications.police.status = "pending"; }
   if (insurerRequired) { merged.notifications.insurer.required = true; if (merged.notifications.insurer.status === "not_required") merged.notifications.insurer.status = "pending"; }
   merged.notifications.management.required = true;
@@ -124,6 +129,15 @@ export function normaliseDamageCase(incident: Pick<GarageIncident, "damage" | "c
   if (merged.notifications.insurer.required) requiredEvidence.push("insurer_reference");
   for (const id of DAMAGE_EVIDENCE) merged.evidence[id].required = requiredEvidence.includes(id);
   return merged;
+}
+
+export function requiredDamageNotifications(facts: DamageCase["facts"], severity: DamageSeverity) {
+  const thirdPartyRisk = facts.thirdParty || facts.publicProperty || facts.towRequired;
+  return {
+    police: facts.injuryOrEmergency || thirdPartyRisk || severity === "major" || severity === "critical",
+    insurer: thirdPartyRisk || severity === "moderate" || severity === "major" || severity === "critical",
+    management: true,
+  };
 }
 
 function commonDamageBlockers(damage: DamageCase): string[] {
@@ -139,6 +153,7 @@ function commonDamageBlockers(damage: DamageCase): string[] {
     const note = damage.notifications[kind];
     if (note.required && note.status === "not_required") blockers.push(`${kind} notification cannot be waived for the recorded facts.`);
     if (note.required && !validTimestamp(note.dueAt)) blockers.push(`Record the ${kind} notification deadline.`);
+    if (note.required && !note.deadlineSource?.trim()) blockers.push(`Record the source of the ${kind} deadline.`);
     if (!note.required && note.status !== "not_required") blockers.push(`Record why ${kind} notification is not required.`);
     if (note.status === "not_required" && !note.waiverReason.trim()) blockers.push(`Record the rationale for no ${kind} notification.`);
     if (note.status === "sent" && (!validTimestamp(note.sentAt) || !note.notifiedBy.trim() || !note.reference.trim())) blockers.push(`Record when, by whom and under which reference the ${kind} notification was made.`);
@@ -158,6 +173,8 @@ function damageRecordErrors(damage: DamageCase): string[] {
   if (damage.estimate.amount !== null && (!Number.isFinite(damage.estimate.amount) || damage.estimate.amount < 0)) errors.push("Estimate amount must be a non-negative finite number.");
   if (damage.estimate.amount !== null && !/^[A-Z]{3}$/.test(damage.estimate.currency)) errors.push("Estimate currency must be a three-letter code.");
   if (damage.authorization.status === "approved" && (damage.estimate.amount === null || !damage.estimate.reference.trim() || !validTimestamp(damage.estimate.receivedAt))) errors.push("An approval requires a complete received estimate.");
+  if (damage.authorization.status === "approved" && validTimestamp(damage.authorization.decidedAt) && Date.parse(damage.authorization.decidedAt) < Date.parse(damage.estimate.receivedAt)) errors.push("Approval cannot precede the estimate.");
+  if (validTimestamp(damage.repair.startedAt) && (!validTimestamp(damage.authorization.decidedAt) || damage.authorization.status !== "approved" || Date.parse(damage.repair.startedAt) < Date.parse(damage.authorization.decidedAt))) errors.push("Repair start requires an earlier approval.");
   if (damage.repair.completedAt && (!validTimestamp(damage.repair.startedAt) || Date.parse(damage.repair.completedAt) < Date.parse(damage.repair.startedAt))) errors.push("Repair completion cannot precede repair start.");
   if (damage.quality.reviewedAt && (!validTimestamp(damage.repair.completedAt) || Date.parse(damage.quality.reviewedAt) < Date.parse(damage.repair.completedAt))) errors.push("Quality review cannot precede repair completion.");
   for (const kind of DAMAGE_NOTIFICATIONS) {
@@ -169,8 +186,8 @@ function damageRecordErrors(damage: DamageCase): string[] {
 }
 export function damageStageBlockers(incident: GarageIncident): string[] {
   const damage = normaliseDamageCase(incident), blockers = commonDamageBlockers(damage);
-  if (incident.stage === "reported") return blockers;
-  if (incident.stage === "assessment") {
+  const stage = RECOVERY_STAGES.findIndex((item) => item.id === incident.stage);
+  if (stage >= 1) {
     for (const id of DAMAGE_EVIDENCE.filter((id) => damage.evidence[id].required && !["repair_completion", "quality_record"].includes(id))) {
       const evidence = damage.evidence[id];
       if (!evidence.complete || !evidence.reference.trim() || !validTimestamp(evidence.recordedAt)) blockers.push(`Complete required evidence: ${id.replaceAll("_", " ")}.`);
@@ -179,13 +196,13 @@ export function damageStageBlockers(incident: GarageIncident): string[] {
     if (!damage.estimate.supplier.trim() || damage.estimate.amount === null || !damage.estimate.reference.trim() || !validTimestamp(damage.estimate.receivedAt)) blockers.push("Record the supplier, amount, reference and receipt time for the estimate.");
     if (damage.authorization.status !== "approved" || !damage.authorization.approvedBy.trim() || !validTimestamp(damage.authorization.decidedAt) || !damage.authorization.reference.trim()) blockers.push("Record approved repair authorization with approver, time and reference.");
   }
-  if (incident.stage === "repair") {
+  if (stage >= 2) {
     if (!damage.repair.supplier.trim() || !damage.repair.workOrder.trim() || !validTimestamp(damage.repair.startedAt) || !validTimestamp(damage.repair.completedAt) || !damage.repair.invoiceReference.trim() || !damage.repair.completionReference.trim()) blockers.push("Record the repair supplier, work order, dates, invoice and completion evidence.");
     if (validTimestamp(damage.repair.startedAt) && validTimestamp(damage.repair.completedAt) && Date.parse(damage.repair.completedAt) < Date.parse(damage.repair.startedAt)) blockers.push("Repair completion cannot precede repair start.");
     const evidence = damage.evidence.repair_completion;
     if (!evidence.complete || !evidence.reference.trim() || !validTimestamp(evidence.recordedAt)) blockers.push("Record repair completion evidence.");
   }
-  if (incident.stage === "quality") {
+  if (stage >= 3) {
     if (!validTimestamp(damage.repair.completedAt)) blockers.push("Repair must be completed before quality review.");
     if (!damage.quality.reviewer.trim() || !validTimestamp(damage.quality.reviewedAt) || !damage.quality.reference.trim()) blockers.push("Record the quality reviewer, review time and reference.");
     for (const id of DAMAGE_QUALITY_CHECKS) if (!damage.quality.checks[id]) blockers.push(`Complete quality check: ${id.replaceAll("_", " ")}.`);
@@ -195,7 +212,8 @@ export function damageStageBlockers(incident: GarageIncident): string[] {
   return [...new Set(blockers)];
 }
 export function damageHandoverBlockers(incident: GarageIncident, at: string): string[] {
-  const damage = normaliseDamageCase(incident), blockers = damageStageBlockers({ ...incident, stage: "quality" });
+  const damage = normaliseDamageCase(incident);
+  const blockers = [...damageStageBlockers({ ...incident, stage: "quality" }), ...damageRecordErrors(damage)];
   if (incident.stage !== "ready") blockers.push("Accident recovery must reach Ready for review.");
   for (const kind of DAMAGE_NOTIFICATIONS) {
     const note = damage.notifications[kind];
@@ -231,6 +249,9 @@ export function sourceRevision(row: GarageRow, context: GarageContext, incident:
     row.registration_expiry, row.insurance_expiry, row.repair_revision, row.open_jobs, row.unfinished_jobs,
     row.work_order_id, row.opened_at, row.key_in_at, row.ready_at, row.key_out_at, row.closed_at,
     row.back_in_service_at, row.pm_state, row.has_usage, row.usage_end, row.open_recalls,
+    row.region, row.gcc_assessed, row.gcc_country_code, row.gcc_authority, row.gcc_source_url, row.gcc_confidence,
+    row.operating_card_required, row.permit_expiry, row.insurance_covers_registration,
+    row.inspection_review_from, row.inspection_expiry, row.inspection_from_years, row.age_years,
     incident ? [incident.id, incident.stage, normaliseDamageCase(incident)] : null]);
 }
 export function emptyReview(revision: string): GarageReview {
@@ -238,17 +259,56 @@ export function emptyReview(revision: string): GarageReview {
     checks: { walkaround: false, road_test: false, handover: false },
     paperwork: { registration: "not_started", insurance: "not_started" } };
 }
-export function sourceGates(row: GarageRow, context: GarageContext, current = false): ReadinessGate[] {
-  // Owner fleets: a document that expired after the report was built is expired now, so check dates against today
-  // (or the report date, if that is later). The demo keeps its report date so the practice fleet stays stable.
+
+export function countryReleaseGates(row: GarageRow, date: string): ReadinessGate[] {
+  const rule = row.gcc_authority && row.gcc_source_url ? {
+    authority: row.gcc_authority, source: row.gcc_source_url,
+    confidence: row.gcc_confidence ?? "unknown", checkedOn: date,
+  } : undefined;
+  const gate = (id: string, label: string, status: ReadinessGate["status"], detail: string): ReadinessGate =>
+    ({ id, label, status, detail, href: "/licence/", rule });
+  if (!row.gcc_assessed || !row.region?.trim()) {
+    return [gate("gcc-scope", "Country rules", "unknown", "Record the vehicle region and refresh the country evidence.")];
+  }
+  // A region outside the documented GCC packs continues through the general release checks.
+  if (!row.gcc_country_code) return [];
+  const gates: ReadinessGate[] = [];
+  if (row.operating_card_required === null) {
+    gates.push(gate("gcc-card", "Operating card applicability", "unknown", "Record the vehicle use to determine whether a TGA operating card is required."));
+  } else if (row.operating_card_required) {
+    const status = documentCurrent(row.permit_expiry, date);
+    gates.push(gate("gcc-card", "TGA operating card", status === true ? "pass" : status === false ? "blocked" : "unknown",
+      status === null ? "Add the TGA or Naql operating card and its expiry." : `Card ${status ? "valid through" : "expired on"} ${row.permit_expiry?.slice(0, 10)}.`));
+  }
+  if (row.insurance_covers_registration) {
+    const registration = documentCurrent(row.registration_expiry, date);
+    const insurance = documentCurrent(row.insurance_expiry, date);
+    const covers = registration === null || insurance === null ? null : row.insurance_expiry!.slice(0, 10) >= row.registration_expiry!.slice(0, 10);
+    gates.push(gate("gcc-cover", "Insurance covers the registration period", covers === true ? "pass" : covers === false ? "blocked" : "unknown",
+      covers === true ? "Policy covers the full registration period." : covers === false ? "Record a policy that covers the registration through its expiry." : "Record both the policy and registration expiry dates."));
+  }
+  if (row.inspection_review_from && row.inspection_review_from.slice(0, 10) <= date && row.inspection_from_years !== null) {
+    if (row.age_years === null && row.inspection_from_years > 0) {
+      gates.push(gate("gcc-inspection", "Inspection applicability at renewal", "unknown", "Add the model year or in-service date to determine whether renewal requires inspection."));
+    } else if ((row.age_years ?? 0) >= row.inspection_from_years) {
+      const status = documentCurrent(row.inspection_expiry, date);
+      gates.push(gate("gcc-inspection", "Inspection evidence for renewal", status ? "pass" : "unknown",
+        status ? `Inspection evidence valid through ${row.inspection_expiry?.slice(0, 10)}.` : "This vehicle is in the renewal review window. Add current inspection evidence before FleetOps records a release."));
+    }
+  }
+  return gates;
+}
+
+export function sourceGates(row: GarageRow, context: GarageContext): ReadinessGate[] {
+  // Demo practice keeps its report date. An owner fleet always uses the operator's current date.
   const snapshotDate = context.snapshot.slice(0, 10);
-  const date = context.demo ? snapshotDate : current || context.today > snapshotDate ? context.today : snapshotDate;
+  const date = context.demo ? snapshotDate : context.today;
   const usageGap = row.usage_end ? (Date.parse(context.snapshot.slice(0, 10) + "T00:00:00Z") - Date.parse(row.usage_end.slice(0, 10) + "T00:00:00Z")) / 864e5 : Infinity;
   const usageCurrent = row.has_usage && Number.isFinite(usageGap) && usageGap >= 0 && usageGap <= 1;
   const document = (id: string, title: string, expiry: string | null): ReadinessGate => {
     const valid = documentCurrent(expiry, date);
     return { id, label: title, status: valid === null ? "unknown" : valid ? "pass" : "blocked",
-      detail: expiry ? "Expires " + expiry.slice(0, 10) + (current && !context.demo ? " · checked against today" : "") : "Expiry date is not recorded", href: "/documents/" };
+      detail: expiry ? "Expires " + expiry.slice(0, 10) + " · checked " + date : "Expiry date is not recorded", href: "/documents/" };
   };
   const gates: ReadinessGate[] = [
     document("registration", "Registration current", row.registration_expiry),
@@ -260,8 +320,9 @@ export function sourceGates(row: GarageRow, context: GarageContext, current = fa
       detail: !usageCurrent || !context.operations ? "Usage / service evidence needs verification; vehicle usage covers " + (row.usage_end?.slice(0, 10) ?? "no recorded period") : row.pm_state ?? "Maintenance schedule is not assessed", href: "/licence/" },
     { id: "recalls", label: "Recall clearance", status: !context.recallCoverage ? "unknown" : row.open_recalls > 0 ? "blocked" : "pass",
       detail: !context.recallCoverage ? "Affected-vehicle / campaign records are not loaded" : row.open_recalls ? String(row.open_recalls) + " outstanding campaign(s)" : "No outstanding campaigns in loaded evidence", href: "/licence/" },
+    ...countryReleaseGates(row, date),
   ];
-  if (current && !context.demo) {
+  if (!context.demo) {
     const snapshot = context.snapshot.slice(0, 10);
     const age = (Date.parse(context.today + "T00:00:00Z") - Date.parse(snapshot + "T00:00:00Z")) / 864e5;
     gates.push({ id: "freshness", label: "Current source records", status: Number.isFinite(age) && age >= 0 && age <= 1 ? "pass" : "unknown",
@@ -277,8 +338,8 @@ export function deriveVehicle(row: GarageRow, state: GarageState, context: Garag
   const sourceClear = gates.every((g) => g.status === "pass");
   const handoverRecorded = state.handovers.some((h) => h.vehicleId === row.vehicle_id && h.revision === revision);
   const documentBlock = gates.slice(0, 2).some((g) => g.status !== "pass");
-  // A recorded handover is history; the vehicle is released only while its documents are still current.
-  const released = handoverRecorded && !documentBlock;
+  // A recorded handover stays in history when current evidence no longer supports release.
+  const released = handoverRecorded && sourceClear;
   const recovery = incident?.stage;
   let lane: GarageLane;
   if (recovery === "reported" || recovery === "assessment" || (!incident && row.collision_jobs > 0 && row.unfinished_jobs > 0)) lane = "incident";
@@ -310,21 +371,24 @@ export function reportAccident(state: GarageState, input: Omit<GarageIncident, "
   if (errors.length) throw new Error(errors[0]);
   return { ...state, reviews, reviewHistory, incidents: [draft, ...state.incidents] };
 }
-export function updateDamageCase(state: GarageState, incidentId: string, next: DamageCase, actor: string, at: string): GarageState {
+export function updateDamageCase(state: GarageState, incidentId: string, next: DamageCase, actor: string, at: string, recoveryOwner?: string): GarageState {
   const incident = state.incidents.find((item) => item.id === incidentId && !item.resolvedAt);
   if (!incident) throw new Error("The incident is no longer open.");
   if (!validTimestamp(at) || !actor.trim()) throw new Error("Record a valid update time and responsible person.");
+  const owner = recoveryOwner?.trim() ?? incident.owner;
+  if (!owner) throw new Error("Name the recovery owner.");
   const damage = normaliseDamageCase({ ...incident, damage: next });
   const validation = damageRecordErrors(damage);
   if (validation.length) throw new Error(validation[0]);
   const prior = normaliseDamageCase(incident);
   if (prior.hold.releasedAt && (damage.hold.active || damage.hold.releasedAt !== prior.hold.releasedAt)) throw new Error("A released damage hold is immutable after handover.");
-  const history = [...prior.history, { id: `update:${at}:${prior.history.length}`, at, actor: actor.trim(), action: "Damage case updated", detail: `Recorded during ${incident.stage} stage.` }];
+  const history = [...prior.history, { id: `update:${at}:${prior.history.length}`, at, actor: actor.trim(), action: "Damage case updated",
+    detail: owner === incident.owner ? `Recorded during ${incident.stage} stage.` : `Recovery owner changed from ${incident.owner} to ${owner}.` }];
   damage.history = history;
   const reviews = { ...state.reviews }; delete reviews[incident.vehicleId];
   const previous = state.reviews[incident.vehicleId];
   const reviewHistory = previous ? [{ vehicleId: incident.vehicleId, review: previous, archivedAt: at, reason: "Damage case evidence changed" }, ...(state.reviewHistory ?? [])] : state.reviewHistory;
-  return { ...state, reviews, reviewHistory, incidents: state.incidents.map((item) => item.id === incidentId ? { ...item, damage, updatedAt: at } : item) };
+  return { ...state, reviews, reviewHistory, incidents: state.incidents.map((item) => item.id === incidentId ? { ...item, owner, damage, updatedAt: at } : item) };
 }
 export function advanceIncident(state: GarageState, incidentId: string, at: string): GarageState {
   const incident = state.incidents.find((i) => i.id === incidentId && !i.resolvedAt);
@@ -340,7 +404,7 @@ export function advanceIncident(state: GarageState, incidentId: string, at: stri
 }
 export function releaseBlockers(row: GarageRow, state: GarageState, context: GarageContext, review: GarageReview): string[] {
   const v = deriveVehicle(row, state, context);
-  const reasons = sourceGates(row, context, true).filter((g) => g.status !== "pass").map((g) => g.label + ": " + g.detail);
+  const reasons = v.gates.filter((g) => g.status !== "pass").map((g) => g.label + ": " + g.detail);
   if (review.revision !== v.revision) reasons.push("Evidence changed. Review the new source records and repeat the release checks.");
   if (v.incident) reasons.push(...damageHandoverBlockers(v.incident, new Date().toISOString()));
   if (!review.owner.trim()) reasons.push("Name the person reviewing this handover.");
@@ -369,8 +433,9 @@ export function recordHandover(state: GarageState, row: GarageRow, context: Gara
   });
   const result = { ...reviewed, incidents, reviews: { ...reviewed.reviews, [row.vehicle_id]: { ...review, updatedAt: at } },
     handovers: [{ id, vehicleId: row.vehicle_id, revision: review.revision, reviewer: review.owner.trim(), at, incidentIds, snapshot: context.snapshot,
+      countryScope: row.gcc_country ?? "Outside the GCC rule pack",
       review: { ...review, checks: { ...review.checks }, paperwork: { ...review.paperwork } },
-      source: sourceGates(row, context, true).map((g) => ({ ...g })), damageSnapshot }, ...state.handovers] };
+      source: sourceGates(row, context), damageSnapshot }, ...state.handovers] };
   // The resolved incident no longer participates in the vehicle revision. Keep the successful review linked to that state too.
   const nextRevision = sourceRevision(row, context, null);
   return { ...result, reviews: { ...result.reviews, [row.vehicle_id]: { ...review, revision: nextRevision, updatedAt: at } },
@@ -390,7 +455,7 @@ export function assertGarageGeneration(expected: number, current: number) {
 export interface GarageAlert {
   id: string; vehicleId: string; title: string; detail: string; priority: "critical" | "warning" | "ready";
 }
-export function buildAlerts(vehicles: GarageVehicle[]): GarageAlert[] {
+export function buildAlerts(vehicles: GarageVehicle[], now = Date.now()): GarageAlert[] {
   const alerts: GarageAlert[] = [];
   for (const v of vehicles) {
     const r = v.row, label = vehicleLabel(r);
@@ -399,17 +464,20 @@ export function buildAlerts(vehicles: GarageVehicle[]): GarageAlert[] {
       alerts.push({ id: "incident:" + v.incident.id, vehicleId: r.vehicle_id, title: label + " · accident reported", detail: v.incident.summary, priority: "critical" });
       for (const kind of DAMAGE_NOTIFICATIONS) {
         const note = damage.notifications[kind];
-        if (note.required && note.status !== "sent" && validTimestamp(note.dueAt) && Date.parse(note.dueAt) < Date.now()) alerts.push({ id: `damage-overdue:${v.incident.id}:${kind}`, vehicleId: r.vehicle_id, title: `${label} · ${kind} notification overdue`, detail: "Escalate the recorded deadline. No message is sent by this app.", priority: "critical" });
+        if (note.required && note.status !== "sent" && validTimestamp(note.dueAt) && Date.parse(note.dueAt) <= now) alerts.push({ id: `damage-overdue:${v.incident.id}:${kind}`, vehicleId: r.vehicle_id, title: `${label} · ${kind} notification overdue`, detail: "Escalate the recorded deadline. No message is sent by this app.", priority: "critical" });
       }
     }
     else if (r.collision_jobs > 0) alerts.push({ id: "collision:" + r.vehicle_id + ":" + r.repair_revision, vehicleId: r.vehicle_id, title: label + " · collision job open", detail: "Imported work-order evidence; confirm the recovery owner.", priority: "critical" });
+    for (const gate of v.gates.filter((item) => item.id.startsWith("gcc-") && item.status !== "pass")) {
+      alerts.push({ id: `gcc:${gate.id}:${r.vehicle_id}`, vehicleId: r.vehicle_id, title: `${label} · ${gate.label}`, detail: gate.detail, priority: gate.status === "blocked" ? "critical" : "warning" });
+    }
     for (const kind of ["registration", "insurance"] as const) {
       const gate = v.gates.find((g) => g.id === kind)!;
       if (gate.status === "blocked") alerts.push({ id: kind + ":" + r.vehicle_id + ":" + r[kind + "_expiry" as keyof GarageRow], vehicleId: r.vehicle_id, title: label + " · " + kind + " expired", detail: "Keep this vehicle held until renewed evidence is recorded.", priority: "critical" });
       else if (gate.status === "unknown") alerts.push({ id: "unknown:" + kind + ":" + r.vehicle_id, vehicleId: r.vehicle_id, title: label + " · verify " + kind, detail: "An expiry date is missing. Verify source documents before dispatch.", priority: "warning" });
       else if (r[kind + "_status" as keyof GarageRow] === "Expiring") alerts.push({ id: "due:" + kind + ":" + r.vehicle_id + ":" + r[kind + "_expiry" as keyof GarageRow], vehicleId: r.vehicle_id, title: label + " · " + kind + " renewal due", detail: "Start the renewal before expiry.", priority: "warning" });
     }
-    if (v.lane === "dispatch") alerts.push({ id: "ready:" + r.vehicle_id + ":" + v.revision, vehicleId: r.vehicle_id, title: label + " · dispatch review", detail: "Repair milestones or recovery stage are ready for the next check.", priority: "ready" });
+    if (v.lane === "dispatch" && v.sourceClear) alerts.push({ id: "ready:" + r.vehicle_id + ":" + v.revision, vehicleId: r.vehicle_id, title: label + " · dispatch review", detail: "Source checks passed. Complete the recorded release review.", priority: "ready" });
     if (r.pm_state === "Overdue") alerts.push({ id: "pm:" + r.vehicle_id + ":" + r.repair_revision, vehicleId: r.vehicle_id, title: label + " · service overdue", detail: "Book maintenance and refresh the completed work order.", priority: "warning" });
   }
   const rank = { critical: 0, ready: 1, warning: 2 };

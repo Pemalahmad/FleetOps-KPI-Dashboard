@@ -3,23 +3,23 @@
 import Link from "next/link";
 import * as Dialog from "@radix-ui/react-dialog";
 import { useEffect, useMemo, useState } from "react";
-import { Bell, Car, ChartPieSlice, CheckCircle, Flag, MagnifyingGlass, ShieldCheck, Trophy, Warning, Wrench, X } from "@phosphor-icons/react";
+import { Bell, ChartPieSlice, CheckCircle, Flag, MagnifyingGlass, ShieldCheck, Trophy, Warning, X } from "@phosphor-icons/react";
 import { useEngine, useSql } from "../engine-provider";
-import { AsOf, Card, Label, Skeleton } from "../ui";
-import { Glare, HeaderDots, Pull, Sparks } from "../bits/fleetops-bits";
+import { AsOf, Card, Skeleton } from "../ui";
 import { buildAlerts, deriveVehicle, LANES, localDate, vehicleLabel, type GarageAlert, type GarageContext, type GarageLane, type GarageRow, type GarageVehicle } from "@/lib/garage";
 import { GARAGE_SQL } from "@/lib/garage-query";
 import { GarageCar } from "./car";
 
-/** Today's local date, refreshed just after midnight so an open garage re-checks document expiry on its own. */
-function useToday() {
-  const [today, setToday] = useState(localDate);
+/** Refresh active deadlines, including after a backgrounded tab is reopened. */
+function useGarageClock() {
+  const [now, setNow] = useState(Date.now);
   useEffect(() => {
-    const now = new Date(), next = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 0, 0, 5);
-    const timer = window.setTimeout(() => setToday(localDate()), next.getTime() - now.getTime());
-    return () => window.clearTimeout(timer);
-  }, [today]);
-  return today;
+    const refresh = () => setNow(Date.now());
+    const timer = window.setInterval(refresh, 30_000);
+    window.addEventListener("focus", refresh);
+    return () => { window.clearInterval(timer); window.removeEventListener("focus", refresh); };
+  }, []);
+  return now;
 }
 import { Garage3D } from "./garage-3d";
 import { useCarStyles } from "./use-car-styles";
@@ -28,7 +28,7 @@ import { VehicleDialog } from "./vehicle-dialog";
 import { useGarageOperations } from "./use-garage";
 import { LivePanel } from "../live";
 import Button from "../arc/button";
-import { PageArt } from "../art";
+import { DailyCommandBoard } from "./command-board";
 
 const EMPTY: GarageRow[] = [];
 const NUM = new Intl.NumberFormat("en");
@@ -41,7 +41,8 @@ export function GaragePage() {
   const [selectedId, setSelectedId] = useState<string | null>(null), [incidentFor, setIncidentFor] = useState<string | null | undefined>(undefined);
   const [notifications, setNotifications] = useState(false), [search, setSearch] = useState(""), [filter, setFilter] = useState<GarageLane | "all">("all"), [page, setPage] = useState(0);
   const [alertKind, setAlertKind] = useState<GarageAlert["priority"] | "all">("all"), [alertPage, setAlertPage] = useState(0);
-  const today = useToday();
+  const now = useGarageClock();
+  const today = localDate(new Date(now));
   const context = useMemo<GarageContext>(() => ({
     snapshot: engine.log?.snapshot ?? "", today, demo: engine.dataset === "demo", operations: engine.log?.mode === "operations",
     recallCoverage: ["recalls", "recall_vehicles", "work_orders"].every((table) => engine.log?.loads.some((l) => l.table === table && l.source)),
@@ -49,7 +50,7 @@ export function GaragePage() {
   const all = useMemo(() => (source.data ?? EMPTY).map((row) => deriveVehicle(row, operations.state, context)), [source.data, operations.state, context]);
   const vehicles = useMemo(() => all.filter((v) => !engine.region || v.row.region === engine.region), [all, engine.region]);
   const groups = useMemo(() => Object.fromEntries(LANES.map((l) => [l.id, vehicles.filter((v) => v.lane === l.id)])) as Record<GarageLane, GarageVehicle[]>, [vehicles]);
-  const alerts = useMemo(() => buildAlerts(vehicles), [vehicles]);
+  const alerts = useMemo(() => buildAlerts(vehicles, now), [vehicles, now]);
   const acknowledged = useMemo(() => new Set(operations.state.acknowledged), [operations.state.acknowledged]);
   const unread = alerts.filter((a) => !acknowledged.has(a.id)).length;
   const critical = alerts.filter((a) => a.priority === "critical").length;
@@ -68,6 +69,7 @@ export function GaragePage() {
   const visible = filtered.slice(safePage * PAGE_SIZE, (safePage + 1) * PAGE_SIZE);
   const selected = selectedId ? vehicles.find((v) => v.row.vehicle_id === selectedId) : null;
   const ready = (engine.status === "ready" || !!engine.preview) && source.data !== null;   // saved demo results count while the engine loads
+  const practice = context.demo && engine.status === "ready" ? groups.road.find((v) => v.row.gcc_country_code === "AE") : undefined;
   const ids = useMemo(() => new Set(vehicles.map((v) => v.row.vehicle_id)), [vehicles]);
   const handovers = operations.state.handovers.filter((h) => ids.has(h.vehicleId));
   const doneToday = handovers.filter((h) => localDate(new Date(h.at)) === today).length;
@@ -89,16 +91,13 @@ export function GaragePage() {
   const markRead = async (items: GarageAlert[]) => {
     await operations.change((s) => ({ ...s, acknowledged: [...new Set([...s.acknowledged, ...items.map((a) => a.id)])] }));
   };
-  return <Sparks>
-    <header className="garage-header page-head page-head-dots">
-      <HeaderDots />
-      <PageArt kind="garage" />
-      <div><Label>Fleet garage</Label><h1 className="mt-3 text-[30px] font-semibold leading-[1.1] tracking-[-0.03em] md:text-[38px]">Every vehicle <span className="text-faint">has a next move.</span></h1><AsOf />
-        <p className="mt-2 max-w-2xl text-[14px] leading-relaxed text-muted">See what is holding each car back, work through its checks, and bring it back to the road.</p></div>
+  return <>
+    <header className="garage-header">
+      <div><h1 className="text-[30px] font-semibold leading-[1.1] tracking-[-0.03em] md:text-[38px]">Daily command</h1><AsOf /></div>
       <div className="flex flex-wrap gap-2">
         <Link className="ops-button" href="/overview/"><ChartPieSlice size={17} /> Analytics</Link>
         <button className="ops-button" disabled={!ready} onClick={() => setNotifications(true)}><Bell size={17} /> Alerts <span className="garage-count">{unread > 99 ? "99+" : unread}</span></button>
-        <Pull><Button className="arc-accent" size="lg" disabled={!ready || !vehicles.length} onClick={() => setIncidentFor(null)}><Warning size={17} /> Report accident</Button></Pull>
+        <Button className="arc-accent" size="lg" disabled={!ready || !vehicles.length} onClick={() => setIncidentFor(null)}><Warning size={17} /> Report accident</Button>
       </div>
     </header>
     <div className="garage-context">
@@ -108,24 +107,17 @@ export function GaragePage() {
     {source.error && <Card className="mb-5"><p role="alert" className="text-sm text-bad">Garage evidence could not be loaded: {source.error}</p><Link href="/pipeline/" className="ops-button mt-3">Review pipeline</Link></Card>}
     {operations.error && incidentFor === undefined && !selected && <p role="alert" className="mb-4 text-sm text-bad">{operations.error}</p>}
     {!ready ? engine.status === "failed" ? <Card><p role="alert" className="text-sm text-bad">The fleet report did not finish. Review the failed stage and rebuild before using the garage.</p><Link className="ops-button mt-3" href="/pipeline/">Review pipeline</Link></Card> : <Skeleton height={620} /> : <>
-      {critical > 0 && <div className="garage-safety-banner">
-        <Warning size={23} weight="fill" className="shrink-0 text-bad" /><div><p className="text-sm font-semibold">{NUM.format(critical)} safety or compliance alert{critical === 1 ? "" : "s"}</p>
-          <p className="mt-0.5 text-xs text-muted">Incident holds and expired documents stay visible until the underlying evidence changes.</p></div>
-        <button onClick={() => setNotifications(true)} className="ops-button ml-auto shrink-0">Review alerts</button>
-      </div>}
-      <section className="garage-pulse" aria-label="Garage summary">
-        <Pulse icon={<Car size={20} />} value={groups.road.length} label="Road ready in report" color="var(--good)" onClick={() => filterQueue("road")} />
-        <Pulse icon={<Wrench size={20} />} value={groups.repair.length} label="In repair bays" color="var(--accent)" onClick={() => filterQueue("repair")} />
-        <Pulse icon={<ShieldCheck size={20} />} value={groups.renewal.length} label="At the renewal desk" color="var(--warn)" onClick={() => filterQueue("renewal")} />
-        <Pulse icon={<CheckCircle size={20} />} value={groups.dispatch.length} label="For dispatch review" color="var(--good)" onClick={() => filterQueue("dispatch")} />
-      </section>
+      <DailyCommandBoard vehicles={vehicles} alerts={alerts} handovers={handovers} today={today} now={now}
+        region={engine.region ?? "All regions"} snapshot={context.snapshot} demo={context.demo}
+        onOpenVehicle={openVehicle} onFilter={filterQueue} onOpenAlerts={() => setNotifications(true)}
+        onPractice={practice ? () => setIncidentFor(practice.row.vehicle_id) : undefined} />
 
       <LivePanel focus="garage" />
       <section className="garage-floor" aria-label="Visual fleet garage">
         <div className="garage-floor-header"><div><h2 className="text-lg font-semibold">The garage floor</h2><p className="mt-1 text-xs text-muted">{NUM.format(vehicles.length)} vehicles across six work zones. Accident holds flash; repair bays lift the car.</p></div>
           <div className="flex items-center gap-2"><Link href="/fleet/#car-shapes" className="garage-report-badge hover:text-accent-ink">Match car shapes</Link><span className="garage-report-badge">Live from the loaded report</span></div></div>
         <Garage3D groups={groups} onOpen={openVehicle} styleFor={carStyles.styleFor} />
-        <div className="garage-zones">{LANES.map((lane) => <section key={lane.id} className="garage-zone" aria-label={lane.label + " queue"}><Glare>
+        <div className="garage-zones">{LANES.map((lane) => <section key={lane.id} className="garage-zone" aria-label={lane.label + " queue"}>
           <header className="flex items-baseline justify-between gap-2"><h3 className="flex items-center gap-2 text-[13px] font-semibold"><span className="h-2 w-2 rounded-full" style={{ background: lane.color }} />{lane.label}</h3>
             <span className="tnum text-lg font-semibold" style={{ color: lane.color }}>{NUM.format(groups[lane.id].length)}</span></header>
           <p className="mt-0.5 text-[11px] text-muted">{lane.description}</p>
@@ -136,7 +128,7 @@ export function GaragePage() {
             {!groups[lane.id].length && <div className="garage-zone-empty"><CheckCircle size={16} /> Clear</div>}
           </div>
           <button className="garage-zone-footer" onClick={() => filterQueue(lane.id)}>View all<span aria-hidden="true">→</span></button>
-        </Glare></section>)}</div>
+        </section>)}</div>
       </section>
 
       <section className="garage-progress-grid" aria-label="Garage missions">
@@ -162,7 +154,7 @@ export function GaragePage() {
       <section id="garage-queue" className="garage-queue mt-7">
         <div className="mb-4 flex flex-wrap items-end justify-between gap-3"><div><h2 className="text-xl font-semibold">Vehicle queue</h2><p className="mt-1 text-xs text-muted">Urgent holds first. Open any vehicle to work its next move.</p></div>
           <label className="garage-search"><MagnifyingGlass size={17} className="text-muted" /><input aria-label="Search garage vehicles" placeholder="Search plate, vehicle, model or site" value={search} onChange={(e) => { setSearch(e.target.value); setPage(0); }} /></label></div>
-        <div className="mb-4 flex flex-wrap gap-2" aria-label="Garage queue filters">
+        <div className="mb-4 flex flex-wrap gap-2" role="group" aria-label="Garage queue filters">
           <button aria-pressed={filter === "all"} className={"ops-chip " + (filter === "all" ? "ops-chip-active" : "")} onClick={() => { setFilter("all"); setPage(0); }}>All vehicles <span className="ml-2">{NUM.format(vehicles.length)}</span></button>
           {LANES.map((l) => <button key={l.id} aria-pressed={filter === l.id} className={"ops-chip " + (filter === l.id ? "ops-chip-active" : "")} onClick={() => { setFilter(l.id); setPage(0); }}>{l.label}<span className="ml-2">{NUM.format(groups[l.id].length)}</span></button>)}
         </div>
@@ -184,9 +176,11 @@ export function GaragePage() {
       </section>
       <p className="mt-6 text-xs leading-relaxed text-muted">Garage stages follow the loaded report and recorded reviews. Accident and repair notifications update when you import new records or report an incident here. Refresh source records before a live dispatch.</p>
     </>}
-    {selected && <VehicleDialog key={engine.dataset + ":" + selected.row.vehicle_id + ":" + selected.revision} vehicle={selected} state={operations.state} context={context} change={operations.change} saving={operations.saving} error={operations.error}
+    {selected && <VehicleDialog key={engine.dataset + ":" + selected.row.vehicle_id + ":" + selected.revision} vehicle={selected} state={operations.state} context={context} now={now} change={operations.change} saving={operations.saving} error={operations.error}
       onClose={() => setSelectedId(null)} onIncident={() => { setIncidentFor(selected.row.vehicle_id); setSelectedId(null); }} />}
-    {incidentFor !== undefined && <IncidentDialog rows={vehicles.map((v) => v.row)} preset={incidentFor ?? undefined} onClose={() => setIncidentFor(undefined)} change={operations.change} saving={operations.saving} error={operations.error} />}
+    {incidentFor !== undefined && <IncidentDialog rows={vehicles.filter((v) => !v.incident).map((v) => v.row)} preset={incidentFor ?? undefined}
+      onClose={() => setIncidentFor(undefined)} onRecorded={(id) => { setIncidentFor(undefined); openVehicle(id); }}
+      change={operations.change} saving={operations.saving} error={operations.error} />}
     <Dialog.Root open={notifications} onOpenChange={setNotifications}><Dialog.Portal><Dialog.Overlay className="garage-overlay" /><Dialog.Content className="garage-dialog garage-notifications">
       <div className="flex items-center justify-between gap-3"><Dialog.Title className="text-2xl font-semibold">Garage alerts</Dialog.Title><Dialog.Close className="garage-icon-button" aria-label="Close alerts"><X size={20} /></Dialog.Close></div>
       <Dialog.Description className="mt-2 text-sm text-muted">{NUM.format(unread)} unread · {engine.region ?? "All regions"}. Reading an alert leaves the vehicle hold in place.</Dialog.Description>
@@ -202,12 +196,9 @@ export function GaragePage() {
       {!filteredAlerts.length && <div className="py-12 text-center"><ShieldCheck size={32} className="mx-auto text-good" /><p className="mt-3 text-sm">No alerts of this type in the loaded evidence for this scope.</p></div>}
       {operations.error && <p role="alert" className="mt-4 text-sm text-bad">{operations.error}</p>}
     </Dialog.Content></Dialog.Portal></Dialog.Root>
-  </Sparks>;
+  </>;
 }
 const RECOVERY_LABEL = { reported: "Assign assessment and protect the vehicle", assessment: "Assess damage and arrange repair", repair: "Complete repair work", quality: "Complete the safety checks", ready: "Review and record handover" };
-function Pulse({ icon, value, label, color, onClick }: { icon: React.ReactNode; value: number; label: string; color: string; onClick: () => void }) {
-  return <button className="garage-pulse-item" onClick={onClick}><span className="garage-pulse-icon" style={{ color }}>{icon}</span><span><b className="tnum">{NUM.format(value)}</b><span className="mt-0.5 block text-xs text-muted">{label}</span></span></button>;
-}
 function Mission({ title, text, count, total, color, onClick }: { title: string; text: string; count: number; total: number; color: string; onClick: () => void }) {
   const share = total ? Math.min(100, (100 * count) / total) : 0;
   return <button onClick={onClick} className="garage-mission">
