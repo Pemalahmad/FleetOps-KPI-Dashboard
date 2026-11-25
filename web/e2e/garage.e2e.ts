@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { readFile } from "node:fs/promises";
+import * as XLSX from "xlsx";
 
 const ready = async (page: import("@playwright/test").Page) => {
   await page.goto("/");
@@ -137,6 +138,111 @@ test("a Saudi operating-card evidence gap blocks actual Garage handover", async 
   await vehicle.getByText(/\d+ handover blocker\(s\)/).click();
   await expect(vehicle.getByText("TGA operating card: Add the TGA or Naql operating card and its expiry.")).toBeVisible();
   await expect(vehicle.getByRole("button", { name: "Practice handover", exact: true })).toBeDisabled();
+});
+test("Bahrain registration class and inspection determine actual Garage handover", async ({ page }) => {
+  await ready(page);
+  await page.getByRole("button", { name: "Bahrain", exact: true }).click();
+  const command = page.getByRole("region", { name: "Daily fleet command" });
+  await command.getByRole("button", { name: /Needs evidence/ }).click();
+  await command.getByRole("textbox", { name: "Find vehicle or owner" }).fill("BA 53194");
+  await expect(command.getByText("Inspection is due for renewal. Add current technical inspection evidence before release.")).toBeVisible();
+
+  const scenarios = [
+    { plate: "BA 33306", gate: "Bahrain registration class", detail: "Add the official registration type from the Bahrain registration card.", held: true },
+    { plate: "BA 53194", gate: "Bahrain technical inspection", detail: "Inspection is due for renewal. Add current technical inspection evidence before release.", held: true },
+    { plate: "BA 57056", gate: "Bahrain technical inspection", detail: "Bahrain Traffic requires inspection. Add current technical inspection evidence before release.", held: true },
+    { plate: "BA 52154", gate: "Bahrain technical inspection", detail: "Private class age exemption applies through 2026-10-01.", held: false, registration: "خصوصي" },
+    { plate: "BA 35115", gate: "Bahrain technical inspection", detail: "Inspection is due for renewal. Evidence valid through 2026-10-24.", held: false, registration: "Private transport" },
+  ];
+  for (const { plate, gate, detail, held, registration } of scenarios) {
+    await page.getByRole("textbox", { name: "Search garage vehicles" }).fill(plate);
+    await page.getByRole("button", { name: `Open vehicle ${plate}`, exact: true }).click();
+    const vehicle = page.getByRole("dialog");
+    await expect(vehicle.getByText(detail, { exact: true })).toBeVisible();
+    await expect(vehicle.getByRole("link", { name: "Ministry of Interior, General Directorate of Traffic" }).first())
+      .toHaveAttribute("href", "https://services.bahrain.bh/wps/portal/VehicleRegistrationRenewal_ar");
+    await vehicle.getByRole("textbox", { name: "Review owner" }).fill("Bahrain release reviewer");
+    for (const name of [/Safety walkaround/, /Repair \/ road test signed off/, /Keys and dispatch handover/])
+      await vehicle.getByRole("checkbox", { name }).check();
+    const handover = vehicle.getByRole("button", { name: "Practice handover", exact: true });
+    if (held) {
+      await vehicle.getByText(/\d+ handover blocker\(s\)/).click();
+      await expect(vehicle.getByText(gate + ": " + detail, { exact: true })).toBeVisible();
+      await expect(handover).toBeDisabled();
+      await expect(vehicle.getByRole("button", { name: "Download release record" })).toHaveCount(0);
+    } else {
+      await handover.click();
+      await expect(vehicle.getByText(/Practice handover completed/)).toBeVisible();
+      const download = page.waitForEvent("download");
+      await vehicle.getByRole("button", { name: "Download release record" }).click();
+      const receipt = await readFile((await (await download).path())!, "utf8");
+      expect(receipt).toContain(`Bahrain registration class | pass | ${registration}`);
+      expect(receipt).toContain(`${gate} | pass | ${detail}`);
+    }
+    await vehicle.getByRole("button", { name: "Close vehicle details" }).click();
+  }
+});
+test("Bahrain owner import uses officially declared class and matched inspection before recording handover", async ({ page }) => {
+  await page.goto("/import/");
+  await expect(page.getByText(/SQL models and \d+ tests ran/)).toBeVisible({ timeout: 90_000 });
+  const today = await page.evaluate(() => {
+    const now = new Date();
+    return new Date(now.getTime() - now.getTimezoneOffset() * 60_000).toISOString().slice(0, 10);
+  });
+  const day = (offset: number) => new Date(Date.parse(today + "T00:00:00Z") + offset * 864e5).toISOString().slice(0, 10);
+  const book = XLSX.utils.book_new();
+  const sheet = (name: string, data: (string | number | boolean)[][]) =>
+    XLSX.utils.book_append_sheet(book, XLSX.utils.aoa_to_sheet(data), name);
+  sheet("sites", [["site_id", "site_name", "region"], ["BH-SYN", "Synthetic Bahrain depot", "BH"]]);
+  const ids = ["BHT-HELD", "BHT-PASS"];
+  sheet("vehicles", [
+    ["vehicle_id", "plate_number", "make", "model", "powertrain", "home_site_id", "in_service_date", "Registration Type",
+      "Date of Manufacture", "registration_expiry", "insurance_expiry", "GDT Inspection Required"],
+    ...ids.map((id) => [id, id, "Synthetic", "Fleet Van", "ICE", "BH-SYN", day(-120), "نقل خاص", day(-155), day(14), day(40), false]),
+  ]);
+  sheet("work_orders", [
+    ["work_order_id", "vehicle_id", "site_id", "job_type", "opened_at", "closed_at", "total_cost"],
+    ...ids.map((id) => ["PM-" + id, id, "BH-SYN", "Preventive maintenance", day(-2) + " 10:00", day(-2) + " 14:00", 70]),
+  ]);
+  sheet("usage", [["vehicle_id", "date", "km"], ...ids.flatMap((id) => [[id, day(-2), 100], [id, day(-1), 100]])]);
+  sheet("recalls", [["campaign_id", "title", "launch_date"], ["SYN-FUTURE", "Synthetic future recall", day(10)]]);
+  sheet("recall_vehicles", [["campaign_id", "vehicle_id"], ["SYN-FUTURE", ids[0]]]);
+  sheet("documents", [
+    ["document_id", "vehicle_ref", "doc_type", "issuer", "issue_date", "expiry_date"],
+    ["BH-TST-CERT", ids[1], "Inspection", "Bahrain Traffic", day(-3), day(20)],
+  ]);
+  const buffer = Buffer.from(XLSX.write(book, { type: "buffer", bookType: "xlsx" }));
+  await page.setInputFiles("input[type=file]", { name: "synthetic-bahrain-fleet.xlsx", mimeType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", buffer });
+  await page.getByRole("button", { name: /Add to my fleet and build/ }).click();
+  await expect(page.getByText(/My fleet: \d+ SQL models/)).toBeVisible({ timeout: 90_000 });
+  await page.goto("/");
+  await expect(page.getByText(/My fleet: \d+ SQL models/)).toBeVisible({ timeout: 90_000 });
+
+  for (const [i, id] of ids.entries()) {
+    await page.getByRole("textbox", { name: "Search garage vehicles" }).fill(id);
+    await page.getByRole("button", { name: "Open vehicle " + id, exact: true }).click();
+    const dialog = page.getByRole("dialog");
+    await expect(dialog.getByText("نقل خاص", { exact: true })).toBeVisible();
+    await dialog.getByRole("textbox", { name: "Review owner" }).fill("Synthetic Bahrain release reviewer");
+    for (const name of [/Safety walkaround/, /Repair \/ road test signed off/, /Keys and dispatch handover/])
+      await dialog.getByRole("checkbox", { name }).check();
+    const handover = dialog.getByRole("button", { name: "Record handover", exact: true });
+    if (i === 0) {
+      await expect(dialog.getByText("Inspection is due for renewal. Add current technical inspection evidence before release.", { exact: true })).toBeVisible();
+      await expect(handover).toBeDisabled();
+      await expect(dialog.getByRole("button", { name: "Download release record" })).toHaveCount(0);
+    } else {
+      await expect(dialog.getByText(`Inspection is due for renewal. Evidence valid through ${day(20)}.`, { exact: true })).toBeVisible();
+      await handover.click();
+      await expect(dialog.getByText("Handover recorded with reviewer and timestamp.")).toBeVisible();
+      const download = page.waitForEvent("download");
+      await dialog.getByRole("button", { name: "Download release record" }).click();
+      const record = await readFile((await (await download).path())!, "utf8");
+      expect(record).toContain("Bahrain registration class | pass | نقل خاص");
+      expect(record).toContain(`Bahrain technical inspection | pass | Inspection is due for renewal. Evidence valid through ${day(20)}.`);
+    }
+    await dialog.getByRole("button", { name: "Close vehicle details" }).click();
+  }
 });
 test("renewal task stages never waive expired source documents", async ({ page }) => {
   await ready(page);

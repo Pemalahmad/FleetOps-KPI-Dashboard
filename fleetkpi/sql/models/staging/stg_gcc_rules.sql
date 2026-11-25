@@ -1,4 +1,4 @@
--- description: Published vehicle-compliance rules for the six GCC countries (registration, insurance, inspection, operating card), each with its authority, source and confidence. Researched 2026-11-23; see docs/GCC_COMPLIANCE.md. A NULL means the rule is not officially confirmed: FleetOps then asks the owner to check rather than guessing.
+-- description: Published vehicle-compliance rules for the six GCC countries (registration, insurance, inspection, operating card), each with its authority, source and confidence. See docs/GCC_COMPLIANCE.md for review dates and Bahrain's class-based inspection rule.
 -- materialized: table
 SELECT * FROM (VALUES
     ('AE', 'United Arab Emirates', 'uae|united arab emirates|emirates|dubai|abu dhabi|sharjah|ajman|ras al khaimah|rak|fujairah|umm al quwain',
@@ -33,14 +33,14 @@ SELECT * FROM (VALUES
      'Registration is not issued or renewed on a non-compliant compulsory insurance policy (Ministerial Decision 2116 of 2025).',
      NULL,
      'low', 'https://www.arabtimesonline.com/news/new-rules-for-compulsory-vehicle-insurance-policies-in-kuwait'),
-    ('BH', 'Bahrain', 'bahrain|manama|muharraq|riffa',
+    ('BH', 'Bahrain', 'bh|bhr|bahrain|kingdom of bahrain|manama|muharraq|riffa|البحرين|مملكة البحرين',
      'Registration certificate', 'Ministry of Interior, General Directorate of Traffic',
      NULL, NULL, NULL,
-     'The renewal portal distinguishes private and other registration classes for inspection. Check the registration class and inspection requirement in the Traffic portal.',
+     'Inspection at renewal for all registration classes except Private cars through five years from manufacture, unless Traffic requires inspection (Decision 154/2015, Article 121).',
      TRUE,
      'Annual renewal. Late fee of 500 fils a day from the day after expiry (capped at 20 BHD a year). Civil-liability insurance must cover the whole registration period.',
      NULL,
-     'high', 'https://www.bahrain.bh/wps/portal/en/BNP/ServicesCatalogue/GSX-UI-PServiceDetails?psID=3195'),
+     'high', 'https://services.bahrain.bh/wps/portal/VehicleRegistrationRenewal_ar'),
     ('OM', 'Oman', 'oman|muscat|salalah|sohar|nizwa',
      'Mulkiya (vehicle operating licence)', 'Royal Oman Police, Directorate General of Traffic',
      10, NULL, 0,

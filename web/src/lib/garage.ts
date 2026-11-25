@@ -66,6 +66,8 @@ export interface GarageRow {
   operating_card_required: boolean | null; permit_expiry: string | null;
   insurance_covers_registration: boolean | null; inspection_review_from: string | null;
   inspection_expiry: string | null; inspection_from_years: number | null; age_years: number | null;
+  registration_class: string | null; bahrain_registration_group: "private" | "other" | null;
+  bahrain_inspection_after: string | null; inspection_required_by_authority: boolean | null;
 }
 export interface GarageContext {
   snapshot: string; today: string; demo: boolean; operations: boolean; recallCoverage: boolean;
@@ -252,6 +254,8 @@ export function sourceRevision(row: GarageRow, context: GarageContext, incident:
     row.region, row.gcc_assessed, row.gcc_country_code, row.gcc_authority, row.gcc_source_url, row.gcc_confidence,
     row.operating_card_required, row.permit_expiry, row.insurance_covers_registration,
     row.inspection_review_from, row.inspection_expiry, row.inspection_from_years, row.age_years,
+    ...(row.gcc_country_code === "BH" ? [row.registration_class, row.bahrain_registration_group,
+      row.bahrain_inspection_after, row.inspection_required_by_authority] : []),
     incident ? [incident.id, incident.stage, normaliseDamageCase(incident)] : null]);
 }
 export function emptyReview(revision: string): GarageReview {
@@ -265,8 +269,8 @@ export function countryReleaseGates(row: GarageRow, date: string): ReadinessGate
     authority: row.gcc_authority, source: row.gcc_source_url,
     confidence: row.gcc_confidence ?? "unknown", checkedOn: date,
   } : undefined;
-  const gate = (id: string, label: string, status: ReadinessGate["status"], detail: string): ReadinessGate =>
-    ({ id, label, status, detail, href: "/licence/", rule });
+  const gate = (id: string, label: string, status: ReadinessGate["status"], detail: string, href = "/licence/"): ReadinessGate =>
+    ({ id, label, status, detail, href, rule });
   if (!row.gcc_assessed || !row.region?.trim()) {
     return [gate("gcc-scope", "Country rules", "unknown", "Record the vehicle region and refresh the country evidence.")];
   }
@@ -287,7 +291,35 @@ export function countryReleaseGates(row: GarageRow, date: string): ReadinessGate
     gates.push(gate("gcc-cover", "Insurance covers the registration period", covers === true ? "pass" : covers === false ? "blocked" : "unknown",
       covers === true ? "Policy covers the full registration period." : covers === false ? "Record a policy that covers the registration through its expiry." : "Record both the policy and registration expiry dates."));
   }
-  if (row.inspection_review_from && row.inspection_review_from.slice(0, 10) <= date && row.inspection_from_years !== null) {
+  const inRenewalWindow = row.inspection_review_from !== null && row.inspection_review_from.slice(0, 10) <= date;
+  if (row.gcc_country_code === "BH") {
+    const group = row.bahrain_registration_group;
+    const threshold = row.bahrain_inspection_after?.slice(0, 10);
+    const inspection = "Bahrain technical inspection";
+    if (!group || !row.registration_class) {
+      gates.push(gate("gcc-registration-class", "Bahrain registration class", "unknown", row.registration_class
+        ? `Class “${row.registration_class}” is unrecognized. Verify the official registration type on the card or in Bahrain Traffic.`
+        : "Add the official registration type from the Bahrain registration card.", "/import/"));
+    } else {
+      gates.push(gate("gcc-registration-class", "Bahrain registration class", "pass", row.registration_class,
+        "/import/"));
+      if (row.inspection_required_by_authority || (inRenewalWindow && (group === "other" || (threshold && date > threshold)))) {
+        const current = documentCurrent(row.inspection_expiry, date);
+        const reason = row.inspection_required_by_authority ? "Bahrain Traffic requires inspection." : "Inspection is due for renewal.";
+        gates.push(gate("gcc-inspection", inspection, current ? "pass" : "unknown",
+          current ? `${reason} Evidence valid through ${row.inspection_expiry?.slice(0, 10)}.`
+            : `${reason} Add current technical inspection evidence before release.`, "/documents/"));
+      } else if (group === "private" && !threshold) {
+        gates.push(gate("gcc-inspection", inspection, "unknown",
+          "Add the actual manufacture date to determine the Private inspection exemption.", "/import/"));
+      } else {
+        gates.push(gate("gcc-inspection", inspection, "pass",
+          group === "private" && threshold && date <= threshold
+            ? `Private class age exemption applies through ${threshold}.`
+            : "The vehicle is outside the configured renewal review window."));
+      }
+    }
+  } else if (inRenewalWindow && row.inspection_from_years !== null) {
     if (row.age_years === null && row.inspection_from_years > 0) {
       gates.push(gate("gcc-inspection", "Inspection applicability at renewal", "unknown", "Add the model year or in-service date to determine whether renewal requires inspection."));
     } else if ((row.age_years ?? 0) >= row.inspection_from_years) {

@@ -6,6 +6,12 @@ What changed in each version of FleetOps KPI. Dates are release dates; the newes
 
 - Fixed a browser upgrade issue that could pair a newly deployed page with an older offline SQL manifest. Returning browsers refresh the app cache, and the release dashboard requests the manifest that matches its build.
 
+### Bahrain vehicle release (2026-11-26)
+
+- Garage and Daily Command now use the official registration type to check Bahrain's technical inspection requirement. Private cars use the exact manufacture date to determine the five-year exemption.
+- Release holds identify missing registration class, manufacture date or current inspection evidence. Recorded handovers include the class and inspection outcome.
+- Fixed a browser import error when workbooks include a document ID column.
+
 ### Procedures page, set like a document (2026-11-26)
 - Doctrine & SOPs is rebuilt as a plain reading page: the illustration, emoji, slogan, uppercase label and left-accent boxes are gone. Purple now marks only the selected procedure and ticked steps.
 - The list shows which procedures need attention with a shape and a word. Each procedure opens with its purpose, why it is flagged, who is accountable and numbered steps. On a phone, choosing a procedure scrolls to it.

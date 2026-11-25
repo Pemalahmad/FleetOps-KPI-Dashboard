@@ -8,6 +8,7 @@ import { Card, EmptyRow, SectionTitle, Skeleton } from "./ui";
 const STATES = ["Non-compliant", "Evidence missing", "Expiring", "Compliant"] as const;
 const TONE: Record<string, string> = { "Non-compliant": "var(--bad)", "Evidence missing": "var(--warn)", Expiring: "var(--warn)", Compliant: "var(--good)" };
 const RULES_AS_OF = "23 Nov 2026";
+const BAHRAIN_RULES_AS_OF = "26 Nov 2026";
 
 interface CountryRow {
   country_code: string; country: string; registration_name: string; authority: string; inspection_rule: string;
@@ -30,7 +31,7 @@ export function GccCompliance() {
 
   return (
     <>
-      <SectionTitle sub={`Country requirements checked against the report (rules reviewed ${RULES_AS_OF}). Garage rechecks applicable evidence on the date of handover. Confirm requirements with the authority before acting.`}>
+      <SectionTitle sub="Country requirements checked against the report. Garage rechecks applicable evidence on the date of handover. Confirm requirements with the authority before acting.">
         GCC compliance by country
       </SectionTitle>
       {!rows.data ? <Skeleton height={220} /> : countries.length === 0 ? (
@@ -53,7 +54,7 @@ export function GccCompliance() {
               <p className="mt-3 text-[11px] text-faint">
                 <a href={c.source_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 underline underline-offset-2 hover:text-accent-ink">
                   Source <ArrowSquareOut size={11} aria-hidden /><span className="sr-only">(opens the authority&apos;s page in a new tab)</span>
-                </a>{" · "}confidence {c.confidence}{" · "}as of {RULES_AS_OF}
+                </a>{" · "}confidence {c.confidence}{" · "}as of {c.country_code === "BH" ? BAHRAIN_RULES_AS_OF : RULES_AS_OF}
               </p>
             </Card>
           ))}

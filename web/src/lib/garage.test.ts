@@ -13,6 +13,7 @@ const row: GarageRow = {
   gcc_assessed: true, gcc_country_code: "AE", gcc_country: "United Arab Emirates", gcc_authority: "Dubai RTA",
   gcc_source_url: "https://www.rta.ae/", gcc_confidence: "high", operating_card_required: false, permit_expiry: null,
   insurance_covers_registration: false, inspection_review_from: "2027-01-30", inspection_expiry: null, inspection_from_years: 3, age_years: 2,
+  registration_class: null, bahrain_registration_group: null, bahrain_inspection_after: null, inspection_required_by_authority: null,
 };
 const signed = (revision: string) => ({ ...emptyReview(revision), owner: "Reviewer", checks: { walkaround: true, road_test: true, handover: true } });
 const at = "2026-11-18T10:00:00Z";
@@ -80,6 +81,39 @@ describe("garage source gates and lanes", () => {
     const state = recordHandover(emptyGarage(), truck, context, review, at);
     expect(deriveVehicle(truck, state, { ...context, today: "2026-11-19" }).released).toBe(false);
     expect(deriveVehicle({ ...truck, permit_expiry: "2027-01-01" }, { ...state, reviews: { [truck.vehicle_id]: review } }, context).review.checks.handover).toBe(false);
+  });
+  it("blocks Bahrain handover on unknown class and records the exact Private exemption", () => {
+    const fleet = emptyGarage();
+    const bh = { ...row, region: "Bahrain", gcc_country_code: "BH", gcc_country: "Bahrain",
+      gcc_authority: "General Directorate of Traffic", insurance_covers_registration: true,
+      inspection_review_from: context.today, inspection_from_years: null };
+    const review = signed(deriveVehicle(bh, fleet, context).revision);
+    expect(() => recordHandover(fleet, bh, context, review, at)).toThrow("Bahrain registration class");
+
+    const privateCar = { ...bh, registration_class: "خصوصي", bahrain_registration_group: "private" as const,
+      bahrain_inspection_after: context.today };
+    const signedPrivate = signed(deriveVehicle(privateCar, fleet, context).revision);
+    expect(() => recordHandover(fleet, { ...privateCar, bahrain_inspection_after: null }, context, signedPrivate, at))
+      .toThrow("actual manufacture date");
+    expect(releaseBlockers(privateCar, fleet, context, review)).toContain("Evidence changed. Review the new source records and repeat the release checks.");
+    const released = recordHandover(fleet, privateCar, context, signedPrivate, at);
+    expect(released.handovers[0].source).toContainEqual(expect.objectContaining({
+      label: "Bahrain technical inspection", status: "pass", detail: `Private class age exemption applies through ${context.today}.`,
+    }));
+    expect(deriveVehicle(privateCar, released, { ...context, today: "2026-11-19" }).released).toBe(false);
+  });
+  it("requires current Bahrain inspection evidence for transport renewals and Traffic orders", () => {
+    const fleet = emptyGarage();
+    const transport = { ...row, region: "Bahrain", gcc_country_code: "BH", inspection_from_years: null,
+      inspection_review_from: context.today, registration_class: "Private transport", bahrain_registration_group: "other" as const };
+    const blockers = (vehicle: GarageRow) => releaseBlockers(vehicle, fleet, context, signed(deriveVehicle(vehicle, fleet, context).revision));
+    expect(blockers(transport)[0]).toContain("Bahrain technical inspection");
+    expect(blockers({ ...transport, inspection_expiry: "2026-11-17" })[0]).toContain("current technical inspection evidence");
+    expect(blockers({ ...transport, inspection_expiry: context.today })).toEqual([]);
+    const later = { ...transport, inspection_review_from: "2027-01-30" };
+    expect(blockers(later)).toEqual([]);
+    expect(blockers({ ...later, registration_class: "Private", bahrain_registration_group: "private",
+      bahrain_inspection_after: "2027-12-30", inspection_required_by_authority: true })[0]).toContain("Bahrain Traffic requires inspection");
   });
 });
 describe("recorded recovery operations", () => {

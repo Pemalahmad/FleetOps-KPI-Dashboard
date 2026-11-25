@@ -71,14 +71,17 @@ def _gcc(vehicles, documents=()):
         con.execute("CREATE MACRO cfg_num(k) AS 30")
         con.execute("CREATE TABLE stg_vehicles (vehicle_id VARCHAR, plate_number VARCHAR, make VARCHAR, model VARCHAR, region VARCHAR,"
                     " use_case VARCHAR, model_year INTEGER, age_months INTEGER, is_active BOOLEAN,"
-                    " registration_expiry DATE, insurance_expiry DATE)")
-        con.executemany("INSERT INTO stg_vehicles VALUES (?, 'P', 'M', 'X', ?, ?, ?, ?, TRUE, ?, ?)", vehicles)
+                    " registration_expiry DATE, insurance_expiry DATE, registration_class VARCHAR,"
+                    " manufacture_date DATE, inspection_required_by_authority BOOLEAN)")
+        con.executemany("INSERT INTO stg_vehicles VALUES (?, 'P', 'M', 'X', ?, ?, ?, ?, TRUE, ?, ?, ?, ?, ?)",
+                        [(*v, None, None, False) if len(v) == 7 else v for v in vehicles])
         con.execute("CREATE TABLE stg_vehicles2 AS SELECT *, doc_status(registration_expiry) AS registration_status,"
                     " doc_status(insurance_expiry) AS insurance_status FROM stg_vehicles")
         con.execute("DROP TABLE stg_vehicles; ALTER TABLE stg_vehicles2 RENAME TO stg_vehicles")
-        con.execute("CREATE TABLE stg_documents (vehicle_id VARCHAR, doc_type VARCHAR, expiry_date DATE, issuer VARCHAR)")
+        con.execute("CREATE TABLE stg_documents (vehicle_id VARCHAR, doc_type VARCHAR, expiry_date DATE, issuer VARCHAR, issue_date DATE)")
         if documents:
-            con.executemany("INSERT INTO stg_documents VALUES (?, ?, ?, ?)", documents)
+            con.executemany("INSERT INTO stg_documents VALUES (?, ?, ?, ?, ?)",
+                            [(*d, None) if len(d) == 4 else d for d in documents])
         con.execute("CREATE TABLE stg_gcc_rules AS " + (root / "staging/stg_gcc_rules.sql").read_text())
         rows = con.execute("SELECT vehicle_id, status, reasons FROM (" + (root / "marts/mart_gcc_compliance.sql").read_text() + ")").fetchall()
         return {r[0]: (r[1], r[2]) for r in rows}
@@ -106,13 +109,40 @@ def test_gcc_rules_per_country():
     assert got["no-date"][0] == "Evidence missing"
 
 
-def test_gcc_inspection_on_file_and_unmodelled_bahrain_registration_class():
+def test_gcc_bahrain_inspection_uses_official_type_and_exact_manufacture_date():
     soon, far = "2026-12-10", "2027-09-01"
-    got = _gcc([("qa", "Doha", "Pool car", 2020, 70, soon, far), ("bh", "Manama", "Pool car", 2015, 130, soon, far)],
-               documents=[("qa", "Inspection", "2027-01-15", "FAHES")])
-    assert "inspection" not in got["qa"][1].lower()        # a current inspection on file clears the reminder
-    assert "inspection" not in got["bh"][1].lower()        # Bahrain's registration class is not captured in this contract
-    assert got["qa"][0] == got["bh"][0] == "Expiring"       # the registration itself is still due soon
+
+    def vehicle(name, registration_class, manufactured=None, registry=soon, directed=False, region="Manama"):
+        return (name, region, "Pool car", 2025, 12, registry, far, registration_class, manufactured, directed)
+
+    got = _gcc([
+        ("qa", "Doha", "Pool car", 2020, 70, soon, far),
+        vehicle("missing", None, registry=far),
+        vehicle("unknown", "Fleet pool"),
+        vehicle("missing-date", "Private"),
+        vehicle("future-date", "Private", "2026-11-24"),
+        vehicle("exactly-five", "خصوصي", "2021-11-23"),
+        vehicle("over-five", "Private", "2021-11-22"),
+        vehicle("private-transport", "Private transport", "2026-01-01", region="BH"),
+        vehicle("current", "سيارة نقل خاص للركاب", region="البحرين"),
+        vehicle("far-renewal", "Commercial", registry=far),
+        vehicle("traffic-order", "Private", "2026-01-01", registry=far, directed=True),
+    ], documents=[
+        ("qa", "Inspection", "2027-01-15", "FAHES"),
+        ("over-five", "Inspection", "2026-11-22", "Bahrain Traffic"),
+        ("private-transport", "Inspection", "2026-12-10", "Bahrain Traffic", "2026-11-24"),
+        ("current", "Inspection", "2026-11-23", "Bahrain Traffic"),
+    ])
+    assert got["qa"][0] == "Expiring" and "inspection" not in got["qa"][1].lower()
+    for name in ("missing", "unknown"):
+        assert got[name][0] == "Evidence missing" and "official Bahrain registration class" in got[name][1]
+    for name in ("missing-date", "future-date"):
+        assert got[name][0] == "Evidence missing" and "actual manufacture date" in got[name][1]
+    assert got["exactly-five"] == got["current"] == ("Expiring", "Registration certificate expires 2026-12-10")
+    for name in ("over-five", "private-transport"):
+        assert got[name][0] == "Evidence missing" and "technical inspection evidence for renewal" in got[name][1]
+    assert got["far-renewal"] == ("Compliant", "")
+    assert got["traffic-order"] == ("Evidence missing", "Add current technical inspection evidence required by Bahrain Traffic")
 
 
 def test_only_identified_tga_card_can_clear_saudi_goods_check():
