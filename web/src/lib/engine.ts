@@ -6,6 +6,7 @@
  */
 import * as duckdb from "@duckdb/duckdb-wasm";
 import type { VinSpec } from "./vin";
+import { engineManifestUrl } from "./engine-manifest-url.mjs";
 
 export type Row = Record<string, unknown>;
 
@@ -170,7 +171,7 @@ export class Engine {
       const conn = await db.connect();
       // extensions (parquet, json) come from this site's verified copy, never from extensions.duckdb.org
       await conn.query(`SET custom_extension_repository = '${abs("/duckdb/extensions").replace(/'/g, "''")}'`);
-      const response = await fetch(`${base}/engine/manifest.json`);
+      const response = await fetch(engineManifestUrl(base, process.env.NEXT_PUBLIC_FLEETOPS_ENGINE_REVISION));
       if (!response.ok) throw new Error(`SQL engine manifest unavailable (${response.status})`);
       const manifest = (await response.json()) as Manifest;
       return new Engine(db, conn, manifest, base);

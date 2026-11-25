@@ -32,14 +32,17 @@ describe("service-worker cache isolation", () => {
     expect(stores.has("another-app")).toBe(true);
     expect(stores.has(prefix + "core-old")).toBe(false);
     expect(stores.has(prefix + "core-new")).toBe(true);
+    expect(stores.has(prefix + "runtime")).toBe(false);
   });
   it("does not overwrite a working offline page with an HTTP failure", async () => {
-    const { handlers, stores } = worker(vi.fn().mockResolvedValue(new Response("missing", { status: 404 })));
+    const fetcher = vi.fn().mockResolvedValue(new Response("missing", { status: 404 }));
+    const { handlers, stores } = worker(fetcher);
     const request = { url: "https://example.test/fleet/", method: "GET", mode: "navigate" };
     stores.get(prefix + "runtime")!.set(request, new Response("working"));
     let pending: Promise<Response> | undefined;
     handlers.fetch({ request, respondWith: (promise: Promise<Response>) => { pending = promise; } });
     expect((await pending)!.status).toBe(404);
+    expect(fetcher).toHaveBeenCalledWith(request, { cache: "no-cache" });
     expect(await stores.get(prefix + "runtime")!.get(request)!.text()).toBe("working");
   });
   it("returns an explicit offline error when nothing has been cached", async () => {

@@ -4,6 +4,8 @@ What changed in each version of FleetOps KPI. Dates are release dates; the newes
 
 ## Unreleased
 
+- Fixed a browser upgrade issue that could pair a newly deployed page with an older offline SQL manifest. Returning browsers refresh the app cache, and the release dashboard requests the manifest that matches its build.
+
 ### Vehicle release review (2026-11-25)
 - Garage rechecks applicable GCC operating-card, insurance-period and inspection evidence before recording a handover. Daily Command shows the same release blockers and links to the rule evidence.
 - Daily Command provides searchable queues for held vehicles, missing evidence, review-ready handovers, renewals and every SOP-09 stage. Export the shift handoff or a recorded vehicle release.
