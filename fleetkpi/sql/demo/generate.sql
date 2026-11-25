@@ -90,12 +90,21 @@ SELECT
     round(CASE powertrain WHEN 'BEV' THEN 42000 WHEN 'PHEV' THEN 38000 WHEN 'HEV' THEN 31000 ELSE 27000 END
           * (0.92 + 0.16 * rnd(vehicle_id || 'pc')), -2) AS purchase_cost,
     CASE WHEN is_delivery THEN 'Delivery' ELSE 'Ride-hail' END AS use_case,
+    CASE WHEN region = 'Bahrain' AND n <> 1
+         THEN CASE WHEN n = 4 OR (n > 5 AND is_delivery) THEN 'Private transport' ELSE 'خصوصي' END END AS registration_class,
+    CASE WHEN region = 'Bahrain' THEN
+         CASE WHEN n = 2 THEN DATE '2021-10-01' WHEN n = 3 THEN DATE '2021-09-30' ELSE in_service_date END
+         END AS manufacture_date,
+    region = 'Bahrain' AND n = 5 AS inspection_required_by_authority,
     -- Annual registration from the in-service anniversary; ~1.5% lapsed, renewals spread over the year.
-    CASE WHEN rnd(vehicle_id || 'regx') < 0.015
+    CASE WHEN region = 'Bahrain' AND n BETWEEN 2 AND 4 THEN DATE '2026-10-18'
+         WHEN region = 'Bahrain' AND n = 5 THEN DATE '2027-01-31'
+         WHEN rnd(vehicle_id || 'regx') < 0.015
          THEN DATE '2026-10-01' - to_days(CAST(1 + floor(rnd(vehicle_id || 'regd') * 40) AS INTEGER))
          ELSE DATE '2026-10-01' + to_days(CAST(1 + floor(rnd(vehicle_id || 'regd') * 364) AS INTEGER)) END::DATE AS registration_expiry,
     -- Annual insurance policies, renewals spread over the year; ~2% lapsed.
-    CASE WHEN rnd(vehicle_id || 'insx') < 0.02
+    CASE WHEN region = 'Bahrain' AND n BETWEEN 2 AND 5 THEN DATE '2027-06-30'
+         WHEN rnd(vehicle_id || 'insx') < 0.02
          THEN DATE '2026-10-01' - to_days(CAST(1 + floor(rnd(vehicle_id || 'insd') * 30) AS INTEGER))
          ELSE DATE '2026-10-01' + to_days(CAST(1 + floor(rnd(vehicle_id || 'insd') * 364) AS INTEGER)) END::DATE AS insurance_expiry,
     ['Gulf Insurance', 'Oasis Assurance', 'Crescent Mutual', 'Anatolia Sigorta'][
@@ -155,7 +164,8 @@ CREATE OR REPLACE TABLE documents AS
 WITH reg AS (
     SELECT v.vehicle_id, v.vin, v.plate_number, v.registration_expiry AS expiry,
            -- 4% of cards were renewed and scanned, but the vehicle file was never updated
-           CASE WHEN rnd(v.vehicle_id || 'drn') < 0.04 AND v.registration_expiry < DATE '2026-12-01'
+           CASE WHEN v.vehicle_id NOT IN ('V0100002', 'V0100003', 'V0100004')
+                     AND rnd(v.vehicle_id || 'drn') < 0.04 AND v.registration_expiry < DATE '2026-12-01'
                 THEN v.registration_expiry + INTERVAL 1 YEAR ELSE v.registration_expiry END::DATE AS doc_expiry,
            CASE v.region WHEN 'UAE' THEN 'RTA' WHEN 'KSA' THEN 'Muroor' WHEN 'Türkiye' THEN 'Emniyet' ELSE 'Traffic Department' END AS issuer
     FROM vehicles v WHERE rnd(v.vehicle_id || 'dreg') < 0.9
@@ -172,7 +182,10 @@ SELECT 'INS-' || v.vehicle_id, v.plate_number, 'Insurance policy',
        'POL-' || lpad(CAST(floor(rnd(v.vehicle_id || 'pol') * 9999999) AS INTEGER)::VARCHAR, 7, '0'),
        (v.insurance_expiry - INTERVAL 1 YEAR + INTERVAL 1 DAY)::DATE, v.insurance_expiry, v.insurer,
        'policy-' || v.vehicle_id || '.pdf'
-FROM vehicles v WHERE rnd(v.vehicle_id || 'dins') < 0.8;
+FROM vehicles v WHERE rnd(v.vehicle_id || 'dins') < 0.8
+UNION ALL
+SELECT 'INSP-V0100004', 'V0100004', 'Inspection', 'BH-DEMO-001',
+       DATE '2026-09-25', DATE '2026-10-24', 'Bahrain Traffic', 'demo-inspection.pdf';
 
 -- ------------------------------------------------------ vehicle-months (helper)
 CREATE OR REPLACE TEMP TABLE d_vm AS

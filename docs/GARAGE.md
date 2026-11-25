@@ -37,6 +37,10 @@ or affected-recall records remain evidence gaps. A source rebuild invalidates qu
 evidence resets signoffs. Prior notes are archived, and completed handovers retain their signed review, source gates
 and damage-case closure snapshot. Use the country rule links to confirm local requirements.
 
+For Bahrain, the release review checks the official registration class and, for an applicable renewal inspection,
+the current inspection evidence. Import the class and manufacture date with the vehicle file, then record any
+required inspection in Documents. [Bahrain release evidence](GCC_COMPLIANCE.md#bahrain-release-evidence)
+
 ## Damage escalation controls
 
 The damage case is a recorded, append-only operational trail:

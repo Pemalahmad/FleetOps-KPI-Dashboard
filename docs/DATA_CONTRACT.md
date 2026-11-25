@@ -33,6 +33,9 @@ One row per vehicle in the fleet: electric, hybrid or combustion.
 | `purchase_cost` | DOUBLE |  | Acquisition cost, for depreciation in total cost of ownership | price, cost, acquisition_cost, capex |
 | `use_case` | VARCHAR |  | Ride-hail, delivery, pool car... | usage_type, segment, application |
 | `registration_expiry` | DATE |  | Registration / licence (mulkiya, MOT, tax disc) expiry date | registration_expiry_date, reg_expiry, mulkiya_expiry, licence_expiry, license_expiry |
+| `registration_class` | VARCHAR |  | Official registration type on the vehicle's registration card, used for Bahrain inspection (e.g. Private or Private transport) | registration_type, official_registration_class, vehicle_registration_type, registration_category |
+| `manufacture_date` | DATE |  | Actual manufacture date (YYYY-MM-DD) used for Bahrain's Private inspection exemption | date_of_manufacture, manufacturing_date, build_date |
+| `inspection_required_by_authority` | BOOLEAN |  | True when Bahrain Traffic specifically requires a technical inspection for this vehicle | gdt_inspection_required |
 | `insurance_expiry` | DATE |  | Insurance policy expiry date | insurance_expiry_date, policy_expiry, insurance_valid_until, policy_end |
 | `insurer` | VARCHAR |  | Insurance company | insurance_company, insurance_provider, policy_provider |
 | `vin` | VARCHAR |  | 17-character Vehicle Identification Number (chassis number) | vin, vin_number, vin_no, vin_sn, chassis |

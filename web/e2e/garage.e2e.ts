@@ -138,6 +138,49 @@ test("a Saudi operating-card evidence gap blocks actual Garage handover", async 
   await expect(vehicle.getByText("TGA operating card: Add the TGA or Naql operating card and its expiry.")).toBeVisible();
   await expect(vehicle.getByRole("button", { name: "Practice handover", exact: true })).toBeDisabled();
 });
+test("Bahrain registration class and inspection determine actual Garage handover", async ({ page }) => {
+  await ready(page);
+  await page.getByRole("button", { name: "Bahrain", exact: true }).click();
+  const command = page.getByRole("region", { name: "Daily fleet command" });
+  await command.getByRole("button", { name: /Needs evidence/ }).click();
+  await command.getByRole("textbox", { name: "Find vehicle or owner" }).fill("BA 53194");
+  await expect(command.getByText("Inspection is due for renewal. Add current technical inspection evidence before release.")).toBeVisible();
+
+  const scenarios = [
+    { plate: "BA 33306", gate: "Bahrain registration class", detail: "Add the official registration type from the Bahrain registration card.", held: true },
+    { plate: "BA 53194", gate: "Bahrain technical inspection", detail: "Inspection is due for renewal. Add current technical inspection evidence before release.", held: true },
+    { plate: "BA 57056", gate: "Bahrain technical inspection", detail: "Bahrain Traffic requires inspection. Add current technical inspection evidence before release.", held: true },
+    { plate: "BA 52154", gate: "Bahrain technical inspection", detail: "Private class age exemption applies through 2026-10-01.", held: false, registration: "خصوصي" },
+    { plate: "BA 35115", gate: "Bahrain technical inspection", detail: "Inspection is due for renewal. Evidence valid through 2026-10-24.", held: false, registration: "Private transport" },
+  ];
+  for (const { plate, gate, detail, held, registration } of scenarios) {
+    await page.getByRole("textbox", { name: "Search garage vehicles" }).fill(plate);
+    await page.getByRole("button", { name: `Open vehicle ${plate}`, exact: true }).click();
+    const vehicle = page.getByRole("dialog");
+    await expect(vehicle.getByText(detail, { exact: true })).toBeVisible();
+    await expect(vehicle.getByRole("link", { name: "Ministry of Interior, General Directorate of Traffic" }).first())
+      .toHaveAttribute("href", "https://services.bahrain.bh/wps/portal/VehicleRegistrationRenewal_ar");
+    await vehicle.getByRole("textbox", { name: "Review owner" }).fill("Bahrain release reviewer");
+    for (const name of [/Safety walkaround/, /Repair \/ road test signed off/, /Keys and dispatch handover/])
+      await vehicle.getByRole("checkbox", { name }).check();
+    const handover = vehicle.getByRole("button", { name: "Practice handover", exact: true });
+    if (held) {
+      await vehicle.getByText(/\d+ handover blocker\(s\)/).click();
+      await expect(vehicle.getByText(gate + ": " + detail, { exact: true })).toBeVisible();
+      await expect(handover).toBeDisabled();
+      await expect(vehicle.getByRole("button", { name: "Download release record" })).toHaveCount(0);
+    } else {
+      await handover.click();
+      await expect(vehicle.getByText(/Practice handover completed/)).toBeVisible();
+      const download = page.waitForEvent("download");
+      await vehicle.getByRole("button", { name: "Download release record" }).click();
+      const receipt = await readFile((await (await download).path())!, "utf8");
+      expect(receipt).toContain(`Bahrain registration class | pass | ${registration}`);
+      expect(receipt).toContain(`${gate} | pass | ${detail}`);
+    }
+    await vehicle.getByRole("button", { name: "Close vehicle details" }).click();
+  }
+});
 test("renewal task stages never waive expired source documents", async ({ page }) => {
   await ready(page);
   await page.getByRole("region", { name: "Renewal desk queue", exact: true }).locator(".garage-bay").first().click();
