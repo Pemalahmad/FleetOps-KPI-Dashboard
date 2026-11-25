@@ -4,11 +4,11 @@ What changed in each version of FleetOps KPI. Dates are release dates; the newes
 
 ## Unreleased
 
+- Fixed a browser upgrade issue that could pair a newly deployed page with an older offline SQL manifest. Returning browsers refresh the app cache, and the release dashboard requests the manifest that matches its build.
+
 ### Procedures page, set like a document (2026-11-26)
 - Doctrine & SOPs is rebuilt as a plain reading page: the illustration, emoji, slogan, uppercase label and left-accent boxes are gone. Purple now marks only the selected procedure and ticked steps.
 - The list shows which procedures need attention with a shape and a word. Each procedure opens with its purpose, why it is flagged, who is accountable and numbered steps. On a phone, choosing a procedure scrolls to it.
-
-- Fixed a browser upgrade issue that could pair a newly deployed page with an older offline SQL manifest. Returning browsers refresh the app cache, and the release dashboard requests the manifest that matches its build.
 
 ### Vehicle release review (2026-11-25)
 - Garage rechecks applicable GCC operating-card, insurance-period and inspection evidence before recording a handover. Daily Command shows the same release blockers and links to the rule evidence.
@@ -239,5 +239,4 @@ What changed in each version of FleetOps KPI. Dates are release dates; the newes
 ## 0.1.0: first version (2026-11-17)
 
 - Fleet and service operations KPIs on a SQL warehouse with checks and a local dashboard.
-
 
