@@ -1,4 +1,4 @@
-// Records the README GIFs (garage, service board, dispatch lab) from the static build.
+// Records the README GIFs (garage, service board, dispatch lab, replace or keep ...) from the static build.
 //   npm run build && node scripts/capture-gifs.mjs [garage|service|dispatch ...]
 // Needs Playwright (dev dependency) and ffmpeg on the PATH. Writes ../docs/web-*.gif.
 import http from 'node:http';
@@ -100,6 +100,26 @@ const SCENES = {
     if (b) for (let i = 0; i <= 10; i++) { await page.mouse.move(b.x + (b.width * i) / 10, b.y + b.height / 2); await page.waitForTimeout(60); await frame(); }
     for (let y = 0; y < 10; y++) { await page.mouse.wheel(0, 320); await page.waitForTimeout(220); await frame(4); }
     await frame(6);
+  }),
+  replace: () => record('web-replace-or-keep', '/replace/', async (page, frame) => {
+    await page.getByText(/vehicles cost less to replace/).waitFor({ timeout: 120_000 });
+    await frame(14);
+    // Read down the vehicle list, open the top vehicle's sheet, then change one assumption and watch the plan move.
+    for (let y = 0; y < 3; y++) { await page.mouse.wheel(0, 260); await page.waitForTimeout(200); await frame(3); }
+    await frame(6);
+    await page.locator('.rp-vehicle').first().click();
+    await page.waitForTimeout(900);
+    await frame(16);
+    await page.locator('#rp-evPrice').scrollIntoViewIfNeeded();
+    await page.evaluate(() => window.scrollBy(0, -160));
+    await frame(6);
+    await page.locator('#rp-evPrice').fill('');
+    for (const ch of '55000') { await page.locator('#rp-evPrice').press(ch); await page.waitForTimeout(90); await frame(); }
+    await frame(8);
+    await page.evaluate(() => document.getElementById('rp-fleet')?.scrollIntoView({ block: 'start' }));
+    await page.evaluate(() => window.scrollBy(0, -140));
+    await page.waitForTimeout(300);
+    await frame(16);
   }),
   network: () => record('web-metric-network', '/network/', async (page, frame) => {
     await frame(10);
