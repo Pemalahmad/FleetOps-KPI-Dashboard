@@ -4,6 +4,11 @@ What changed in each version of FleetOps KPI. Dates are release dates; the newes
 
 ## Unreleased
 
+### Compliance escalations and EHS
+
+- Daily Command opens separate cases for overdue GCC inspections and registration renewals. Track owners, managers, follow-up dates and case history. A case closes after a confirmed upload meets the applicable check, with the document reference recorded in the history.
+- The EHS workspace is available from desktop and mobile navigation, Daily Command, accident intake and Doctrine & SOPs. It includes ISO and ILO references, a fleet incident SOP, severity-based escalation and a case register with independent closure review.
+
 ### Ship checks for contributors
 
 - `npm run ship-check` (in `web/`) runs the checks every change needs before it ships and prints one pass/fail line each: lint, types, unit and Python tests, the build, a changelog entry, README links and GIF recording scenes, the SQL model, rule and test counts in the README, and no co-author or tool-credit lines in the branch's commits. `--fast` runs only the repository checks; CI runs it on every push.

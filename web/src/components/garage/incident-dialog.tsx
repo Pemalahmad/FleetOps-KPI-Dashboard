@@ -1,4 +1,5 @@
 "use client";
+import Link from "next/link";
 import * as Dialog from "@radix-ui/react-dialog";
 import { useMemo, useState } from "react";
 import { X, Warning } from "@phosphor-icons/react";
@@ -54,6 +55,7 @@ export function IncidentDialog({ rows, preset, onClose, onRecorded, change, savi
         <Dialog.Title className="text-2xl font-semibold">Report an accident</Dialog.Title>
       </div><Dialog.Close disabled={saving} aria-label="Close accident report" className="garage-icon-button"><X size={20} /></Dialog.Close></div>
       <Dialog.Description className="mt-2 text-sm leading-relaxed text-muted">Record the incident, hold the vehicle and start recovery. The recovery owner can then track assessment, repairs and dispatch review.</Dialog.Description>
+      <Link href="/ehs/#ehs-procedure" className="mt-2 inline-flex min-h-11 items-center text-sm text-accent-ink underline">EHS incident response and escalation</Link>
       <form onSubmit={(e) => { e.preventDefault(); void submit(); }} className="mt-5 space-y-4">
         <label className="garage-field">Find vehicle<input className="ops-input" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Plate, fleet number, make or model" /></label>
         <label className="garage-field">Vehicle<select className="ops-input" required value={vehicle} onChange={(e) => setVehicle(e.target.value)}>

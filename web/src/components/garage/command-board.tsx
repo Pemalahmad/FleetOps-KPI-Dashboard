@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useMemo, useRef, useState } from "react";
 import { BellRinging, CheckCircle, ClipboardText, ShieldCheck, Siren, Wrench } from "@phosphor-icons/react";
 import { commandActions, complianceReminders, REMINDER_LABELS, shiftHandoff, type ActionStatus, type ComplianceReminder } from "@/lib/garage-command";
+import { caseOwner, ESCALATION_STAGES, type ComplianceEscalation } from "@/lib/garage-escalations";
 import { downloadText } from "@/lib/exporters";
 import {
   RECOVERY_STAGES,
@@ -21,8 +22,9 @@ const NUM = new Intl.NumberFormat();
 const PAGE_SIZE = 8;
 const STATUS = ["Held", "Needs evidence", "Ready for review"] as const;
 const REMINDER_FILTERS = ["GCC reminders", "Registration reminders", "Inspection reminders", "Overdue reminders"] as const;
+const ESCALATION_FILTERS = ["Overdue escalations", "Closed escalations"] as const;
 type ReminderFilter = typeof REMINDER_FILTERS[number];
-type Filter = "All actions" | ActionStatus | "Overdue damage" | "Damage cases" | RecoveryStage | ReminderFilter;
+type Filter = "All actions" | ActionStatus | "Overdue damage" | "Damage cases" | RecoveryStage | ReminderFilter | typeof ESCALATION_FILTERS[number];
 
 function ReminderRow({ reminder, onOpen, onAssign, canAssign }: {
   reminder: ComplianceReminder;
@@ -115,7 +117,7 @@ function CommandMetric({ value, label, tone = "ink", onClick, pressed }: {
 
 export function DailyCommandBoard({
   vehicles, alerts, handovers, today, now, region, snapshot, demo, reminderOwners, reminderLeadDays, canAssignReminder,
-  onAssignReminder, onOpenVehicle, onFilter, onOpenAlerts, onPractice,
+  escalations, onOpenEscalation, onAssignReminder, onOpenVehicle, onFilter, onOpenAlerts, onPractice,
 }: {
   vehicles: GarageVehicle[];
   alerts: GarageAlert[];
@@ -129,6 +131,8 @@ export function DailyCommandBoard({
   reminderLeadDays: number;
   canAssignReminder: boolean;
   onAssignReminder: (id: string, owner: string) => Promise<boolean>;
+  escalations: ComplianceEscalation[];
+  onOpenEscalation: (id: string) => void;
   onOpenVehicle: (vehicleId: string) => void;
   onFilter: (lane: GarageLane) => void;
   onOpenAlerts: () => void;
@@ -145,6 +149,8 @@ export function DailyCommandBoard({
   const reminders = useMemo(() => complianceReminders(vehicles, reminderOwners, reminderDate, reminderLeadDays),
     [vehicles, reminderOwners, reminderDate, reminderLeadDays]);
   const reminderView = REMINDER_FILTERS.some((name) => filter === name);
+  const escalationView = ESCALATION_FILTERS.some((name) => filter === name);
+  const openEscalations = escalations.filter((item) => item.stage !== "closed").length;
   const select = (value: Filter) => { setFilter(value); setPage(0); };
   const jumpToQueue = (value: Filter) => {
     select(value);
@@ -152,7 +158,7 @@ export function DailyCommandBoard({
     queue.current?.scrollIntoView({ block: "nearest" });
   };
   const q = search.trim().toLowerCase();
-  const matches = reminderView ? [] : actions.filter((action) => {
+  const matches = reminderView || escalationView ? [] : actions.filter((action) => {
     const { row, incident } = action.vehicle;
     if (q && ![row.vehicle_id, row.plate_number, row.home_site_name, action.owner].some((v) => v?.toLowerCase().includes(q))) return false;
     switch (filter) {
@@ -171,7 +177,13 @@ export function DailyCommandBoard({
     if (filter === "Overdue reminders") return reminder.status === "Overdue";
     return true;
   }) : [];
-  const count = reminderView ? matchingReminders.length : matches.length;
+  const matchingEscalations = escalationView ? escalations.filter((item) =>
+    (item.stage === "closed") === (filter === "Closed escalations") &&
+    (!q || [item.vehicleId, item.plate, item.country, caseOwner(item, reminderOwners), item.manager]
+      .some((value) => value.toLowerCase().includes(q))))
+    .sort((a, b) => filter === "Closed escalations"
+      ? b.history.at(-1)!.at.localeCompare(a.history.at(-1)!.at) : a.dueOn.localeCompare(b.dueOn)) : [];
+  const count = escalationView ? matchingEscalations.length : reminderView ? matchingReminders.length : matches.length;
   const lastPage = Math.max(0, Math.ceil(count / PAGE_SIZE) - 1);
   const currentPage = Math.min(page, lastPage);
   const filterLabel = RECOVERY_STAGES.find((stage) => stage.id === filter)?.label ?? filter;
@@ -187,13 +199,17 @@ export function DailyCommandBoard({
           <button className="ops-button" onClick={() => jumpToQueue("GCC reminders")} aria-pressed={filter === "GCC reminders"}>
             <BellRinging size={16} aria-hidden="true" /> GCC reminders <span className="garage-count">{NUM.format(reminders.length)}</span>
           </button>
+          <button className="ops-button" onClick={() => jumpToQueue("Overdue escalations")} aria-pressed={filter === "Overdue escalations"}>
+            <Siren size={16} aria-hidden="true" /> Overdue escalations <span className="garage-count">{NUM.format(openEscalations)}</span>
+          </button>
           <Link href="/doctrine/#SOP-09"><ClipboardText size={16} /> Damage SOP-09</Link>
           {onPractice && <button className="ops-button" onClick={onPractice}>Practice a damage case</button>}
-          <button className="ops-button" disabled={!actions.length && !reminders.length && !summary.handoversToday}
+          <button className="ops-button" disabled={!actions.length && !reminders.length && !openEscalations && !summary.handoversToday}
             onClick={() => {
               const at = Date.now();
               const currentReminders = complianceReminders(vehicles, reminderOwners, demo ? reminderDate : localDate(new Date(at)), reminderLeadDays);
-              downloadText(`fleetops-shift-${localDate(new Date(at))}.txt`, shiftHandoff(commandActions(vehicles, at), handovers, region, snapshot, at, demo, currentReminders));
+              downloadText(`fleetops-shift-${localDate(new Date(at))}.txt`,
+                shiftHandoff(commandActions(vehicles, at), handovers, region, snapshot, at, demo, currentReminders, escalations, reminderOwners));
             }}>Download shift handoff</button>
         </div>
       </header>
@@ -214,12 +230,26 @@ export function DailyCommandBoard({
             <label className="garage-field">Action queue<select className="ops-input" ref={queue} value={filter} onChange={(e) => select(e.target.value as Filter)}>
               {(["All actions", ...STATUS, "Renewal due", "Overdue damage", "Damage cases"] as const).map((name) => <option key={name}>{name}</option>)}
               <optgroup label="Registration and inspection">{REMINDER_FILTERS.map((name) => <option key={name}>{name}</option>)}</optgroup>
+              <optgroup label="Compliance escalations">{ESCALATION_FILTERS.map((name) => <option key={name}>{name}</option>)}</optgroup>
               <optgroup label="Damage stages">{RECOVERY_STAGES.map((stage) => <option key={stage.id} value={stage.id}>{stage.label}</option>)}</optgroup>
             </select></label>
             <label className="garage-field">Find vehicle or owner<input className="ops-input" value={search} onChange={(e) => { setSearch(e.target.value); setPage(0); }} /></label>
           </div>
           {reminderView && <p className="command-scope-note">Reminders appear {reminderLeadDays} days ahead. Assign an owner for each task.</p>}
-          {count === 0 ? <div className="command-clear"><CheckCircle size={21} weight="fill" /><div><b>{reminderView ? "No matching reminders" : "No matching actions"}</b><span>Choose another queue or clear the search.</span></div></div>
+          {count === 0 ? <div className="command-clear"><CheckCircle size={21} weight="fill" /><div><b>{escalationView ? "No matching escalations" : reminderView ? "No matching reminders" : "No matching actions"}</b><span>Choose another queue or clear the search.</span></div></div>
+            : escalationView ? <ol aria-label="Compliance escalation results">{matchingEscalations.slice(currentPage * PAGE_SIZE, (currentPage + 1) * PAGE_SIZE).map((item) =>
+              <li key={item.id} aria-label={item.plate + " " + REMINDER_LABELS[item.kind]}>
+                <button onClick={() => onOpenEscalation(item.id)}>
+                  <span className={`command-priority-mark ${item.stage === "closed" ? "command-priority-ready" : "command-priority-critical"}`} aria-hidden="true" />
+                  <span className="command-priority-copy">
+                    <b>{item.plate} · {REMINDER_LABELS[item.kind]}</b>
+                    <small>{item.country} · {ESCALATION_STAGES[item.stage]} · Due <time dateTime={item.dueOn}>{item.dueOn}</time></small>
+                    <em>Owner {caseOwner(item, reminderOwners) || "Unassigned"} · Manager {item.manager || "Unassigned"}</em>
+                    {item.stage !== "closed" && item.followUp && <em>{item.followUp < today ? "Follow-up overdue" : "Follow up"} <time dateTime={item.followUp}>{item.followUp}</time></em>}
+                  </span>
+                  <span className="command-open">Open case</span>
+                </button>
+              </li>)}</ol>
             : reminderView ? <ol aria-label="GCC reminder results">{matchingReminders.slice(currentPage * PAGE_SIZE, (currentPage + 1) * PAGE_SIZE).map((reminder) =>
               <ReminderRow key={reminder.id} reminder={reminder} canAssign={canAssignReminder} onOpen={onOpenVehicle} onAssign={onAssignReminder} />)}</ol>
             : <ol>{matches.slice(currentPage * PAGE_SIZE, (currentPage + 1) * PAGE_SIZE).map((action) => {

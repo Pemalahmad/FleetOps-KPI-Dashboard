@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import { advanceIncident, assertGarageGeneration, buildAlerts, createDamageCase, damageHandoverBlockers, damageStageBlockers, deriveVehicle, documentCurrent, emptyGarage, emptyReview, normaliseDamageCase, recordHandover, releaseBlockers, reportAccident, updateDamageCase, type DamageCase, type GarageContext, type GarageRow } from "./garage";
 import { createTaskQueue } from "./task-queue";
 import { complianceReminders, setComplianceReminderOwner, shiftHandoff } from "./garage-command";
+import { caseOwner, reconcileEscalations, recordEscalationUpdate } from "./garage-escalations";
+import type { SavedDocument } from "./workspace";
 
 const context: GarageContext = { snapshot: "2026-11-18", today: "2026-11-18", demo: false, operations: true, recallCoverage: true };
 const row: GarageRow = {
@@ -80,6 +82,55 @@ describe("Daily Command compliance reminders", () => {
     expect(setComplianceReminderOwner(state, "inspection:V-001", "").reminderOwners).toEqual({ "registration:V-001": "Registration desk" });
     expect(state.reviews).toBe(initial.reviews);
   });
+});
+it("preserves overdue cases and closes only the matching case on confirmed, valid uploaded evidence", () => {
+  const initial = setComplianceReminderOwner(emptyGarage(), "registration:V-001", "Registration lead");
+  const makeVehicle = (changes: Partial<GarageRow> = {}) => deriveVehicle({
+    ...row, gcc_country_code: "SA", gcc_country: "Saudi Arabia", region: "SA", registration_jurisdiction: null,
+    registration_class_rule: "sa_public", periodic_inspection: true, inspection_starts_on: "2026-09-01",
+    inspection_expiry: "2026-11-16", registration_expiry: "2026-11-17", registration_status: "Expired", ...changes,
+  }, initial, context);
+  const overdue = makeVehicle();
+  const inputs = { vehicles: [overdue], reminders: complianceReminders([overdue], initial.reminderOwners, context.today, 0),
+    documents: [], matches: [], today: context.today, snapshot: context.snapshot, at };
+  const opened = reconcileEscalations(initial, inputs);
+  expect(opened.complianceEscalations).toHaveLength(2);
+  expect(reconcileEscalations(opened, inputs)).toBe(opened);
+  const registration = opened.complianceEscalations!.find((item) => item.kind === "registration")!;
+  expect(caseOwner(registration, opened.reminderOwners)).toBe("Registration lead");
+  const update = { actor: "Coordinator", owner: "Renewals desk", manager: "Duty manager", followUp: "2026-11-19", note: "Contacted by phone", stage: "escalated" as const };
+  const escalated = recordEscalationUpdate(opened, registration.id, update, at);
+  const latest = makeVehicle({ registration_expiry: "2027-03-01", registration_status: "Valid", inspection_expiry: "2027-03-02" });
+  const renewed = { ...inputs, vehicles: [latest], reminders: [] };
+  expect(reconcileEscalations(escalated, renewed)).toBe(escalated);
+  const upload = (id: string, doc_type: SavedDocument["doc_type"], expiry_date: string): SavedDocument => ({
+    id, doc_type, expiry_date, file_name: id + ".txt", vehicle_ref: "D 123", issuer: "Authority", inspection_result: "Pass",
+    issue_date: "2026-11-18", document_number: "CERT-" + id, confirmed: true, mime: "text/plain", ocr_text: "", added: at,
+  });
+  const reg = upload("reg", "Registration", "2027-03-01");
+  const cert = upload("inspection", "Inspection", "2027-03-02");
+  const bad = { ...renewed, documents: [{ ...reg, confirmed: false }, { ...cert, inspection_result: "Fail" as const }],
+    matches: [{ vehicle_id: "V-001", document_id: reg.id, failed: false, issue_date: reg.issue_date },
+      { vehicle_id: "V-001", document_id: cert.id, failed: false, issue_date: cert.issue_date }] };
+  expect(reconcileEscalations(escalated, bad)).toBe(escalated);
+  expect(reconcileEscalations(escalated, { ...renewed, documents: [reg], matches: [{ ...bad.matches[0]!, vehicle_id: "other" }] })).toBe(escalated);
+  const verifiedReg = reconcileEscalations(escalated, { ...renewed, documents: [reg], matches: bad.matches });
+  expect(verifiedReg.complianceEscalations?.find((item) => item.kind === "inspection")?.stage).toBe("open");
+  expect(verifiedReg.complianceEscalations?.find((item) => item.kind === "registration")).toMatchObject({
+    owner: "Renewals desk", manager: "Duty manager", stage: "closed", proof: { name: "reg.txt", expiresOn: "2027-03-01" },
+    history: [{ stage: "open" }, { stage: "escalated", by: "Coordinator" }, { stage: "closed", by: "FleetOps" }],
+  });
+  const verified = reconcileEscalations(verifiedReg, { ...renewed, documents: [reg, cert], matches: bad.matches });
+  expect(verified.complianceEscalations?.every((item) => item.stage === "closed")).toBe(true);
+  const newerThanSnapshot = { ...renewed, snapshot: "2026-11-17", vehicles: [overdue], documents: [cert], matches: bad.matches,
+    reminders: inputs.reminders.filter((item) => item.kind === "inspection") };
+  const closedFromNewUpload = reconcileEscalations(verifiedReg, newerThanSnapshot);
+  expect(closedFromNewUpload.complianceEscalations?.every((item) => item.stage === "closed")).toBe(true);
+  expect(reconcileEscalations(closedFromNewUpload, newerThanSnapshot)).toBe(closedFromNewUpload);
+  const failure = { vehicle_id: "V-001", document_id: "imported-failure", failed: true, issue_date: cert.issue_date };
+  expect(reconcileEscalations(verifiedReg, { ...newerThanSnapshot, matches: [...bad.matches, failure] })).toBe(verifiedReg);
+  expect(reconcileEscalations(verifiedReg, { ...newerThanSnapshot, matches: [...bad.matches, { ...failure, issue_date: null }] })).toBe(verifiedReg);
+  expect(reconcileEscalations(verified, inputs).complianceEscalations?.every((item) => item.stage === "open" && !item.proof)).toBe(true);
 });
 const completeDamage = (): DamageCase => {
   const damage = createDamageCase(at, "Recovery lead");

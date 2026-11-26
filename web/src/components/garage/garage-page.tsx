@@ -29,9 +29,14 @@ import { useGarageOperations } from "./use-garage";
 import { LivePanel } from "../live";
 import Button from "../arc/button";
 import { DailyCommandBoard } from "./command-board";
-import { setComplianceReminderOwner } from "@/lib/garage-command";
+import { complianceReminders, setComplianceReminderOwner } from "@/lib/garage-command";
+import { ESCALATION_DOCUMENTS_SQL, reconcileEscalations, type ComplianceEscalation, type EscalationDocumentMatch } from "@/lib/garage-escalations";
+import type { SavedDocument } from "@/lib/workspace";
+import { EscalationDialog } from "./escalation-dialog";
 
 const EMPTY: GarageRow[] = [];
+const NO_UPLOADS: SavedDocument[] = [];
+const NO_ESCALATIONS: ComplianceEscalation[] = [];
 const NUM = new Intl.NumberFormat("en");
 const PAGE_SIZE = 24;
 const PRIORITY: Record<GarageLane, number> = { incident: 0, renewal: 1, repair: 2, dispatch: 3, verify: 4, road: 5 };
@@ -41,6 +46,7 @@ export function GaragePage() {
   const source = useSql<GarageRow>(GARAGE_SQL);
   const reminderSettings = useSql<{ days: number }>("SELECT CAST(cfg_num('expiring_window_days') AS INTEGER) AS days");
   const [selectedId, setSelectedId] = useState<string | null>(null), [incidentFor, setIncidentFor] = useState<string | null | undefined>(undefined);
+  const [selectedCaseId, setSelectedCaseId] = useState<string | null>(null);
   const [notifications, setNotifications] = useState(false), [search, setSearch] = useState(""), [filter, setFilter] = useState<GarageLane | "all">("all"), [page, setPage] = useState(0);
   const [alertKind, setAlertKind] = useState<GarageAlert["priority"] | "all">("all"), [alertPage, setAlertPage] = useState(0);
   const now = useGarageClock();
@@ -50,7 +56,26 @@ export function GaragePage() {
     recallCoverage: ["recalls", "recall_vehicles", "work_orders"].every((table) => engine.log?.loads.some((l) => l.table === table && l.source)),
   }), [engine.log, engine.dataset, today]);
   const all = useMemo(() => (source.data ?? EMPTY).map((row) => deriveVehicle(row, operations.state, context)), [source.data, operations.state, context]);
+  const effectiveDate = context.demo ? context.snapshot.slice(0, 10) : today;
+  const overdue = useMemo(() => complianceReminders(all, operations.state.reminderOwners, effectiveDate, 0)
+    .filter((item) => item.status === "Overdue"), [all, operations.state.reminderOwners, effectiveDate]);
+  const cases = operations.state.complianceEscalations ?? NO_ESCALATIONS;
+  const vaultDocs = engine.dataset === "mine" ? engine.workspace?.documents ?? NO_UPLOADS : NO_UPLOADS;
+  const shouldVerifyDocuments = cases.length > 0 && vaultDocs.some((item) => item.confirmed);
+  const caseDocuments = useSql<EscalationDocumentMatch>(shouldVerifyDocuments ? ESCALATION_DOCUMENTS_SQL : null);
+  const { change, saving, error } = operations;
+  useEffect(() => {
+    if (engine.status !== "ready" || !source.data || saving || error || !effectiveDate || (shouldVerifyDocuments && !caseDocuments.data)) return;
+    const inputs = { vehicles: all, reminders: overdue, documents: vaultDocs, matches: caseDocuments.data ?? [],
+      today: effectiveDate, snapshot: context.snapshot.slice(0, 10), at: new Date().toISOString() };
+    if (reconcileEscalations(operations.state, inputs) !== operations.state) {
+      void change((state) => reconcileEscalations(state, inputs));
+    }
+  }, [engine.status, source.data, saving, error, effectiveDate, all, overdue, vaultDocs, shouldVerifyDocuments, caseDocuments.data,
+    context.snapshot, operations.state, change]);
   const vehicles = useMemo(() => all.filter((v) => !engine.region || v.row.region === engine.region), [all, engine.region]);
+  const visibleCases = useMemo(() => cases.filter((item) => !engine.region || item.region === engine.region), [cases, engine.region]);
+  const selectedCase = visibleCases.find((item) => item.id === selectedCaseId);
   const groups = useMemo(() => Object.fromEntries(LANES.map((l) => [l.id, vehicles.filter((v) => v.lane === l.id)])) as Record<GarageLane, GarageVehicle[]>, [vehicles]);
   const alerts = useMemo(() => buildAlerts(vehicles, now), [vehicles, now]);
   const acknowledged = useMemo(() => new Set(operations.state.acknowledged), [operations.state.acknowledged]);
@@ -97,6 +122,7 @@ export function GaragePage() {
     <header className="garage-header">
       <div><h1 className="text-[30px] font-semibold leading-[1.1] tracking-[-0.03em] md:text-[38px]">Daily command</h1><AsOf /></div>
       <div className="flex flex-wrap gap-2">
+        <Link className="ops-button" href="/ehs/"><ShieldCheck size={17} aria-hidden="true" /> EHS{operations.state.ehsCases?.some((item) => item.stage !== "closed") && <span className="garage-count">{operations.state.ehsCases.filter((item) => item.stage !== "closed").length}</span>}</Link>
         <Link className="ops-button" href="/overview/"><ChartPieSlice size={17} /> Analytics</Link>
         <button className="ops-button" disabled={!ready} onClick={() => setNotifications(true)}><Bell size={17} /> Alerts <span className="garage-count">{unread > 99 ? "99+" : unread}</span></button>
         <Button className="arc-accent" size="lg" disabled={!ready || !vehicles.length} onClick={() => setIncidentFor(null)}><Warning size={17} /> Report accident</Button>
@@ -107,15 +133,19 @@ export function GaragePage() {
       <span className="ml-auto">{context.demo ? "Practice garage · actions stay in this tab" : "My garage · saved with this fleet"}</span>
     </div>
     {source.error && <Card className="mb-5"><p role="alert" className="text-sm text-bad">Garage evidence could not be loaded: {source.error}</p><Link href="/pipeline/" className="ops-button mt-3">Review pipeline</Link></Card>}
-    {operations.error && incidentFor === undefined && !selected && <p role="alert" className="mb-4 text-sm text-bad">{operations.error}</p>}
+    {operations.error && incidentFor === undefined && !selected && !selectedCase && <p role="alert" className="mb-4 text-sm text-bad">{operations.error}</p>}
+    {caseDocuments.error && <p role="alert" className="mb-4 text-sm text-bad">Escalation documents could not be verified. Reload the fleet report to check them again.</p>}
     {!ready ? engine.status === "failed" ? <Card><p role="alert" className="text-sm text-bad">The fleet report did not finish. Review the failed stage and rebuild before using the garage.</p><Link className="ops-button mt-3" href="/pipeline/">Review pipeline</Link></Card> : <Skeleton height={620} /> : <>
       <DailyCommandBoard vehicles={vehicles} alerts={alerts} handovers={handovers} today={today} now={now}
         region={engine.region ?? "All regions"} snapshot={context.snapshot} demo={context.demo}
+        escalations={visibleCases} onOpenEscalation={setSelectedCaseId}
         reminderOwners={operations.state.reminderOwners} reminderLeadDays={reminderSettings.data?.[0]?.days ?? 30}
         canAssignReminder={engine.status === "ready" && !operations.saving}
         onAssignReminder={(id, owner) => operations.change((state) => setComplianceReminderOwner(state, id, owner))}
         onOpenVehicle={openVehicle} onFilter={filterQueue} onOpenAlerts={() => setNotifications(true)}
         onPractice={practice ? () => setIncidentFor(practice.row.vehicle_id) : undefined} />
+      {selectedCase && <EscalationDialog key={selectedCase.id} item={selectedCase} owners={operations.state.reminderOwners}
+        onClose={() => setSelectedCaseId(null)} change={change} saving={saving} error={error} />}
 
       <LivePanel focus="garage" />
       <section className="garage-floor" aria-label="Visual fleet garage">

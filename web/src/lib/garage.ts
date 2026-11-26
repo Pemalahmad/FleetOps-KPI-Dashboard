@@ -1,3 +1,6 @@
+import type { ComplianceEscalation } from "./garage-escalations";
+import type { EhsCase } from "./ehs";
+
 /** Garage rules: source evidence is separate from recorded operational work. */
 export type GarageLane = "road" | "repair" | "renewal" | "incident" | "dispatch" | "verify";
 export type RecoveryStage = "reported" | "assessment" | "repair" | "quality" | "ready";
@@ -48,6 +51,8 @@ export interface GarageState {
   version: 1; incidents: GarageIncident[]; reviews: Record<string, GarageReview>;
   acknowledged: string[]; handovers: GarageHandover[];
   reminderOwners?: Record<string, string>;
+  complianceEscalations?: ComplianceEscalation[];
+  ehsCases?: EhsCase[];
   reviewHistory?: { vehicleId: string; review: GarageReview; archivedAt: string; reason: string }[];
 }
 export const emptyGarage = (): GarageState => ({ version: 1, incidents: [], reviews: {}, acknowledged: [], handovers: [], reviewHistory: [] });

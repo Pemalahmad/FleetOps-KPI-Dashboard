@@ -458,3 +458,163 @@ test("service board: every stage has orders, gates hold, and a booking lands in 
   await book.getByRole("button", { name: "Book in" }).click();
   await expect(board("Scheduled").locator("button")).toHaveCount(scheduled + 1);
 });
+
+async function importIncidentFleet(page: import("@playwright/test").Page) {
+  await page.goto("/import/");
+  await expect(page.getByText(/SQL models and \d+ tests ran/)).toBeVisible({ timeout: 90_000 });
+  const today = await page.evaluate(() => {
+    const now = new Date();
+    return new Date(now.getTime() - now.getTimezoneOffset() * 60_000).toISOString().slice(0, 10);
+  });
+  const day = (offset: number) => new Date(Date.parse(today + "T00:00:00Z") + offset * 864e5).toISOString().slice(0, 10);
+  const plate = "SA-ESC-TEST";
+  const book = XLSX.utils.book_new();
+  const sheet = (name: string, data: (string | number | boolean)[][]) => XLSX.utils.book_append_sheet(book, XLSX.utils.aoa_to_sheet(data), name);
+  sheet("sites", [["site_id", "site_name", "region"], ["SA", "Synthetic site", "SA"]]);
+  sheet("vehicles", [
+    ["vehicle_id", "plate_number", "make", "model", "powertrain", "home_site_id", "in_service_date", "use_case", "Registration Type",
+      "first_registration_date", "registration_expiry", "insurance_expiry"],
+    [plate, plate, "Synthetic", "Taxi", "ICE", "SA", day(-120), "Taxi", "أجرة", `${Number(today.slice(0, 4)) - 3}-01-15`, day(-1), day(150)],
+  ]);
+  sheet("work_orders", [["work_order_id", "vehicle_id", "site_id", "job_type", "opened_at", "closed_at", "total_cost"],
+    ["WO-ESC-TEST", plate, "SA", "Preventive maintenance", day(-4) + " 10:00", day(-4) + " 14:00", 70]]);
+  sheet("usage", [["vehicle_id", "date", "km"], [plate, day(-4), 100], [plate, day(-3), 100]]);
+  const buffer = Buffer.from(XLSX.write(book, { type: "buffer", bookType: "xlsx" }));
+  await page.setInputFiles("input[type=file]", { name: "synthetic-incident-fleet.xlsx", mimeType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", buffer });
+  await page.getByRole("button", { name: /Add to my fleet and build/ }).click();
+  await expect(page.getByText(/My fleet: \d+ SQL models/)).toBeVisible({ timeout: 90_000 });
+  return { plate, day };
+}
+
+test("overdue GCC cases retain manager history and require separate confirmed document uploads", async ({ page }) => {
+  test.setTimeout(180_000);
+  page.setDefaultTimeout(15_000);
+  const { plate, day } = await importIncidentFleet(page);
+  const command = page.getByRole("region", { name: "Daily fleet command" });
+  const openCommand = async () => {
+    await page.goto("/");
+    await expect(page.getByText(/My fleet: \d+ SQL models/)).toBeVisible({ timeout: 90_000 });
+    await command.getByRole("button", { name: /Overdue escalations/ }).click();
+  };
+  await openCommand();
+  const registration = command.getByRole("listitem", { name: plate + " Registration renewal" });
+  const inspection = command.getByRole("listitem", { name: plate + " Technical inspection" });
+  await expect(registration).toContainText(day(-1));
+  await expect(inspection).toBeVisible();
+  await registration.getByRole("button").click();
+  const dialog = page.getByRole("dialog", { name: /Registration renewal/ });
+  await dialog.getByLabel("Case owner").fill("Renewals lead");
+  await dialog.getByLabel("Escalated to").fill("Fleet manager");
+  await dialog.getByLabel("Follow-up date").fill(day(3));
+  await dialog.getByLabel("Updated by").fill("Shift coordinator");
+  await dialog.getByLabel("Update notes").fill("Called the responsible manager");
+  await dialog.getByRole("button", { name: "Record escalation" }).click();
+  await expect(dialog.getByRole("button", { name: "Mark awaiting document" })).toBeEnabled();
+  await dialog.getByLabel("Update notes").fill("Updated card requested");
+  await dialog.getByRole("button", { name: "Mark awaiting document" }).click();
+  await expect(dialog.getByRole("region", { name: "Escalation history" })).toContainText("Updated card requested");
+  await dialog.getByRole("button", { name: "Close escalation" }).click();
+  await openCommand();
+  await expect(registration).toContainText("Awaiting document");
+  await expect(registration).toContainText("Manager Fleet manager");
+  const download = page.waitForEvent("download");
+  await command.getByRole("button", { name: /Download shift handoff/ }).click();
+  expect(await readFile((await (await download).path())!, "utf8")).toContain(`Case owner: Renewals lead | Manager: Fleet manager | Follow-up: ${day(3)}`);
+
+  const upload = async (kind: "Registration" | "Inspection", name: string) => {
+    await page.goto("/documents/");
+    await expect(page.getByText(/My fleet: \d+ SQL models/)).toBeVisible({ timeout: 90_000 });
+    await page.setInputFiles("input[type=file]", { name, mimeType: "text/plain", buffer: Buffer.from(`Synthetic ${kind} evidence for ${plate}`) });
+    await page.getByLabel("Vehicle (plate, VIN or fleet number)").fill(plate);
+    await expect(page.getByText(new RegExp("Matches " + plate))).toBeVisible();
+    await page.getByRole("combobox", { name: "Type", exact: true }).selectOption(kind);
+    await page.getByLabel("Number", { exact: true }).fill(`TEST-${kind}`);
+    await page.getByLabel("Issued", { exact: true }).fill(day(-1));
+    await page.getByLabel("Expires", { exact: true }).fill(day(80));
+    await page.getByLabel("Issuer", { exact: true }).fill(kind === "Inspection" ? "MVPI" : "General Directorate of Traffic");
+    if (kind === "Inspection") await page.getByLabel("Inspection result").selectOption("Pass");
+    await page.getByRole("button", { name: "Confirm", exact: true }).click();
+    await expect(page.getByRole("heading", { name: /Document vault · [12]/ })).toBeVisible({ timeout: 90_000 });
+  };
+
+  await upload("Registration", "synthetic-registration.txt");
+  await openCommand();
+  await expect(registration).toHaveCount(0, { timeout: 60_000 });
+  await expect(inspection).toBeVisible();
+  await command.getByLabel("Action queue").selectOption("Closed escalations");
+  await registration.getByRole("button").click();
+  await expect(dialog.getByRole("region", { name: "Verified document" })).toContainText("synthetic-registration.txt");
+  await expect(dialog.getByRole("region", { name: "Verified document" })).toContainText("Manager Fleet manager");
+  await expect(dialog.getByRole("region", { name: "Escalation history" })).toContainText("Called the responsible manager");
+  await upload("Inspection", "synthetic-inspection-pass.txt");
+  await openCommand();
+  await expect(inspection).toHaveCount(0, { timeout: 60_000 });
+  await command.getByLabel("Action queue").selectOption("Closed escalations");
+  await inspection.getByRole("button").click();
+  const inspectionDialog = page.getByRole("dialog", { name: /Technical inspection/ });
+  await expect(inspectionDialog.getByRole("region", { name: "Verified document" })).toContainText("synthetic-inspection-pass.txt");
+  await expect(inspectionDialog.getByRole("region", { name: "Verified document" })).toContainText(day(80));
+  await openCommand();
+  await command.getByLabel("Action queue").selectOption("Closed escalations");
+  await expect(inspection).toContainText("Closed");
+  await expect(registration).toContainText("Closed");
+});
+
+test("EHS is available across navigation and preserves incident escalation through independent closure", async ({ page }) => {
+  test.setTimeout(180_000);
+  page.setDefaultTimeout(15_000);
+  const { plate, day } = await importIncidentFleet(page);
+  await page.getByRole("navigation", { name: "Main navigation" }).getByRole("link", { name: "EHS", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Environment, health & safety" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Incident response SOP" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Escalation method" })).toBeVisible();
+  await expect(page.getByRole("link", { name: /ISO 45001/ })).toHaveAttribute("href", "https://www.iso.org/standard/45001");
+  await page.setViewportSize({ width: 360, height: 800 });
+  await expect(page.getByRole("navigation", { name: "Mobile navigation" }).getByRole("link", { name: "EHS", exact: true })).toHaveAttribute("aria-current", "page");
+  await page.getByRole("button", { name: "Report EHS incident" }).click();
+  const report = page.getByRole("form", { name: "Report EHS incident" });
+  await report.getByLabel("Country").selectOption("Saudi Arabia");
+  await report.getByLabel("Site or location").fill("Synthetic workshop");
+  await report.getByLabel("Category").selectOption("Near miss");
+  await report.getByLabel("Severity").selectOption("high");
+  await report.getByLabel("Incident time (local)").fill(day(-1) + "T09:00");
+  await report.getByLabel("Vehicle or work order reference").fill(plate);
+  await report.getByLabel("Reported by").fill("Site supervisor");
+  await report.getByLabel("What happened").fill("Synthetic equipment near miss");
+  await report.getByRole("button", { name: "File incident report" }).click();
+  const detail = page.getByRole("region", { name: "EHS case details" });
+  const edit = detail.getByRole("form", { name: "Update EHS case" });
+  await edit.getByLabel("Case owner").fill("Safety lead");
+  await edit.getByLabel("Accountable manager").fill("Operations manager");
+  await edit.getByLabel("Follow-up date").fill(day(-1));
+  const step = async (button: string, note: string, actor = "Safety lead") => {
+    const action = edit.getByRole("button", { name: button, exact: true });
+    await expect(action).toBeEnabled();
+    await edit.getByLabel("Updated by").fill(actor);
+    await edit.getByLabel("Update note").fill(note);
+    await action.click();
+  };
+  await step("Record escalation", "Manager acknowledged the escalation by phone");
+  await expect(edit.getByRole("button", { name: "Record containment" })).toBeVisible();
+  await page.reload();
+  await expect(page.getByText(/My fleet: \d+ SQL models/)).toBeVisible({ timeout: 90_000 });
+  await expect(page.getByRole("list", { name: "EHS cases" })).toContainText("Owner Safety lead");
+  await expect(page.getByRole("list", { name: "EHS cases" })).toContainText("Manager Operations manager");
+  await expect(page.getByRole("list", { name: "EHS cases" })).toContainText("Overdue");
+  await page.getByRole("button", { name: "Open case Synthetic equipment near miss" }).click();
+  await step("Record containment", "Equipment isolated, test reference LOCK-1");
+  await step("Record corrective action", "Interlock replaced and tested, reference TEST-7");
+  await step("Verify and close", "Attempted closure before the reporting review", "Independent reviewer");
+  await expect(page.getByRole("alert").filter({ hasText: "Resolve the external reporting review" })).toBeVisible();
+  await edit.getByRole("combobox", { name: "External reporting", exact: true }).selectOption("not_required");
+  await edit.getByLabel("Authority filing reference or decision basis").fill("EHS decision TEST-8");
+  await step("Verify and close", "Independent functional test passed", "Independent reviewer");
+  const history = detail.getByRole("region", { name: "EHS case history" });
+  for (const expected of ["Manager acknowledged", "Equipment isolated", "Interlock replaced", "Independent functional test passed", "EHS decision TEST-8"]) {
+    await expect(history).toContainText(expected);
+  }
+  await detail.getByRole("button", { name: "Back to case register" }).click();
+  await page.getByLabel("Case status").selectOption("closed");
+  await expect(page.getByRole("list", { name: "EHS cases" })).toContainText("Verified closed");
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(360);
+});

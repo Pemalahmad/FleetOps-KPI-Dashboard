@@ -58,6 +58,36 @@ The inspection and registration tasks can have different owners. Search by plate
 reminders** in the action queue. **Download shift handoff** includes the reminders and their owners. The reminders
 appear in Daily Command and the export.
 
+## Overdue compliance escalations
+
+Open **Overdue escalations** in Daily Command. A dated GCC inspection or registration renewal opens a case when
+it becomes overdue. The case starts with the reminder owner, when assigned. Track the responsible owner, the
+manager contacted, the next follow-up and the notes. Record the escalation after contacting the manager and use
+**Mark awaiting document** while the replacement is pending. The shift handoff includes open case assignments.
+
+Upload and confirm the updated registration or inspection in **Documents**. Daily Command verifies the upload
+against the same vehicle and applicable check. An inspection requires a current passing report and, after a failed
+test, a later reinspection. A certificate issued after the latest operational report can resolve the document case.
+The vehicle release review continues to check source freshness. A date changed in a workbook leaves the case open. Use **Closed escalations** to review
+the accepted file name, reference, validity and case history. The manager contact is recorded in FleetOps and made
+through your own channels.
+
+## Environment, health and safety
+
+Use **EHS** from global navigation, Daily Command, accident intake or Doctrine & SOPs. The incident register covers
+road incidents, injuries and illness, near misses, workshop or site hazards, spills and emergencies across the GCC.
+Record the event, contact the responsible people according to severity, assign an owner and manager, and set the next
+review date. The case history records containment, investigation, corrective action and evidence references.
+
+An independent reviewer confirms the corrective action and records the external reporting decision before closing
+the case. Use approved local channels for emergency response and statutory reporting. The app's internal escalation
+targets apply to follow-up inside the team. For a vehicle that needs recovery and dispatch clearance, use the
+damage case and Garage release review.
+
+The standards used as references are [ISO 45001](https://www.iso.org/standard/45001),
+[ISO 14001](https://www.iso.org/standard/14001), [ISO 39001](https://www.iso.org/standard/44958.html), and
+[ILO-OSH 2001](https://www.ilo.org/topics/safety-and-health-work/occupational-safety-and-health-ilo-areas-work/occupational-safety-and-health-management-systems).
+
 ## Damage escalation controls
 
 The damage case is a recorded, append-only operational trail:
@@ -83,6 +113,6 @@ Missions point to the relevant queues. A recorded handover earns 50 crew XP once
 
 ## Storage
 
-Owner incidents, reviews, read status and handovers are saved with the existing Workspace in this browser. If passphrase protection is enabled, the existing encryption applies to garage records too. Saved progress survives reloads; deleting the fleet removes it. Demo practice is separate tab memory, survives internal navigation and resets on reload.
+Owner incidents, compliance escalations, EHS records, reviews, read status and handovers are saved with the existing Workspace in this browser. If passphrase protection is enabled, the existing encryption applies to garage records too. Saved progress survives reloads; deleting the fleet removes it. Demo practice is separate tab memory, survives internal navigation and resets on reload.
 
 The garage sends no external notifications. It updates when new source records are imported or someone records an operation here. Damage photos and documents remain references in the case unless separately stored in the document vault; avoid unnecessary personal or medical detail.

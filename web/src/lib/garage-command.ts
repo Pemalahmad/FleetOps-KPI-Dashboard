@@ -1,5 +1,6 @@
 import { CHECKS, damageStageBlockers, documentCurrent, localDate, normaliseDamageCase, vehicleLabel,
   type GarageHandover, type GarageState, type GarageVehicle } from "./garage";
+import { caseOwner, ESCALATION_STAGES, type ComplianceEscalation } from "./garage-escalations";
 
 export const REMINDER_LABELS = { registration: "Registration renewal", inspection: "Technical inspection" } as const;
 type ReminderKind = keyof typeof REMINDER_LABELS;
@@ -145,7 +146,7 @@ export function commandActions(vehicles: GarageVehicle[], now: number): CommandA
 }
 
 export function shiftHandoff(actions: CommandAction[], handovers: GarageHandover[], region: string, snapshot: string, now: number, demo: boolean,
-  reminders: ComplianceReminder[] = []) {
+  reminders: ComplianceReminder[] = [], escalations: ComplianceEscalation[] = [], owners?: GarageState["reminderOwners"]) {
   const today = localDate(new Date(now));
   const recorded = handovers.filter((handover) => localDate(new Date(handover.at)) === today);
   return [
@@ -160,6 +161,11 @@ export function shiftHandoff(actions: CommandAction[], handovers: GarageHandover
     ...reminders.flatMap(({ vehicle, kind, dueOn, status, owner, next }) => [
       `${vehicleLabel(vehicle.row)} [${vehicle.row.vehicle_id}] | ${vehicle.row.gcc_country} | ${REMINDER_LABELS[kind]} | ${status}`,
       `Owner: ${owner || "Unassigned"} | Due: ${dueOn ?? "Action needed now"} | ${next}`,
+    ]),
+    "", "Open compliance escalations",
+    ...escalations.filter((item) => item.stage !== "closed").flatMap((item) => [
+      `${item.plate} [${item.vehicleId}] | ${REMINDER_LABELS[item.kind]} | ${ESCALATION_STAGES[item.stage]} | Due: ${item.dueOn}`,
+      `Case owner: ${caseOwner(item, owners) || "Unassigned"} | Manager: ${item.manager || "Unassigned"} | Follow-up: ${item.followUp || "Not scheduled"}`,
     ]),
     "", `Handovers recorded today: ${recorded.length}`,
     ...recorded.map((handover) => `${handover.vehicleId} | ${handover.reviewer} | ${handover.at}`),
