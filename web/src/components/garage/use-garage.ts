@@ -1,5 +1,5 @@
 "use client";
-import { useRef, useState, useSyncExternalStore } from "react";
+import { useCallback, useRef, useState, useSyncExternalStore } from "react";
 import { useEngine } from "../engine-provider";
 import { emptyGarage, type GarageState } from "@/lib/garage";
 
@@ -18,7 +18,7 @@ export function useGarageOperations() {
   const [saving, setSaving] = useState(false), [error, setError] = useState<string | null>(null);
   const busy = useRef(false);
   const state = dataset === "demo" ? practice : workspace?.garage ?? emptyOwner;
-  const change = async (update: (state: GarageState) => GarageState): Promise<boolean> => {
+  const change = useCallback(async (update: (state: GarageState) => GarageState): Promise<boolean> => {
     if (busy.current || status !== "ready") return false;
     busy.current = true; setSaving(true); setError(null);
     try {
@@ -31,6 +31,6 @@ export function useGarageOperations() {
       setError(err instanceof Error ? err.message : "Garage action could not be saved.");
       return false;
     } finally { busy.current = false; setSaving(false); }
-  };
+  }, [dataset, status, updateGarage]);
   return { state, change, saving, error };
 }

@@ -46,6 +46,8 @@ The first pilot is designed for a Dubai rental depot with 20–100 vehicles, usi
 | **Where is each car in the workshop, and what was done to it?** | The Service board tracks every repair order from Scheduled to Delivered with a technician on each stage: check-in condition, tyres and odometer in and out, issue, diagnosis and work done, warranty, customer-pay, recall or retrofit lines with claim numbers, estimated vs logged hours, parts, comments, invoices and each vehicle's full service history ([how it works](docs/SERVICE_BOARD.md)). |
 | **Which dispatch rule should we run?** | The Dispatch lab runs the same simulated day through shortest-distance, highest-margin, least-deadhead and earliest-deadline dispatch for vans, buses or trucks, and compares on-time delivery, empty-mile ratio, driver utilisation, turnaround and margin with 95% confidence intervals ([model](docs/DISPATCH_LAB.md)). |
 | **Is each vehicle legal in its GCC country?** | Every active vehicle is checked against the published registration, insurance, inspection and operating-card rules of the UAE, Saudi Arabia, Qatar, Kuwait, Bahrain or Oman, with the reason, the authority and a dated source. A check of your records, never a certification ([rules](docs/GCC_COMPLIANCE.md)). |
+| **Who owns an overdue GCC inspection or renewal?** | Daily Command records the case owner, manager and follow-up. A confirmed upload that passes the applicable check closes the case and preserves the evidence. |
+| **How are safety and environmental incidents handled?** | The EHS workspace provides standards, an incident SOP, severity-based escalation, an assigned case owner and independent closure review. |
 | **What happens when a vehicle is damaged?** | A damage case holds the vehicle off the road and walks it through severity, safety, evidence, notifications and deadlines, estimate, authorization, repair and quality check, with overdue alerts and an audit trail, before handover is allowed (SOP-09). |
 | **Should we keep this vehicle or replace it, and with an EV or a petrol car?** | The Replace or keep planner prices every vehicle three ways over the same horizon: keep it, replace it now with a new petrol vehicle, or with an electric one. It shows cost per km to date and projected, the break-even year and one recommendation with its reason, plus the fleet's capital needed and saving. Inputs the records lack are editable assumptions, each marked with its source, and every formula is on the page. |
 | **Where is fleet capacity being lost?** | A visual garage and the north star—off-road hours per vehicle per month—connect queue state to availability. |
@@ -58,6 +60,14 @@ The first pilot is designed for a Dubai rental depot with 20–100 vehicles, usi
 |---|---|
 | ![A 3D fleet garage with road-ready, repair, renewal, accident, dispatch, and safety zones](docs/web-garage.gif) | ![An interactive graph connecting fleet KPIs through identities and measured drivers](docs/web-metric-network.gif) |
 | Vehicles appear in their registered colour and body style. Open one to inspect its documents, repair milestones, release gates, owner, and target return date. | Select any metric to inspect its definition, live identity, change decomposition, regression evidence, and downstream impact. |
+
+**GCC compliance escalations.** Track overdue inspections and renewals through owner assignment, manager follow-up and verified document upload.
+
+![An overdue compliance case with a named owner, accountable manager, deadline and case history](docs/web-compliance-escalations.gif)
+
+**Environment, health and safety.** Report hazards and incidents, track follow-up and use the SOP and standards from the EHS workspace.
+
+![The EHS incident register, escalation assignment and response SOP](docs/web-ehs.gif)
 
 **Service board.** Repair orders from booking to delivery, with the check-in, tyres, work lines, hours, parts and invoice on one job sheet:
 

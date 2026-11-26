@@ -17,6 +17,7 @@ import { UnlockBanner } from "./vault";
 const NAV = [
   { group: "Operate", items: [
     { href: "/", label: "Daily command", icon: Garage },
+    { href: "/ehs/", label: "EHS", icon: ShieldCheck },
     { href: "/overview/", label: "Analytics", icon: ChartPieSlice },
     { href: "/network/", label: "Metric network", icon: Graph },
     { href: "/dispatch/", label: "Dispatch lab", icon: Truck },

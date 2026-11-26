@@ -64,6 +64,50 @@ const SCENES = {
     }
     await frame(6);
   }),
+  compliance: () => record('web-compliance-escalations', '/', async (page, frame) => {
+    const command = page.getByRole('region', { name: 'Daily fleet command' });
+    await command.getByRole('button', { name: /Overdue escalations/ }).click();
+    const cases = command.getByRole('list', { name: 'Compliance escalation results' });
+    const first = cases.getByRole('button').first();
+    await first.waitFor();
+    await frame(9);
+    await first.click();
+    const dialog = page.getByRole('dialog');
+    await dialog.getByLabel('Case owner').fill('GCC renewals desk');
+    await dialog.getByLabel('Escalated to').fill('Duty manager');
+    await dialog.getByLabel('Follow-up date').fill('2026-12-01');
+    await dialog.getByLabel('Updated by').fill('Shift coordinator');
+    await dialog.getByLabel('Update notes').fill('Manager contacted. Requested updated evidence.');
+    await dialog.getByRole('button', { name: 'Record escalation' }).click();
+    await dialog.getByRole('button', { name: 'Mark awaiting document' }).waitFor();
+    await frame(16);
+  }),
+  ehs: () => record('web-ehs', '/ehs/', async (page, frame) => {
+    const report = page.getByRole('button', { name: 'Report EHS incident' });
+    await report.waitFor();
+    await frame(8);
+    await report.click();
+    const form = page.getByRole('form', { name: 'Report EHS incident' });
+    await form.getByLabel('Country').selectOption('United Arab Emirates');
+    await form.getByLabel('Site or location').fill('Demo workshop');
+    await form.getByLabel('Category').selectOption('Near miss');
+    await form.getByLabel('Severity').selectOption('high');
+    await form.getByLabel('Incident time (local)').fill('2026-01-01T09:00');
+    await form.getByLabel('Reported by').fill('Site supervisor');
+    await form.getByLabel('What happened').fill('Synthetic loading bay near miss');
+    await form.getByRole('button', { name: 'File incident report' }).click();
+    const edit = page.getByRole('form', { name: 'Update EHS case' });
+    await edit.getByLabel('Case owner').fill('Safety lead');
+    await edit.getByLabel('Accountable manager').fill('Operations manager');
+    await edit.getByLabel('Updated by').fill('Site supervisor');
+    await edit.getByLabel('Update note').fill('Manager acknowledged the report.');
+    await edit.getByRole('button', { name: 'Record escalation' }).click();
+    await edit.getByRole('button', { name: 'Record containment' }).waitFor();
+    await frame(13);
+    await page.getByRole('link', { name: 'Incident SOP', exact: true }).click();
+    await page.getByRole('heading', { name: 'Incident response SOP' }).scrollIntoViewIfNeeded();
+    await frame(10);
+  }),
   service: () => record('web-service-board', '/service/', async (page, frame) => {
     await frame(10);
     const stages = page.getByRole('radiogroup', { name: 'Stage' }).getByRole('radio');
