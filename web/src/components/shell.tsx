@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useRef, type ReactNode } from "react";
 import {
   BookOpenText, Car, ChartPieSlice, CircleNotch, FileArrowUp, Garage, Graph, IdentificationCard, Moon, ShieldCheck, Smiley, Sun,
-  HardDrives, TreeStructure, WifiSlash, Wrench,
+  HardDrives, Scales, TreeStructure, WifiSlash, Wrench,
   SteeringWheel, Truck, ClipboardText,
 } from "@phosphor-icons/react";
 import { useTheme } from "./chart";
@@ -24,6 +24,7 @@ const NAV = [
     { href: "/service/", label: "Service board", icon: ClipboardText },
     { href: "/workshop/", label: "Workshop", icon: Wrench },
     { href: "/ledger/", label: "Ledger & assets", icon: Car },
+    { href: "/replace/", label: "Replace or keep", icon: Scales },
     { href: "/licence/", label: "Licence", icon: ShieldCheck },
   ] },
   { group: "Fleet", items: [

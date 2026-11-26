@@ -47,6 +47,7 @@ The first pilot is designed for a Dubai rental depot with 20–100 vehicles, usi
 | **Which dispatch rule should we run?** | The Dispatch lab runs the same simulated day through shortest-distance, highest-margin, least-deadhead and earliest-deadline dispatch for vans, buses or trucks, and compares on-time delivery, empty-mile ratio, driver utilisation, turnaround and margin with 95% confidence intervals ([model](docs/DISPATCH_LAB.md)). |
 | **Is each vehicle legal in its GCC country?** | Every active vehicle is checked against the published registration, insurance, inspection and operating-card rules of the UAE, Saudi Arabia, Qatar, Kuwait, Bahrain or Oman, with the reason, the authority and a dated source. A check of your records, never a certification ([rules](docs/GCC_COMPLIANCE.md)). |
 | **What happens when a vehicle is damaged?** | A damage case holds the vehicle off the road and walks it through severity, safety, evidence, notifications and deadlines, estimate, authorization, repair and quality check, with overdue alerts and an audit trail, before handover is allowed (SOP-09). |
+| **Should we keep this vehicle or replace it, and with an EV or a petrol car?** | The Replace or keep planner prices every vehicle three ways over the same horizon: keep it, replace it now with a new petrol vehicle, or with an electric one. It shows cost per km to date and projected, the break-even year and one recommendation with its reason, plus the fleet's capital needed and saving. Inputs the records lack are editable assumptions, each marked with its source, and every formula is on the page. |
 | **Where is fleet capacity being lost?** | A visual garage and the north star—off-road hours per vehicle per month—connect queue state to availability. |
 | **Why did the KPI move?** | Exact identities, month-on-month decomposition, measured drivers, confidence intervals, and what-if propagation expose the path. |
 | **Can the number be trusted?** | Every dashboard value traces through the work tree to its source, validation result, SQL model, and data test. |
@@ -65,6 +66,10 @@ The first pilot is designed for a Dubai rental depot with 20–100 vehicles, usi
 **Dispatch lab.** The same simulated day run through four dispatch rules, for vans, buses or trucks, with 95% confidence intervals:
 
 ![The dispatch lab comparing shortest-distance, highest-margin, least-deadhead and earliest-deadline dispatch on on-time delivery, empty miles, utilisation, turnaround and margin](docs/web-dispatch-lab.gif)
+
+**Replace or keep.** Cost of ownership per vehicle from its own usage, energy and workshop records, priced against a new petrol vehicle and a new EV, with the break-even year, the reason for each recommendation and every assumption in view:
+
+![The replace-or-keep planner: fleet capital needed and saving, a vehicle list with cost per km to date, keep, new petrol and new EV, break-even year and a recommendation, then a vehicle's five-year comparison and the editable assumptions](docs/web-replace-or-keep.gif)
 
 The rest of the workspace covers the fleet register, drivers and trips, document OCR, import mapping, customer clock, workshop performance, ledger and assets, compliance, SQL pipeline, operating doctrine, and system design.
 

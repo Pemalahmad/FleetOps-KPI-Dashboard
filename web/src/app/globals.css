@@ -438,3 +438,74 @@ button:disabled { cursor: not-allowed; }
 .sop-doctrine { margin-top: 56px; padding-top: 18px; border-top: 1px solid var(--sop-line); }
 .sop-doctrine summary { width: fit-content; font-size: 15px; font-weight: 500; }
 @media (pointer: coarse) { .sop-tabs button, .sop-primary, .sop-facts input, .sop-search { min-height: 44px; } .sop-steps input { width: 22px; height: 22px; } }
+
+/* Replace or keep: the procedures page's document style, with ruled tables for the figures. */
+.rp-h2 { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px 16px; font-size: 19px; font-weight: 500; letter-spacing: -.02em; }
+.rp-section { margin-top: 48px; }
+.rp-note { max-width: var(--sop-measure); margin-top: 8px; color: var(--muted); font-size: 14px; line-height: 1.55; text-wrap: pretty; }
+.rp-note b { color: var(--text); font-weight: 500; }
+.rp-link { min-height: 32px; color: var(--text); font-size: 13.5px; font-weight: 400; text-decoration: underline; text-decoration-color: color-mix(in srgb, var(--text) 30%, transparent); text-underline-offset: 3px; }
+.rp-link:hover:not(:disabled) { text-decoration-color: currentColor; }
+.rp-link:disabled { color: var(--faint); text-decoration: none; }
+.rp-figures { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 150px), 1fr)); margin-top: 14px; border-block: 1px solid var(--sop-line); }
+.rp-figures > div { padding: 14px 16px 16px 0; }
+.rp-figures dt { color: var(--muted); font-size: 13px; }
+.rp-figures dd { margin-top: 4px; font-size: 26px; font-weight: var(--display-weight); letter-spacing: var(--display-tracking); line-height: 1.1; font-variant-numeric: tabular-nums; unicode-bidi: isolate; direction: ltr; text-align: start; }
+.rp-figures p { margin-top: 6px; max-width: 30ch; color: var(--muted); font-size: 12.5px; line-height: 1.45; }
+.rp-scroll { overflow-x: auto; margin-top: 12px; }
+.rp-table { width: 100%; border-collapse: collapse; font-size: 13.5px; font-variant-numeric: tabular-nums; }
+.rp-table th, .rp-table td { padding: 10px 14px 10px 0; text-align: start; vertical-align: baseline; border-top: 1px solid var(--sop-line); }
+.rp-table thead th { border-top: 0; padding-block: 6px; color: var(--muted); font-size: 12.5px; font-weight: 400; white-space: nowrap; }
+.rp-table tbody th { font-weight: 400; }
+.rp-table .rp-n { text-align: end; white-space: nowrap; }
+.rp-table td[data-best] { color: var(--text); font-weight: 600; }
+.rp-assume { min-width: 640px; }
+.rp-assume tbody th { width: 30%; min-width: 180px; }
+.rp-assume td:nth-child(2) { width: 260px; white-space: nowrap; }
+.rp-input { display: inline-flex; align-items: baseline; gap: 8px; }
+.rp-input input { width: 110px; min-height: 32px; padding: 2px 0; border: 0; border-bottom: 1px dashed color-mix(in srgb, var(--text) 28%, transparent); border-radius: 0; background: none; color: var(--text); font: inherit; font-variant-numeric: tabular-nums; }
+.rp-input input:hover, .rp-select:hover { border-bottom-color: var(--text); }
+.rp-input input:focus-visible, .rp-select:focus-visible { outline: none; border-bottom: 1px solid var(--text); box-shadow: 0 1px 0 var(--text); }
+.rp-input input[aria-invalid] { border-bottom: 1px solid var(--bad); }
+.rp-input span { color: var(--muted); font-size: 12.5px; }
+.rp-assume small { display: block; margin-top: 2px; font-size: 12px; }
+.rp-select { min-height: 32px; padding: 2px 0; border: 0; border-bottom: 1px dashed color-mix(in srgb, var(--text) 28%, transparent); border-radius: 0; background: none; color: var(--text); font: inherit; }
+.rp-kind { font-size: 12.5px; font-weight: 500; white-space: nowrap; }
+.rp-kind[data-kind="placeholder"] { color: var(--warn); }
+.rp-kind[data-kind="mine"] { color: var(--accent-ink); }
+.rp-src { color: var(--muted); font-size: 12.5px; }
+.rp-controls { margin-top: 10px; }
+.rp-controls .sop-search { max-width: 360px; }
+.rp-controls .sop-tabs { flex-wrap: wrap; gap: 4px 20px; }
+.rp-vehicles { min-width: 980px; }
+.rp-vehicle { display: block; min-height: 32px; text-align: start; }
+.rp-vehicle span { font-size: 13px; text-decoration: underline; text-decoration-color: color-mix(in srgb, var(--text) 25%, transparent); text-underline-offset: 3px; }
+.rp-vehicle:hover span { text-decoration-color: currentColor; }
+.rp-vehicle small, .rp-why small { display: block; margin-top: 2px; color: var(--muted); font-size: 12px; line-height: 1.4; }
+.rp-vehicles tr[data-open] .rp-vehicle span { color: var(--accent-ink); font-weight: 600; }
+.rp-why { min-width: 260px; max-width: 360px; }
+.rp-verdict { color: var(--text); font-size: 13px; font-weight: 500; }
+.rp-verdict[data-decision="review"] { color: var(--warn); }
+.rp-verdict[data-decision="keep"] { color: var(--muted); font-weight: 400; }
+.rp-more { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 18px; margin-top: 12px; color: var(--muted); font-size: 12.5px; }
+.rp-detail { max-width: 860px; margin-top: 36px; padding-top: 20px; border-top: 1px solid var(--text); scroll-margin-block-start: 120px; font-size: 14px; }
+.rp-detail h3 { margin-top: 4px; font-size: 20px; font-weight: 500; letter-spacing: -.02em; }
+.rp-years { margin-top: 18px; }
+.rp-years tbody th { color: var(--muted); }
+.rp-years tr.rp-total th, .rp-years tr.rp-total td { color: var(--text); font-weight: 600; border-top-color: color-mix(in srgb, var(--text) 40%, transparent); }
+.rp-years tr[data-even] th, .rp-years tr[data-even] td { color: var(--text); font-weight: 600; }
+.rp-caption { caption-side: top; padding-bottom: 6px; text-align: start; color: var(--muted); font-size: 13px; }
+.rp-formulas { max-width: 920px; margin-top: 16px; counter-reset: f; }
+.rp-formulas li { display: grid; grid-template-columns: 26px minmax(0, 1fr); column-gap: 8px; padding: 11px 0; border-top: 1px solid var(--sop-line); counter-increment: f; font-size: 14px; }
+.rp-formulas li::before { content: counter(f, decimal-leading-zero); grid-row: span 6; font-family: var(--font-mono); font-size: 12px; color: var(--faint); }
+.rp-formulas b { font-weight: 600; }
+.rp-formulas code { display: block; margin-top: 4px; font-family: var(--font-mono); font-size: 12.5px; line-height: 1.5; overflow-wrap: anywhere; unicode-bidi: isolate; direction: ltr; text-align: start; }
+.rp-formulas span { display: block; margin-top: 4px; max-width: var(--sop-measure); color: var(--muted); font-size: 13px; line-height: 1.5; }
+@media (pointer: coarse) { .rp-link, .rp-vehicle, .rp-input input, .rp-select { min-height: 44px; } }
+.rp-assume th, .rp-assume td { padding-block: 8px; }
+@media (max-width: 640px) {
+  .rp-assume { min-width: 0; }
+  .rp-assume thead { display: none; }
+  .rp-assume tr { display: block; padding: 10px 0; border-top: 1px solid var(--sop-line); }
+  .rp-assume tbody th, .rp-assume td, .rp-assume td:nth-child(2) { display: block; width: auto; min-width: 0; padding: 2px 0; border: 0; white-space: normal; }
+}

@@ -4,6 +4,12 @@ What changed in each version of FleetOps KPI. Dates are release dates; the newes
 
 ## Unreleased
 
+### Replace or keep planner (2026-11-26)
+- New **Replace or keep** page under Operate. For every active vehicle it shows cost per km to date, then prices keeping it against replacing it now with a new petrol vehicle or a new EV over a planning horizon (5 years by default), with the break-even year and one recommendation: Keep, Replace with EV, Replace with ICE or Review, each with a one-line reason.
+- The fleet summary gives the capital needed (new prices less the resale value of the vehicles replaced) and the saving over the horizon.
+- Replacement prices, energy use, first-year maintenance and how fast maintenance rises with age come from your own register, energy and workshop records; prices and depreciation come from your fleet settings. Anything the records lack is a placeholder marked as such. Every input is editable in the tab, and "How this is calculated" lists each formula. Collision repairs count in the cost to date but are not projected forward as wear.
+- Download the plan, with the assumptions used, as a CSV file.
+
 ### GCC vehicle release
 
 - Garage now checks official registration classes and inspection evidence for the UAE, Saudi Arabia, Qatar, Kuwait and Oman, alongside Bahrain.
