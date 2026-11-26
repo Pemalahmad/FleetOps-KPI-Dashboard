@@ -33,6 +33,22 @@ test("daily command sends an exception into its working queue", async ({ page })
   await command.getByRole("button", { name: /Accident intake/ }).click();
   await expect(page.getByRole("group", { name: "Garage queue filters" }).getByRole("button", { name: /Accident intake/ })).toHaveAttribute("aria-pressed", "true");
 });
+test("Daily Command shows both Bahrain deadlines based on the demo report date", async ({ page }) => {
+  await page.setViewportSize({ width: 360, height: 844 });
+  await ready(page);
+  await page.getByRole("button", { name: "Bahrain", exact: true }).click();
+  const command = page.getByRole("region", { name: "Daily fleet command" });
+  await command.getByRole("button", { name: /GCC reminders/ }).click();
+  await command.getByRole("textbox", { name: "Find vehicle or owner" }).fill("BA 53194");
+  const registration = command.getByRole("listitem", { name: "BA 53194 Registration renewal" });
+  const inspection = command.getByRole("listitem", { name: "BA 53194 Technical inspection" });
+  await expect(registration.getByText("2026-10-18", { exact: true })).toBeVisible();
+  await expect(inspection.getByText("2026-10-18", { exact: true })).toBeVisible();
+  await expect(inspection).toContainText("Upcoming");
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(360);
+  await inspection.getByRole("button", { name: "Open vehicle" }).click();
+  await expect(page.getByRole("dialog").getByText("Bahrain technical inspection", { exact: false }).first()).toBeVisible();
+});
 test("an incomplete damage intake immediately places a hold and exports no release", async ({ page }) => {
   await ready(page);
   await page.getByRole("button", { name: "Practice a damage case" }).click();
@@ -265,9 +281,10 @@ test("official classes and inspection evidence govern handover in the other five
     return new Date(now.getTime() - now.getTimezoneOffset() * 60_000).toISOString().slice(0, 10);
   });
   const day = (offset: number) => new Date(Date.parse(today + "T00:00:00Z") + offset * 864e5).toISOString().slice(0, 10);
+  const saFirstYear = Number(today.slice(0, 4)) - 3;
   const markets = [
     { code: "AE", country: "UAE", registration: "مركبة ثقيلة", issuer: "RTA Dubai", expiry: day(14), emirate: "Dubai" },
-    { code: "SA", country: "Saudi Arabia", registration: "أجرة", issuer: "MVPI", expiry: day(95), licensed: day(-850) },
+    { code: "SA", country: "Saudi Arabia", registration: "أجرة", issuer: "MVPI", expiry: day(95), licensed: `${saFirstYear}-01-15` },
     { code: "QA", country: "Qatar", registration: "نقل خاص", issuer: "FAHES", expiry: day(14), owner: "Company", kg: 2999 },
     { code: "KW", country: "Kuwait", registration: "سيارة خاصة", issuer: "Kuwait General Traffic Department", expiry: day(14), due: day(-1), ref: "DEMO-SAHEL-1" },
     { code: "OM", country: "Oman", registration: "مركبة ركاب خفيفة تجارية", issuer: "Royal Oman Police", expiry: day(14), advertising: true },
@@ -286,7 +303,7 @@ test("official classes and inspection evidence govern handover in the other five
       "vehicle_advertising", "inspection_due_date", "inspection_schedule_reference"],
     ...vehicles.map((v) => [v.id, v.id, "Synthetic", "Fleet asset", "ICE", v.code, day(-120),
       v.code === "SA" ? "Taxi" : "Pool car", v.registration, v.licensed ?? day(-150),
-      day(v.licensed ? -900 : -170), v.code !== "AE", v.expiry, day(150), v.emirate ?? "", v.owner ?? "",
+      v.licensed ?? day(-170), v.code !== "AE", v.code === "SA" && v.passed ? day(14) : v.expiry, day(150), v.emirate ?? "", v.owner ?? "",
       v.kg ?? "", v.advertising ?? "", v.due ?? "", v.ref ?? ""]),
   ]);
   sheet("work_orders", [
@@ -307,6 +324,53 @@ test("official classes and inspection evidence govern handover in the other five
   await expect(page.getByText(/My fleet: \d+ SQL models/)).toBeVisible({ timeout: 90_000 });
   await page.goto("/");
   await expect(page.getByText(/My fleet: \d+ SQL models/)).toBeVisible({ timeout: 90_000 });
+
+  const command = page.getByRole("region", { name: "Daily fleet command" });
+  const search = command.getByRole("textbox", { name: "Find vehicle or owner" });
+  const queue = command.getByLabel("Action queue");
+  await command.getByRole("button", { name: /GCC reminders/ }).click();
+  for (const market of markets) {
+    await search.fill(market.code + "-TEST-HELD");
+    const reminder = command.getByRole("listitem", { name: market.code + "-TEST-HELD Technical inspection" });
+    await expect(reminder).toBeVisible();
+    if (market.code === "OM") await expect(reminder).toContainText("Record a passing reinspection.");
+    else {
+      const dueOn = market.code === "SA" ? `${saFirstYear + 2}-01-15` : market.code === "KW" ? day(-1) : day(14);
+      await expect(reminder.getByText(dueOn, { exact: true })).toBeVisible();
+    }
+    await search.fill(market.code + "-TEST-PASS");
+    const renewal = command.getByRole("listitem", { name: market.code + "-TEST-PASS Registration renewal" });
+    await expect(renewal.getByText(day(14), { exact: true })).toBeVisible();
+  }
+
+  await search.fill("KW-TEST-HELD");
+  const inspection = command.getByRole("listitem", { name: "KW-TEST-HELD Technical inspection" });
+  const renewal = command.getByRole("listitem", { name: "KW-TEST-HELD Registration renewal" });
+  for (const [reminder, owner] of [[inspection, "Inspection lead"], [renewal, "Registration desk"]] as const) {
+    await reminder.getByRole("button", { name: "Assign owner" }).click();
+    await reminder.getByRole("textbox", { name: "Reminder owner" }).fill(owner);
+    await reminder.getByRole("button", { name: "Save owner" }).click();
+    await expect(reminder).toContainText("Owner " + owner);
+  }
+  await queue.selectOption("Overdue reminders");
+  await expect(inspection).toContainText("Overdue");
+  await expect(renewal).toHaveCount(0);
+  const shift = page.waitForEvent("download");
+  await command.getByRole("button", { name: "Download shift handoff" }).click();
+  const handoff = await readFile((await (await shift).path())!, "utf8");
+  expect(handoff).toContain("Owner: Inspection lead | Due: " + day(-1));
+  expect(handoff).toContain("Owner: Registration desk | Due: " + day(14));
+  await page.reload();
+  await expect(page.getByText(/My fleet: \d+ SQL models/)).toBeVisible({ timeout: 90_000 });
+  await command.getByRole("button", { name: /GCC reminders/ }).click();
+  await search.fill("KW-TEST-HELD");
+  await expect(inspection).toContainText("Owner Inspection lead");
+  await expect(renewal).toContainText("Owner Registration desk");
+  await inspection.getByRole("button", { name: "Change owner" }).click();
+  await inspection.getByRole("textbox", { name: "Reminder owner" }).clear();
+  await inspection.getByRole("button", { name: "Save owner" }).click();
+  await expect(inspection).toContainText("Owner Unassigned");
+  await expect(renewal).toContainText("Owner Registration desk");
 
   for (const v of vehicles) {
     await page.getByRole("textbox", { name: "Search garage vehicles" }).fill(v.id);

@@ -29,6 +29,7 @@ import { useGarageOperations } from "./use-garage";
 import { LivePanel } from "../live";
 import Button from "../arc/button";
 import { DailyCommandBoard } from "./command-board";
+import { setComplianceReminderOwner } from "@/lib/garage-command";
 
 const EMPTY: GarageRow[] = [];
 const NUM = new Intl.NumberFormat("en");
@@ -38,6 +39,7 @@ const PRIORITY: Record<GarageLane, number> = { incident: 0, renewal: 1, repair: 
 export function GaragePage() {
   const engine = useEngine(), operations = useGarageOperations(), carStyles = useCarStyles();
   const source = useSql<GarageRow>(GARAGE_SQL);
+  const reminderSettings = useSql<{ days: number }>("SELECT CAST(cfg_num('expiring_window_days') AS INTEGER) AS days");
   const [selectedId, setSelectedId] = useState<string | null>(null), [incidentFor, setIncidentFor] = useState<string | null | undefined>(undefined);
   const [notifications, setNotifications] = useState(false), [search, setSearch] = useState(""), [filter, setFilter] = useState<GarageLane | "all">("all"), [page, setPage] = useState(0);
   const [alertKind, setAlertKind] = useState<GarageAlert["priority"] | "all">("all"), [alertPage, setAlertPage] = useState(0);
@@ -109,6 +111,9 @@ export function GaragePage() {
     {!ready ? engine.status === "failed" ? <Card><p role="alert" className="text-sm text-bad">The fleet report did not finish. Review the failed stage and rebuild before using the garage.</p><Link className="ops-button mt-3" href="/pipeline/">Review pipeline</Link></Card> : <Skeleton height={620} /> : <>
       <DailyCommandBoard vehicles={vehicles} alerts={alerts} handovers={handovers} today={today} now={now}
         region={engine.region ?? "All regions"} snapshot={context.snapshot} demo={context.demo}
+        reminderOwners={operations.state.reminderOwners} reminderLeadDays={reminderSettings.data?.[0]?.days ?? 30}
+        canAssignReminder={engine.status === "ready" && !operations.saving}
+        onAssignReminder={(id, owner) => operations.change((state) => setComplianceReminderOwner(state, id, owner))}
         onOpenVehicle={openVehicle} onFilter={filterQueue} onOpenAlerts={() => setNotifications(true)}
         onPractice={practice ? () => setIncidentFor(practice.row.vehicle_id) : undefined} />
 

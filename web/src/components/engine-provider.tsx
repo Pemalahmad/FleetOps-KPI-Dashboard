@@ -168,6 +168,7 @@ export function EngineProvider({ children }: { children: ReactNode }) {
     const detail = after.handovers.length > before.handovers.length ? `Handover recorded for ${after.handovers[0]!.vehicleId}`
       : after.incidents.length > before.incidents.length ? `Accident reported for ${after.incidents[0]!.vehicleId}`
       : after.acknowledged.length > before.acknowledged.length ? `${after.acknowledged.length - before.acknowledged.length} alert(s) marked read`
+      : after.reminderOwners !== before.reminderOwners ? "Compliance reminder assignment updated"
       : "Garage review updated";
     const next = withActivity({ ...current, garage: after }, "garage", detail);
     await saveWorkspace(next);

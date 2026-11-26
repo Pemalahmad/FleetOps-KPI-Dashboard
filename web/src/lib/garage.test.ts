@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { advanceIncident, assertGarageGeneration, buildAlerts, createDamageCase, damageHandoverBlockers, damageStageBlockers, deriveVehicle, documentCurrent, emptyGarage, emptyReview, normaliseDamageCase, recordHandover, releaseBlockers, reportAccident, updateDamageCase, type DamageCase, type GarageContext, type GarageRow } from "./garage";
 import { createTaskQueue } from "./task-queue";
+import { complianceReminders, setComplianceReminderOwner, shiftHandoff } from "./garage-command";
 
 const context: GarageContext = { snapshot: "2026-11-18", today: "2026-11-18", demo: false, operations: true, recallCoverage: true };
 const row: GarageRow = {
@@ -22,6 +23,64 @@ const row: GarageRow = {
 };
 const signed = (revision: string) => ({ ...emptyReview(revision), owner: "Reviewer", checks: { walkaround: true, road_test: true, handover: true } });
 const at = "2026-11-18T10:00:00Z";
+
+describe("Daily Command compliance reminders", () => {
+  const asOf = context.today;
+  const makeVehicle = (changes: Partial<GarageRow>) => deriveVehicle({ ...row, registration_expiry: "2026-12-01",
+    inspection_review_from: "2026-11-01", ...changes }, emptyGarage(), context);
+  const remindersFor = (changes: Partial<GarageRow>, lead = 30) => complianceReminders([makeVehicle(changes)], undefined, asOf, lead);
+
+  it("keeps registration and inspection as separate reminders with the published renewal deadline", () => {
+    const dates = remindersFor({ open_jobs: 1, registration_status: "Valid" });
+    expect(dates.map(({ kind, dueOn, status }) => [kind, dueOn, status])).toEqual([
+      ["inspection", "2026-12-01", "Upcoming"], ["registration", "2026-12-01", "Upcoming"],
+    ]);
+    expect(remindersFor({ registration_expiry: "2026-11-18" }, 0).map((item) => item.status)).toEqual(["Due today", "Due today"]);
+    expect(remindersFor({ registration_expiry: "2026-11-17" }, 0).map((item) => item.status)).toEqual(["Overdue", "Overdue"]);
+    expect(remindersFor({ registration_expiry: "2026-12-01" }, 12)).toEqual([]);
+    expect(remindersFor({ gcc_country_code: null }).length).toBe(0);
+  });
+
+  it("uses periodic dates independently and treats Bahrain's fifth anniversary as inclusive", () => {
+    const sa: Partial<GarageRow> = { gcc_country_code: "SA", registration_class_rule: "sa_public",
+      periodic_inspection: true, registration_expiry: "2027-05-01", inspection_starts_on: "2026-11-26" };
+    expect(remindersFor(sa).map((item) => item.dueOn)).toEqual(["2026-11-26"]);
+    expect(remindersFor({ ...sa, inspection_expiry: "2026-12-12" }).map((item) => item.dueOn)).toEqual(["2026-12-12"]);
+    expect(remindersFor({ ...sa, inspection_expiry: "2027-02-15" })).toEqual([]);
+    const bh: Partial<GarageRow> = { gcc_country_code: "BH", bahrain_registration_group: "private",
+      bahrain_inspection_after: "2026-12-01" };
+    expect(remindersFor(bh).map((item) => item.kind)).toEqual(["registration"]);
+    expect(remindersFor({ ...bh, registration_expiry: "2026-12-02" })).toContainEqual(expect.objectContaining({
+      kind: "inspection", dueOn: "2026-12-02",
+    }));
+  });
+
+  it("shows a short-lived renewal report and calls for action on failed or directed inspections without inventing dates", () => {
+    expect(remindersFor({ inspection_expiry: "2026-11-25" })[0]).toMatchObject({ kind: "inspection", dueOn: "2026-11-25" });
+    expect(remindersFor({ inspection_expiry: "2026-12-01" }).map((item) => item.kind)).toEqual(["registration"]);
+    expect(remindersFor({ inspection_failed: true, inspection_expiry: "2027-01-01" })[0]).toMatchObject({
+      status: "Action needed", kind: "inspection", dueOn: null,
+    });
+    expect(remindersFor({ inspection_required_by_authority: true, registration_expiry: "2027-01-01" })[0]).toMatchObject({ dueOn: null });
+    expect(remindersFor({ registration_class_rule: null }).map((item) => item.kind)).toEqual(["registration"]);
+  });
+
+  it("keeps the owners independent across renewals, reports them in the shift handoff and clears only the chosen assignment", () => {
+    const initial = emptyGarage();
+    const first = setComplianceReminderOwner(initial, "inspection:V-001", "  Inspection lead ");
+    const state = setComplianceReminderOwner(first, "registration:V-001", "Registration desk");
+    const vehicle = makeVehicle({ registration_expiry: "2026-12-05" });
+    const reminders = complianceReminders([vehicle], state.reminderOwners, asOf, 30);
+    expect(reminders.map(({ owner, dueOn }) => [owner, dueOn])).toEqual([
+      ["Inspection lead", "2026-12-05"], ["Registration desk", "2026-12-05"],
+    ]);
+    const handoff = shiftHandoff([], [], "All regions", asOf, Date.parse(at), false, reminders);
+    expect(handoff).toContain("Owner: Inspection lead | Due: 2026-12-05");
+    expect(handoff).toContain("Owner: Registration desk | Due: 2026-12-05");
+    expect(setComplianceReminderOwner(state, "inspection:V-001", "").reminderOwners).toEqual({ "registration:V-001": "Registration desk" });
+    expect(state.reviews).toBe(initial.reviews);
+  });
+});
 const completeDamage = (): DamageCase => {
   const damage = createDamageCase(at, "Recovery lead");
   damage.severity = "moderate"; damage.drivability = "not_drivable"; damage.hold.reason = "Collision assessment";

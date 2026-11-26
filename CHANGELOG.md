@@ -4,6 +4,10 @@ What changed in each version of FleetOps KPI. Dates are release dates; the newes
 
 ## Unreleased
 
+### GCC reminders in Daily Command
+
+- See upcoming and overdue inspections and registration renewals for all six GCC countries. Each task shows its due date, can have its own owner, and appears in the shift handoff.
+
 ### Replace or keep planner (2026-11-26)
 - New **Replace or keep** page under Operate. For every active vehicle it shows cost per km to date, then prices keeping it against replacing it now with a new petrol vehicle or a new EV over a planning horizon (5 years by default), with the break-even year and one recommendation: Keep, Replace with EV, Replace with ICE or Review, each with a one-line reason.
 - The fleet summary gives the capital needed (new prices less the resale value of the vehicles replaced) and the saving over the horizon.

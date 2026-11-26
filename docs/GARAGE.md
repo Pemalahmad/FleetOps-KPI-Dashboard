@@ -45,6 +45,19 @@ For the UAE, Saudi Arabia, Qatar, Kuwait and Oman, review the official class and
 **Source requirements**. A failed inspection blocks handover until there is a later passing report. The affected
 vehicle appears in Daily Command with the evidence to add. [GCC release evidence](GCC_COMPLIANCE.md#gcc-release-evidence)
 
+## GCC reminders in Daily Command
+
+Open **GCC reminders** to see upcoming and overdue inspections and registration renewals for the selected region.
+The warning window is the fleet's configured renewal window, 30 days by default. Registration reminders use the
+recorded expiry date. Inspection reminders use independently scheduled inspections or the applicable renewal
+deadline. If a current inspection report expires before renewal, the reminder shows the earlier report expiry.
+An open inspection failure or an undated authority direction prompts immediate action.
+
+Choose **Assign owner** beside each task. Assignments stay with that vehicle and task when new dates are imported.
+The inspection and registration tasks can have different owners. Search by plate or owner, or use **Overdue
+reminders** in the action queue. **Download shift handoff** includes the reminders and their owners. The reminders
+appear in Daily Command and the export.
+
 ## Damage escalation controls
 
 The damage case is a recorded, append-only operational trail:

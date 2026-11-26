@@ -48,6 +48,14 @@ button.command-metric[aria-pressed="true"] { box-shadow: inset 0 -2px var(--acce
 .command-priority-copy small { margin-top: 3px; color: var(--muted); font-size: 11px; line-height: 1.35; }
 .command-priority-copy em { margin-top: 5px; color: var(--faint); font-size: 10.5px; font-style: normal; }
 .command-open { align-self: center; color: var(--accent-ink); font-size: 11px; font-weight: 600; white-space: nowrap; }
+.command-reminder-summary { display: grid; grid-template-columns: 8px minmax(0, 1fr); gap: 10px; padding: 12px var(--command-pad); }
+.command-reminder-summary time { font-family: var(--font-mono); font-variant-numeric: tabular-nums; direction: ltr; unicode-bidi: isolate; }
+.command-reminder-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; grid-column: 2; }
+.command-reminder-controls button, .command-reminder-editor :is(button, input) { min-height: 44px; }
+.command-reminder-controls .command-open { padding-inline-end: 8px; }
+.command-reminder-editor { display: flex; align-items: flex-end; flex-wrap: wrap; gap: 8px; padding: 0 var(--command-pad) 12px; }
+.command-reminder-editor label { flex: 1 1 145px; min-width: 0; }
+.command-reminder-hint { flex-basis: 100%; color: var(--muted); font-size: 11px; }
 .command-recovery ol { padding: 5px var(--command-pad); }
 .command-stage-action { display: grid; width: 100%; min-height: 44px; grid-template-columns: 25px minmax(0, 1fr); align-items: center; gap: 9px; padding: 8px 0; text-align: start; }
 .command-stage-action:hover, .command-stage-action[aria-pressed="true"] { color: var(--accent-ink); background: var(--accent-soft); }
