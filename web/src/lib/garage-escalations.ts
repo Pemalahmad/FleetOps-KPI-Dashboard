@@ -56,23 +56,25 @@ export interface EscalationUpdate {
   stage: Exclude<CaseStage, "closed">;
 }
 
-export const ESCALATION_DOCUMENTS_SQL = `SELECT vehicle_id, document_id FROM stg_documents
-  WHERE vehicle_id IS NOT NULL AND doc_type IN ('Registration', 'Inspection')`;
-export interface EscalationDocumentMatch { vehicle_id: string; document_id: string }
+export const ESCALATION_DOCUMENTS_SQL = `SELECT vehicle_id, document_id,
+  coalesce(doc_type = 'Inspection' AND inspection_result = 'Fail', false) AS failed,
+  CAST(issue_date AS VARCHAR) AS issue_date
+  FROM stg_documents WHERE vehicle_id IS NOT NULL AND doc_type IN ('Registration', 'Inspection')`;
+export interface EscalationDocumentMatch { vehicle_id: string; document_id: string; failed: boolean; issue_date: string | null }
 
 export function caseOwner(item: ComplianceEscalation, owners: GarageState["reminderOwners"]): string {
   return item.owner ?? owners?.[item.reminderId] ?? "";
 }
 
 function activeProof(item: ComplianceEscalation, vehicle: GarageVehicle | undefined, uploads: SavedDocument[],
-  today: string, snapshot: string): EscalationProof | undefined {
-  const r = vehicle?.row;
-  if (!r || r.gcc_country_code !== item.countryCode) return;
+  failure: string | null | undefined, today: string, snapshot: string): EscalationProof | undefined {
+  if (!vehicle?.row.is_active || vehicle.row.gcc_country_code !== item.countryCode) return;
+  const r = vehicle.row;
   const baseline = item.previousExpiry && item.previousExpiry > item.dueOn ? item.previousExpiry : item.dueOn;
   const registration = item.kind === "registration";
   const gate = vehicle.gates.find((g) => g.id === (registration ? "registration" : "gcc-inspection"));
-  if (gate?.status !== "pass") return;
-  if (!registration && (r.inspection_failed || vehicle.gates.some((g) => g.id === "gcc-registration-class" && g.status !== "pass"))) return;
+  if (registration && gate?.status !== "pass") return;
+  if (!registration && (failure === null || vehicle.gates.some((g) => g.id === "gcc-registration-class" && g.status !== "pass"))) return;
   const dubai = r.gcc_country_code === "AE" && ["dubai", "dxb", "rta", "دبي"].includes(r.registration_jurisdiction ?? "");
   const effectiveExpiry = registration ? r.registration_expiry : r.inspection_expiry;
   let proof: EscalationProof | undefined;
@@ -81,7 +83,10 @@ function activeProof(item: ComplianceEscalation, vehicle: GarageVehicle | undefi
     const issued = doc.issue_date;
     if (issued && (documentCurrent(issued, today) === null || issued > today || issued > doc.expiry_date)) continue;
     if (!registration) {
-      if (doc.inspection_result !== "Pass" || !issued || issued > snapshot || (r.inspection_failed_on && issued <= r.inspection_failed_on.slice(0, 10))) continue;
+      if (doc.inspection_result !== "Pass" || !issued || (failure && issued <= failure)
+        || (r.inspection_failed_on && issued <= r.inspection_failed_on.slice(0, 10))) continue;
+      // A post-snapshot upload can resolve the document case. Release still checks the current fleet report.
+      if (issued <= snapshot && (gate?.status !== "pass" || r.inspection_failed)) continue;
       if (dubai && r.registration_class_rule !== "ae_private_light" && !/dubai|(^|[^a-z])rta([^a-z]|$)|دبي|هيئة الطرق والمواصلات/i.test(doc.issuer ?? "")) continue;
     }
     let expiresOn = doc.expiry_date;
@@ -91,7 +96,8 @@ function activeProof(item: ComplianceEscalation, vehicle: GarageVehicle | undefi
       const cap = limit.toISOString().slice(0, 10);
       if (cap < expiresOn) expiresOn = cap;
     }
-    if (expiresOn <= baseline || documentCurrent(expiresOn, today) !== true || !effectiveExpiry || effectiveExpiry.slice(0, 10) < expiresOn) continue;
+    if (expiresOn <= baseline || documentCurrent(expiresOn, today) !== true) continue;
+    if ((registration || (issued && issued <= snapshot)) && (!effectiveExpiry || effectiveExpiry.slice(0, 10) < expiresOn)) continue;
     if (!proof || expiresOn > proof.expiresOn) proof = { id: doc.id, name: doc.file_name, reference: doc.document_number, expiresOn };
   }
   return proof;
@@ -111,7 +117,14 @@ export function reconcileEscalations(state: GarageState, source: EscalationSourc
   const vehicles = new Map(source.vehicles.map((v) => [v.row.vehicle_id, v]));
   const uploads = new Map(source.documents.filter((doc) => doc.confirmed).map((doc) => [doc.id, doc]));
   const byVehicle = new Map<string, SavedDocument[]>();
+  const failures = new Map<string, string | null>();
   for (const match of source.matches) {
+    if (match.failed && (!match.issue_date || match.issue_date <= source.today)) {
+      const previous = failures.get(match.vehicle_id);
+      if (previous !== null && (!match.issue_date || !previous || previous < match.issue_date)) {
+        failures.set(match.vehicle_id, match.issue_date);
+      }
+    }
     const doc = uploads.get(match.document_id);
     if (!doc) continue;
     const matched = byVehicle.get(match.vehicle_id) ?? [];
@@ -124,7 +137,7 @@ export function reconcileEscalations(state: GarageState, source: EscalationSourc
   for (const item of cases.values()) {
     if (item.stage === "closed") continue;
     openReminders.add(item.reminderId);
-    const proof = activeProof(item, vehicles.get(item.vehicleId), byVehicle.get(item.vehicleId) ?? [], source.today, source.snapshot);
+    const proof = activeProof(item, vehicles.get(item.vehicleId), byVehicle.get(item.vehicleId) ?? [], failures.get(item.vehicleId), source.today, source.snapshot);
     if (!proof) continue;
     cases.set(item.id, { ...item, owner: caseOwner(item, state.reminderOwners), stage: "closed", proof,
       history: [...item.history, { at: source.at, by: "FleetOps", stage: "closed", note: "Verified the updated document.", proof }] });
@@ -136,6 +149,8 @@ export function reconcileEscalations(state: GarageState, source: EscalationSourc
     if (!r.gcc_country_code || !r.gcc_country) continue;
     const id = JSON.stringify([reminder.id, reminder.dueOn]);
     const closed = cases.get(id);
+    if (closed && activeProof(closed, reminder.vehicle, byVehicle.get(closed.vehicleId) ?? [],
+      failures.get(closed.vehicleId), source.today, source.snapshot)) continue;
     const event: EscalationEvent = { at: source.at, by: "FleetOps", stage: "open",
       note: closed ? "The same deadline is overdue again." : "Opened when the deadline became overdue." };
     cases.set(id, closed ? { ...closed, stage: "open", proof: undefined, history: [...closed.history, event] } : {

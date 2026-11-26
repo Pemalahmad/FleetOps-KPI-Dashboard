@@ -67,7 +67,8 @@ manager contacted, the next follow-up and the notes. Record the escalation after
 
 Upload and confirm the updated registration or inspection in **Documents**. Daily Command verifies the upload
 against the same vehicle and applicable check. An inspection requires a current passing report and, after a failed
-test, a later reinspection. A date changed in a workbook leaves the case open. Use **Closed escalations** to review
+test, a later reinspection. A certificate issued after the latest operational report can resolve the document case.
+The vehicle release review continues to check source freshness. A date changed in a workbook leaves the case open. Use **Closed escalations** to review
 the accepted file name, reference, validity and case history. The manager contact is recorded in FleetOps and made
 through your own channels.
 

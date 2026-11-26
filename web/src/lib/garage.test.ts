@@ -110,9 +110,10 @@ it("preserves overdue cases and closes only the matching case on confirmed, vali
   const reg = upload("reg", "Registration", "2027-03-01");
   const cert = upload("inspection", "Inspection", "2027-03-02");
   const bad = { ...renewed, documents: [{ ...reg, confirmed: false }, { ...cert, inspection_result: "Fail" as const }],
-    matches: [{ vehicle_id: "V-001", document_id: reg.id }, { vehicle_id: "V-001", document_id: cert.id }] };
+    matches: [{ vehicle_id: "V-001", document_id: reg.id, failed: false, issue_date: reg.issue_date },
+      { vehicle_id: "V-001", document_id: cert.id, failed: false, issue_date: cert.issue_date }] };
   expect(reconcileEscalations(escalated, bad)).toBe(escalated);
-  expect(reconcileEscalations(escalated, { ...renewed, documents: [reg], matches: [{ vehicle_id: "other", document_id: reg.id }] })).toBe(escalated);
+  expect(reconcileEscalations(escalated, { ...renewed, documents: [reg], matches: [{ ...bad.matches[0]!, vehicle_id: "other" }] })).toBe(escalated);
   const verifiedReg = reconcileEscalations(escalated, { ...renewed, documents: [reg], matches: bad.matches });
   expect(verifiedReg.complianceEscalations?.find((item) => item.kind === "inspection")?.stage).toBe("open");
   expect(verifiedReg.complianceEscalations?.find((item) => item.kind === "registration")).toMatchObject({
@@ -121,6 +122,14 @@ it("preserves overdue cases and closes only the matching case on confirmed, vali
   });
   const verified = reconcileEscalations(verifiedReg, { ...renewed, documents: [reg, cert], matches: bad.matches });
   expect(verified.complianceEscalations?.every((item) => item.stage === "closed")).toBe(true);
+  const newerThanSnapshot = { ...renewed, snapshot: "2026-11-17", vehicles: [overdue], documents: [cert], matches: bad.matches,
+    reminders: inputs.reminders.filter((item) => item.kind === "inspection") };
+  const closedFromNewUpload = reconcileEscalations(verifiedReg, newerThanSnapshot);
+  expect(closedFromNewUpload.complianceEscalations?.every((item) => item.stage === "closed")).toBe(true);
+  expect(reconcileEscalations(closedFromNewUpload, newerThanSnapshot)).toBe(closedFromNewUpload);
+  const failure = { vehicle_id: "V-001", document_id: "imported-failure", failed: true, issue_date: cert.issue_date };
+  expect(reconcileEscalations(verifiedReg, { ...newerThanSnapshot, matches: [...bad.matches, failure] })).toBe(verifiedReg);
+  expect(reconcileEscalations(verifiedReg, { ...newerThanSnapshot, matches: [...bad.matches, { ...failure, issue_date: null }] })).toBe(verifiedReg);
   expect(reconcileEscalations(verified, inputs).complianceEscalations?.every((item) => item.stage === "open" && !item.proof)).toBe(true);
 });
 const completeDamage = (): DamageCase => {

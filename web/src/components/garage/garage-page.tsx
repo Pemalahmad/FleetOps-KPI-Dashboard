@@ -61,17 +61,17 @@ export function GaragePage() {
     .filter((item) => item.status === "Overdue"), [all, operations.state.reminderOwners, effectiveDate]);
   const cases = operations.state.complianceEscalations ?? NO_ESCALATIONS;
   const vaultDocs = engine.dataset === "mine" ? engine.workspace?.documents ?? NO_UPLOADS : NO_UPLOADS;
-  const shouldVerifyDocuments = cases.some((item) => item.stage !== "closed") && vaultDocs.some((item) => item.confirmed);
+  const shouldVerifyDocuments = cases.length > 0 && vaultDocs.some((item) => item.confirmed);
   const caseDocuments = useSql<EscalationDocumentMatch>(shouldVerifyDocuments ? ESCALATION_DOCUMENTS_SQL : null);
   const { change, saving, error } = operations;
   useEffect(() => {
-    if (engine.status !== "ready" || !source.data || saving || error || !effectiveDate) return;
+    if (engine.status !== "ready" || !source.data || saving || error || !effectiveDate || (shouldVerifyDocuments && !caseDocuments.data)) return;
     const inputs = { vehicles: all, reminders: overdue, documents: vaultDocs, matches: caseDocuments.data ?? [],
       today: effectiveDate, snapshot: context.snapshot.slice(0, 10), at: new Date().toISOString() };
     if (reconcileEscalations(operations.state, inputs) !== operations.state) {
       void change((state) => reconcileEscalations(state, inputs));
     }
-  }, [engine.status, source.data, saving, error, effectiveDate, all, overdue, vaultDocs, caseDocuments.data,
+  }, [engine.status, source.data, saving, error, effectiveDate, all, overdue, vaultDocs, shouldVerifyDocuments, caseDocuments.data,
     context.snapshot, operations.state, change]);
   const vehicles = useMemo(() => all.filter((v) => !engine.region || v.row.region === engine.region), [all, engine.region]);
   const visibleCases = useMemo(() => cases.filter((item) => !engine.region || item.region === engine.region), [cases, engine.region]);

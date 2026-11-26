@@ -477,8 +477,8 @@ async function importIncidentFleet(page: import("@playwright/test").Page) {
     [plate, plate, "Synthetic", "Taxi", "ICE", "SA", day(-120), "Taxi", "أجرة", `${Number(today.slice(0, 4)) - 3}-01-15`, day(-1), day(150)],
   ]);
   sheet("work_orders", [["work_order_id", "vehicle_id", "site_id", "job_type", "opened_at", "closed_at", "total_cost"],
-    ["WO-ESC-TEST", plate, "SA", "Preventive maintenance", day(-2) + " 10:00", day(-2) + " 14:00", 70]]);
-  sheet("usage", [["vehicle_id", "date", "km"], [plate, day(-2), 100], [plate, day(-1), 100]]);
+    ["WO-ESC-TEST", plate, "SA", "Preventive maintenance", day(-4) + " 10:00", day(-4) + " 14:00", 70]]);
+  sheet("usage", [["vehicle_id", "date", "km"], [plate, day(-4), 100], [plate, day(-3), 100]]);
   const buffer = Buffer.from(XLSX.write(book, { type: "buffer", bookType: "xlsx" }));
   await page.setInputFiles("input[type=file]", { name: "synthetic-incident-fleet.xlsx", mimeType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", buffer });
   await page.getByRole("button", { name: /Add to my fleet and build/ }).click();
@@ -554,6 +554,10 @@ test("overdue GCC cases retain manager history and require separate confirmed do
   const inspectionDialog = page.getByRole("dialog", { name: /Technical inspection/ });
   await expect(inspectionDialog.getByRole("region", { name: "Verified document" })).toContainText("synthetic-inspection-pass.txt");
   await expect(inspectionDialog.getByRole("region", { name: "Verified document" })).toContainText(day(80));
+  await openCommand();
+  await command.getByLabel("Action queue").selectOption("Closed escalations");
+  await expect(inspection).toContainText("Closed");
+  await expect(registration).toContainText("Closed");
 });
 
 test("EHS is available across navigation and preserves incident escalation through independent closure", async ({ page }) => {
