@@ -4,6 +4,11 @@ What changed in each version of FleetOps KPI. Dates are release dates; the newes
 
 ## Unreleased
 
+### GCC vehicle release
+
+- Garage now checks official registration classes and inspection evidence for the UAE, Saudi Arabia, Qatar, Kuwait and Oman, alongside Bahrain.
+- Release reviews use each jurisdiction's published class rules or a referenced official inspection date where applicable. A recorded failed inspection holds release until a later passing report is on file.
+
 - Fixed a browser upgrade issue that could pair a newly deployed page with an older offline SQL manifest. Returning browsers refresh the app cache, and the release dashboard requests the manifest that matches its build.
 
 ### Bahrain vehicle release (2026-11-26)

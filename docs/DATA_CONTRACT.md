@@ -33,9 +33,17 @@ One row per vehicle in the fleet: electric, hybrid or combustion.
 | `purchase_cost` | DOUBLE |  | Acquisition cost, for depreciation in total cost of ownership | price, cost, acquisition_cost, capex |
 | `use_case` | VARCHAR |  | Ride-hail, delivery, pool car... | usage_type, segment, application |
 | `registration_expiry` | DATE |  | Registration / licence (mulkiya, MOT, tax disc) expiry date | registration_expiry_date, reg_expiry, mulkiya_expiry, licence_expiry, license_expiry |
-| `registration_class` | VARCHAR |  | Official registration type on the vehicle's registration card, used for Bahrain inspection (e.g. Private or Private transport) | registration_type, official_registration_class, vehicle_registration_type, registration_category |
-| `manufacture_date` | DATE |  | Actual manufacture date (YYYY-MM-DD) used for Bahrain's Private inspection exemption | date_of_manufacture, manufacturing_date, build_date |
-| `inspection_required_by_authority` | BOOLEAN |  | True when Bahrain Traffic specifically requires a technical inspection for this vehicle | gdt_inspection_required |
+| `registration_class` | VARCHAR |  | Official vehicle type from the GCC registration card (e.g. Private, Private transport or Light vehicle) | registration_type, official_registration_class, vehicle_registration_type, registration_category |
+| `manufacture_date` | DATE |  | Actual manufacture date (YYYY-MM-DD) for a registration class with a manufacture-age rule | date_of_manufacture, manufacturing_date, build_date |
+| `first_registration_date` | DATE |  | Original first licensing date from authority records, never the latest renewal or fleet entry date | first_licensing_date, original_registration_date, first_registered_on |
+| `registered_as_new` | BOOLEAN |  | Whether the vehicle was new when first licensed, with manufacturer or approved dealer evidence for UAE exemptions | new_at_first_registration |
+| `registration_jurisdiction` | VARCHAR |  | Issuing emirate on a UAE registration card (e.g. Dubai). Use this when the fleet region is not the issuing emirate | registration_emirate, licensing_emirate |
+| `registration_owner_type` | VARCHAR |  | Owner type on the registration (Individual or Company). Used for Qatar private transport | registered_owner_type |
+| `registration_weight_kg` | DOUBLE |  | Weight in kg shown for the inspection class on the Qatar registration record | registered_weight_kg |
+| `vehicle_advertising` | BOOLEAN |  | Whether Oman commercial light passenger or pickup vehicles are used for advertising | advertising_use |
+| `inspection_due_date` | DATE |  | Next inspection due date specifically confirmed by the registration authority for this vehicle | authority_inspection_due_date |
+| `inspection_schedule_reference` | VARCHAR |  | Authority record reference for the confirmed next inspection date | authority_inspection_reference |
+| `inspection_required_by_authority` | BOOLEAN |  | True when the licensing or traffic authority directs this vehicle to undergo technical inspection | gdt_inspection_required, authority_requires_inspection |
 | `insurance_expiry` | DATE |  | Insurance policy expiry date | insurance_expiry_date, policy_expiry, insurance_valid_until, policy_end |
 | `insurer` | VARCHAR |  | Insurance company | insurance_company, insurance_provider, policy_provider |
 | `vin` | VARCHAR |  | 17-character Vehicle Identification Number (chassis number) | vin, vin_number, vin_no, vin_sn, chassis |
@@ -150,6 +158,7 @@ Registration cards, insurance policies, inspections and permits, one row per doc
 | `document_id` | VARCHAR |  | Unique document id (numbered automatically when absent) | doc_id, id, reference |
 | `vehicle_ref` | VARCHAR | yes | The vehicle: its id, plate or VIN (any of the three is matched) | vehicle_id, vehicle, plate, plate_number, plate_no |
 | `doc_type` | VARCHAR | yes | Registration | Insurance | Inspection | Permit | Other | document_type, type, category, kind |
+| `inspection_result` | VARCHAR |  | Pass or Fail as shown on an official Inspection report | inspection_outcome, test_result |
 | `document_number` | VARCHAR |  | Number printed on the document (registration or policy number) | number, doc_number, policy_number, policy_no, registration_no |
 | `issue_date` | DATE |  | Issue or start date | issued, issue, start_date, valid_from, policy_start |
 | `expiry_date` | DATE |  | Expiry date | expiry, expires, valid_until, valid_to, end_date |

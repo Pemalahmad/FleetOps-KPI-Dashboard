@@ -41,6 +41,10 @@ For Bahrain, the release review checks the official registration class and, for 
 the current inspection evidence. Import the class and manufacture date with the vehicle file, then record any
 required inspection in Documents. [Bahrain release evidence](GCC_COMPLIANCE.md#bahrain-release-evidence)
 
+For the UAE, Saudi Arabia, Qatar, Kuwait and Oman, review the official class and the inspection result in
+**Source requirements**. A failed inspection blocks handover until there is a later passing report. The affected
+vehicle appears in Daily Command with the evidence to add. [GCC release evidence](GCC_COMPLIANCE.md#gcc-release-evidence)
+
 ## Damage escalation controls
 
 The damage case is a recorded, append-only operational trail:

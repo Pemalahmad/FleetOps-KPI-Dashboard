@@ -29,6 +29,7 @@ best AS (
     GROUP BY document_id
 )
 SELECT d.document_id, d.vehicle_ref, d.doc_type, d.document_number, d.issue_date, d.expiry_date, d.issuer, d.file_name,
+       d.inspection_result,
        b.vehicle_id, b.matched_by,
        doc_status(d.expiry_date)                          AS status,
        date_diff('day', snapshot_date(), d.expiry_date)   AS days_left

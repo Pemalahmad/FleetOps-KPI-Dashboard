@@ -12,8 +12,13 @@ const row: GarageRow = {
   closed_at: "2026-11-02", back_in_service_at: "2026-11-02", repair_revision: "1:closed", pm_state: "OK", has_usage: true, usage_end: "2026-11-17", open_recalls: 0,
   gcc_assessed: true, gcc_country_code: "AE", gcc_country: "United Arab Emirates", gcc_authority: "Dubai RTA",
   gcc_source_url: "https://www.rta.ae/", gcc_confidence: "high", operating_card_required: false, permit_expiry: null,
-  insurance_covers_registration: false, inspection_review_from: "2027-01-30", inspection_expiry: null, inspection_from_years: 3, age_years: 2,
-  registration_class: null, bahrain_registration_group: null, bahrain_inspection_after: null, inspection_required_by_authority: null,
+  insurance_covers_registration: false, inspection_review_from: "2027-01-30", inspection_expiry: null,
+  registration_class: "Private light vehicle", bahrain_registration_group: null, bahrain_inspection_after: null, inspection_required_by_authority: null,
+  registration_class_rule: "ae_private_light", inspection_starts_on: null, inspection_applicability_gap: null,
+  periodic_inspection: false, inspection_schedule_reference: null, inspection_rule_until: null, inspection_source_url: null,
+  inspection_failed: false, inspection_failed_on: null,
+  first_registered: null, manufacture_date: null, registered_as_new: false, registration_jurisdiction: "dubai",
+  registration_owner_type: null, registration_weight_kg: null, vehicle_advertising: null,
 };
 const signed = (revision: string) => ({ ...emptyReview(revision), owner: "Reviewer", checks: { walkaround: true, road_test: true, handover: true } });
 const at = "2026-11-18T10:00:00Z";
@@ -32,7 +37,7 @@ const incident = { id: "INC-1", vehicleId: row.vehicle_id, summary: "Rear bumper
 describe("garage source gates and lanes", () => {
   it("recognises a fully assessed vehicle and records only raw milestones", () => {
     const v = deriveVehicle(row, emptyGarage(), context);
-    expect(v.lane).toBe("road"); expect(v.readiness).toBe(6);
+    expect(v.lane).toBe("road"); expect(v.readiness).toBe(8);
     expect(deriveVehicle({ ...row, ready_at: null }, emptyGarage(), context).milestones[2].at).toBeNull();
   });
   it("keeps expired registration and unknown insurance out of the road-ready zone", () => {
@@ -70,8 +75,8 @@ describe("garage source gates and lanes", () => {
     expect(blockersFor({ ...saudi, permit_expiry: context.today })).toEqual([]);
     expect(blockersFor({ ...saudi, operating_card_required: null })[0]).toContain("applicability");
     expect(blockersFor({ ...row, gcc_country_code: "BH", insurance_covers_registration: true, insurance_expiry: "2027-01-01" })[0]).toContain("Insurance covers the registration");
-    const renewal = { ...row, age_years: 4, inspection_review_from: context.today };
-    expect(blockersFor(renewal)[0]).toContain("Inspection evidence for renewal");
+    const renewal = { ...row, inspection_review_from: context.today };
+    expect(blockersFor(renewal)[0]).toContain("UAE technical inspection");
     expect(blockersFor({ ...renewal, inspection_expiry: context.today })).toEqual([]);
     expect(blockersFor({ ...row, gcc_assessed: false })[0]).toContain("Country rules");
   });
@@ -86,7 +91,7 @@ describe("garage source gates and lanes", () => {
     const fleet = emptyGarage();
     const bh = { ...row, region: "Bahrain", gcc_country_code: "BH", gcc_country: "Bahrain",
       gcc_authority: "General Directorate of Traffic", insurance_covers_registration: true,
-      inspection_review_from: context.today, inspection_from_years: null };
+      inspection_review_from: context.today, registration_class: null };
     const review = signed(deriveVehicle(bh, fleet, context).revision);
     expect(() => recordHandover(fleet, bh, context, review, at)).toThrow("Bahrain registration class");
 
@@ -104,7 +109,7 @@ describe("garage source gates and lanes", () => {
   });
   it("requires current Bahrain inspection evidence for transport renewals and Traffic orders", () => {
     const fleet = emptyGarage();
-    const transport = { ...row, region: "Bahrain", gcc_country_code: "BH", inspection_from_years: null,
+    const transport = { ...row, region: "Bahrain", gcc_country_code: "BH", gcc_country: "Bahrain",
       inspection_review_from: context.today, registration_class: "Private transport", bahrain_registration_group: "other" as const };
     const blockers = (vehicle: GarageRow) => releaseBlockers(vehicle, fleet, context, signed(deriveVehicle(vehicle, fleet, context).revision));
     expect(blockers(transport)[0]).toContain("Bahrain technical inspection");
@@ -114,6 +119,22 @@ describe("garage source gates and lanes", () => {
     expect(blockers(later)).toEqual([]);
     expect(blockers({ ...later, registration_class: "Private", bahrain_registration_group: "private",
       bahrain_inspection_after: "2027-12-30", inspection_required_by_authority: true })[0]).toContain("Bahrain Traffic requires inspection");
+  });
+  it("refreshes a dated UAE rule and rechecks a Saudi periodic inspection on the handover day", () => {
+    const fleet = emptyGarage();
+    const state = { ...context, today: "2026-11-19" };
+    const blockers = (vehicle: GarageRow) => releaseBlockers(vehicle, fleet, state, signed(deriveVehicle(vehicle, fleet, state).revision));
+    expect(blockers({ ...row, inspection_rule_until: context.today })[0]).toContain("Refresh the fleet report");
+    const sa = { ...row, region: "KSA", gcc_country_code: "SA", gcc_country: "Saudi Arabia",
+      registration_class: "أجرة", registration_class_rule: "sa_public", periodic_inspection: true,
+      inspection_starts_on: state.today };
+    expect(blockers(sa)[0]).toContain("Periodic inspection is due");
+    expect(blockers({ ...sa, inspection_expiry: context.today })[0]).toContain("Periodic inspection is due");
+    expect(blockers({ ...sa, inspection_expiry: state.today })).toEqual([]);
+    expect(deriveVehicle(sa, fleet, context).sourceClear).toBe(true);
+    const draft = signed(deriveVehicle(sa, fleet, state).revision);
+    expect(releaseBlockers({ ...sa, inspection_starts_on: "2026-11-20" }, fleet, state, draft))
+      .toContain("Evidence changed. Review the new source records and repeat the release checks.");
   });
 });
 describe("recorded recovery operations", () => {

@@ -10,7 +10,7 @@ import { vinModelYear } from "@/lib/vin";
 import { deleteFile, loadFile, saveFile, uid, type SavedDocument } from "@/lib/workspace";
 
 const TYPES: DocType[] = ["Registration", "Insurance", "Inspection", "Permit", "Other"];
-const STATUS_COLOR: Record<string, string> = { Valid: "#94A3B8", Expiring: "var(--warn)", Expired: "var(--bad)", Unknown: "var(--border)" };
+const STATUS_COLOR: Record<string, string> = { Valid: "#94A3B8", Expiring: "var(--warn)", Expired: "var(--bad)", Failed: "var(--bad)", Unknown: "var(--border)" };
 
 function status(expiry: string | null): string {
   if (!expiry) return "Unknown";
@@ -82,8 +82,8 @@ export default function DocumentsPage() {
     <>
       <PageHeader art="documents" eyebrow="Your fleet" title="Registration cards and policies">
         Photograph or scan registration cards (mulkiya, istimara, ruhsat, V5C), insurance policies, inspection certificates and permits.
-        Each is read in this browser (English and Arabic), matched to the vehicle by its plate, VIN or fleet number, and its expiry flows
-        into compliance once you confirm it.
+        Each is read in this browser and matched by plate, VIN or fleet number. Confirm the expiry and, for inspections, the result
+        on the report to update compliance.
       </PageHeader>
 
       {!mine && (
@@ -157,11 +157,11 @@ export default function DocumentsPage() {
             <table className="tnum w-full text-[13px]">
               <thead className="text-left text-faint"><tr><th className="py-1 font-medium">Vehicle</th><th className="font-medium">Type</th><th className="font-medium">Issuer</th><th className="font-medium">Expires</th><th className="font-medium">Status</th><th /></tr></thead>
               <tbody>{shown.map((d) => {
-                const st = status(d.expiry_date);
+                const st = d.doc_type === "Inspection" && d.inspection_result === "Fail" ? "Failed" : status(d.expiry_date);
                 return (
                   <tr key={d.id} className="border-t border-border">
                     <td className="py-2">{d.vehicle_ref}{d.create_vehicle && <span className="ml-1.5 rounded bg-accent-soft px-1.5 text-[11px] text-accent-ink">new vehicle</span>}</td>
-                    <td>{d.doc_type}</td><td className="text-muted">{d.issuer ?? "–"}</td><td>{d.expiry_date ?? "–"}</td>
+                    <td>{d.doc_type}{d.doc_type === "Inspection" && d.inspection_result === "Pass" ? " · Pass" : ""}</td><td className="text-muted">{d.issuer ?? "–"}</td><td>{d.expiry_date ?? "–"}</td>
                     <td><span className="font-medium" style={{ color: STATUS_COLOR[st] }}>{st}</span></td>
                     <td className="text-right">
                       <OpenFile id={d.id} name={d.file_name} />
@@ -217,6 +217,8 @@ function Review({ d, known, onPatch, onRemove }: {
   const match = known.find((k) => [k.vehicle_id, k.plate_number, k.vin].some((x) => x && x.replace(/\W/g, "").toUpperCase() === f.vehicle_ref.replace(/\W/g, "").toUpperCase()));
   const input = "w-full rounded-md border border-border bg-panel px-2 py-1 text-[13px]";
   const year = f.vin ? vinModelYear(f.vin) : null;
+  const incompleteInspection = f.doc_type === "Inspection" && (!f.inspection_result || !f.issue_date ||
+    (f.inspection_result === "Pass" && (!f.expiry_date || f.expiry_date < f.issue_date)));
   return (
     <Card className="p-4">
       <div className="grid gap-4 sm:grid-cols-[180px_1fr]">
@@ -246,9 +248,15 @@ function Review({ d, known, onPatch, onRemove }: {
           <label>Number<input className={input} value={f.document_number ?? ""} onChange={(e) => setF({ ...f, document_number: e.target.value || null })} /></label>
           <label>Issued<input type="date" className={input} value={f.issue_date ?? ""} onChange={(e) => setF({ ...f, issue_date: e.target.value || null })} /></label>
           <label>Expires<input type="date" className={input} value={f.expiry_date ?? ""} onChange={(e) => setF({ ...f, expiry_date: e.target.value || null })} /></label>
+          {f.doc_type === "Inspection" && <label className="col-span-2">Inspection result
+            <select className={input} value={f.inspection_result ?? ""} onChange={(e) => setF({ ...f, inspection_result: (e.target.value || null) as SavedDocument["inspection_result"] })}>
+              <option value="">Choose the result on the report</option><option value="Pass">Pass</option><option value="Fail">Fail</option>
+            </select>
+            <span className="mt-0.5 block text-[11px] text-muted">Enter the issue date and, for a pass, the expiry date.</span>
+          </label>}
           <label className="col-span-2">Issuer<input className={input} value={f.issuer ?? ""} onChange={(e) => setF({ ...f, issuer: e.target.value || null })} /></label>
           <div className="col-span-2 mt-1 flex gap-2">
-            <button disabled={!f.vehicle_ref || (!match && !f.create_vehicle)}
+            <button disabled={!f.vehicle_ref || (!match && !f.create_vehicle) || incompleteInspection}
               onClick={() => onPatch(d.id, { ...f, confirmed: true, create_vehicle: !match && !!f.create_vehicle,
                 plate: !match ? (f.plate ?? (f.vehicle_ref !== f.vin ? f.vehicle_ref : null)) : null }, true)}
               className="inline-flex items-center gap-1.5 rounded-lg bg-accent px-3 py-1.5 text-[12.5px] font-medium text-white transition active:scale-95 disabled:opacity-40">
