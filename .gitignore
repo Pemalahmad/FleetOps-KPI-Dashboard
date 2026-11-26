@@ -7,3 +7,5 @@ __pycache__/
 .omc/
 *.egg-info/
 .pytest_cache/
+# friction notes from `npm run papercut`, kept on the machine that logged them
+.papercuts/

@@ -4,6 +4,13 @@ What changed in each version of FleetOps KPI. Dates are release dates; the newes
 
 ## Unreleased
 
+### Ship checks for contributors
+
+- `npm run ship-check` (in `web/`) runs the checks every change needs before it ships and prints one pass/fail line each: lint, types, unit and Python tests, the build, a changelog entry, README links and GIF recording scenes, the SQL model, rule and test counts in the README, matching role briefs, and no co-author or tool-credit lines in the branch's commits. `--fast` runs only the repository checks; CI runs it on every push.
+- Two step-by-step skills in `.agents/skills/`: shipping a feature, and recording a README GIF. `npm run lint-skills` checks them and runs in CI.
+- `npm run papercut` keeps a local log of friction in the tooling, grouped by area with `--summary`.
+- Fixed the README counts: the pipeline has 71 SQL models and 30 data tests.
+
 ### GCC reminders in Daily Command
 
 - See upcoming and overdue inspections and registration renewals for all six GCC countries. Each task shows its due date, can have its own owner, and appears in the shift handoff.
