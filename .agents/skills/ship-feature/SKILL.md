@@ -146,7 +146,6 @@ Verify: `npm --prefix web run papercut -- --summary` lists the entry under `ship
 | `readme-counts` FAIL | Run `fleetkpi docs`, then write the counts it prints in `docs/SQL_CATALOG.md` into every README mention. |
 | `readme-files` FAIL | Fix the path in README, or add the missing file; a missing GIF means step 5 was skipped. |
 | `readme-gifs` FAIL: no scene writes a GIF | Add a scene to `SCENES` in `web/scripts/capture-gifs.mjs` (see `refresh-readme-gifs`). |
-| `agent-briefs` FAIL | Copy the edited brief: `cp .agents/<role>.md .claude/agents/`. |
 | `no-attribution` FAIL, commits not pushed yet | `git reset --soft $(git merge-base origin/main HEAD)` and commit again with a clean message. |
 | `no-attribution` FAIL, commits already pushed | Close the pull request, then ship the same diff from a new branch with clean commits; never force-push. |
 | `git push` rejected (non-fast-forward) | `git fetch origin && git rebase origin/main`, resolve conflicts keeping the other agent's work, rerun step 6, push again without `--force`. |

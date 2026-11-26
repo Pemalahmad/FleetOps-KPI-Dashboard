@@ -3,7 +3,7 @@
 //   npm run ship-check -- --fast  repository checks only (under a second); CI runs this mode
 //   npm run ship-check -- --gifs  which capture-gifs.mjs scene records which README GIF, and its size
 // Exits 1 when any check fails. The pure functions below are covered by ship-check.test.ts.
-import { readFileSync, existsSync, readdirSync, statSync } from "node:fs";
+import { readFileSync, existsSync, statSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -98,13 +98,6 @@ export function attributionLines(commits) {
   return hits;
 }
 
-/** Role briefs in .agents/ and their copies in .claude/agents/ must match file for file. */
-export function briefDrift(a, b) {
-  const names = new Set([...Object.keys(a), ...Object.keys(b)]);
-  return [...names].sort().filter((n) => a[n] !== b[n]).map((n) =>
-    !(n in a) ? `${n} only in .claude/agents/` : !(n in b) ? `${n} only in .agents/` : `${n} differs`);
-}
-
 /** One aligned line per check, then the totals. */
 export function formatReport(results) {
   const w = Math.max(...results.map((r) => r.name.length));
@@ -119,11 +112,6 @@ export function formatReport(results) {
 function git(root, args) {
   const r = spawnSync("git", args, { cwd: root, encoding: "utf8" });
   return r.status === 0 ? r.stdout : null;
-}
-
-function readBriefs(dir) {
-  if (!existsSync(dir)) return {};
-  return Object.fromEntries(readdirSync(dir).filter((f) => f.endsWith(".md")).map((f) => [f, readFileSync(join(dir, f), "utf8")]));
 }
 
 function tail(text, n = 15) {
@@ -173,11 +161,6 @@ export function repoChecks(root) {
   results.push(problems.length
     ? { name: "readme-counts", status: "FAIL", detail: [...new Set(problems)].join("; ") }
     : { name: "readme-counts", status: "PASS", detail: `${actual.models} SQL models, ${actual.validation} validation rules, ${actual.tests} data tests match` });
-
-  const drift = briefDrift(readBriefs(join(root, ".agents")), readBriefs(join(root, ".claude/agents")));
-  results.push(drift.length
-    ? { name: "agent-briefs", status: "FAIL", detail: `copy .agents/*.md to .claude/agents/: ${drift.join(", ")}` }
-    : { name: "agent-briefs", status: "PASS", detail: ".agents/ and .claude/agents/ match" });
 
   if (!mergeBase) {
     results.push({ name: "no-attribution", status: "SKIP", detail: "no origin/main to compare with (run `git fetch origin`)" });

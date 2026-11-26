@@ -50,8 +50,7 @@ npm run test:e2e                         # security tests against the build
 `cd web && npm run ship-check` runs lint, types, unit tests, Python tests and the build, then the repository checks:
 an entry under `## Unreleased` in `CHANGELOG.md` (and the changelog changed on your branch), every file the README
 links to exists, every README GIF has a recording scene in `web/scripts/capture-gifs.mjs`, the README's SQL model,
-validation rule and data test counts match `fleetkpi/sql/`, the role briefs in `.agents/` match `.claude/agents/`,
-and no commit on the branch carries a co-author or tool-credit line. `npm run ship-check -- --fast` runs only the
+validation rule and data test counts match `fleetkpi/sql/`, and no commit on the branch carries a co-author or tool-credit line. `npm run ship-check -- --fast` runs only the
 repository checks; CI runs that mode.
 
 Repeated workflows are written as skills in [`.agents/skills/`](.agents/skills/) (`SKILL.md` plus a `spec.md`), and

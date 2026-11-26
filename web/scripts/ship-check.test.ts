@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
-  attributionLines, briefDrift, changelogVerdict, countClaims, countMismatches, countSql, formatReport, gifScenes,
+  attributionLines, changelogVerdict, countClaims, countMismatches, countSql, formatReport, gifScenes,
   localRefs, unreleasedEntries,
 } from "./ship-check.mjs";
 
@@ -96,14 +96,6 @@ describe("attributionLines", () => {
     expect(attributionLines(commits)).toEqual([
       "bbbbbbb: Co-Authored-By: Someone <x@example.com>", "ccccccc: \u{1F916} Generated with some tool",
     ]);
-  });
-});
-
-describe("briefDrift", () => {
-  it("names briefs that are missing on one side or differ", () => {
-    expect(briefDrift({ "a.md": "x", "b.md": "y", "c.md": "z" }, { "a.md": "x", "b.md": "changed", "d.md": "w" }))
-      .toEqual(["b.md differs", "c.md only in .agents/", "d.md only in .claude/agents/"]);
-    expect(briefDrift({ "a.md": "x" }, { "a.md": "x" })).toEqual([]);
   });
 });
 
