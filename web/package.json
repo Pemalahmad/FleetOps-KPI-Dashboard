@@ -15,7 +15,10 @@
     "test:e2e": "playwright test",
     "test:watch": "vitest",
     "demo-preview": "npm run build && node scripts/demo-preview.mjs && npm run build",
-    "gifs": "node scripts/capture-gifs.mjs"
+    "gifs": "node scripts/capture-gifs.mjs",
+    "ship-check": "node scripts/ship-check.mjs",
+    "lint-skills": "node scripts/lint-skills.mjs",
+    "papercut": "node scripts/log-papercut.mjs"
   },
   "dependencies": {
     "@duckdb/duckdb-wasm": "^1.33.1-dev57.0",

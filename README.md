@@ -16,7 +16,7 @@
 
 </div>
 
-FleetOps KPI turns Excel, CSV, Parquet, JSON, and document scans into a device-local fleet workspace. The browser runs the same DuckDB pipeline used by the Python CLI: **70 SQL models, 47 validation rules, and 29 data tests**. There is no application server and fleet data is not uploaded.
+FleetOps KPI turns Excel, CSV, Parquet, JSON, and document scans into a device-local fleet workspace. The browser runs the same DuckDB pipeline used by the Python CLI: **71 SQL models, 47 validation rules, and 30 data tests**. There is no application server and fleet data is not uploaded.
 
 The included Sahra Mobility demo is synthetic: 6,500 vehicles, 15 workshops, 7 markets, and 18 months of operational history. It is large enough to exercise the full pipeline without presenting fictional results as industry benchmarks.
 
@@ -92,8 +92,8 @@ flowchart LR
 
     I --> V["47 validation rules"]
     V -- blocked --> E["Actionable issues<br/>last good build retained"]
-    V -- valid --> D[("DuckDB-WASM<br/>70 SQL models")]
-    D --> T["29 data tests"]
+    V -- valid --> D[("DuckDB-WASM<br/>71 SQL models")]
+    D --> T["30 data tests"]
     T --> W["Garage · Register · Drivers"]
     T --> K["Analytics · Metric network"]
     T --> P["Pipeline · Exports · SOPs"]
@@ -174,6 +174,7 @@ See the generated [data contract](docs/DATA_CONTRACT.md) for every table, field,
 | **Untrusted input** | Property-based parser tests, spreadsheet formula neutralisation, hostile workbook rendering tests, and authenticated encryption with tamper detection. |
 | **Statistics** | Implemented from first principles and tested against R, SciPy, and statsmodels reference values. |
 | **CI** | Python 3.11 and 3.13, web lint/type/unit/build, Playwright security flows, dependency audits, CodeQL, OpenSSF Scorecard, and a Docker demo build. |
+| **Shipping** | `npm run ship-check` checks the changelog entry, README links, GIF recording scenes, SQL counts and commit trailers, and prints one pass/fail line each; repeated workflows are linted step-by-step instructions in [`.agents/skills/`](.agents/skills/). |
 
 Run the same core checks locally:
 

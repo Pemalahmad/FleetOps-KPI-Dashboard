@@ -45,9 +45,21 @@ A change that breaks one of these is rejected, whatever it adds.
 | Refresh the saved demo preview (after any SQL model or demo change; e2e fails while it is stale) | `cd web && npm run demo-preview` |
 | Offline package | `cd web && bash scripts/package-offline.sh <version>` |
 | Refresh hash-locked Python requirements | see [`requirements/README.md`](requirements/README.md) |
+| Ship checks: changelog, README counts, media and GIF scenes, commit trailers (`--fast` skips lint, tests and build) | `cd web && npm run ship-check` |
+| Check the agent skills in `.agents/skills/` | `cd web && npm run lint-skills` |
 
 A change is done only when lint, types, unit tests, the build and the e2e suite pass locally, and CI is green after
 the push.
+
+## Skills and papercuts (always on)
+
+- For a repeated job, follow its skill in [`.agents/skills/`](.agents/skills/): `ship-feature` for every change that
+  leaves your machine, `refresh-readme-gifs` for README GIFs. Run `npm run ship-check` before every push and fix each
+  FAIL it prints instead of checking by eye.
+- When a command, skill or doc here costs you time (a wrong path, a missing step, a confusing error), log it before you
+  move on: `cd web && npm run papercut -- --area <skill or area> --tried "..." --expected "..." --happened "..."
+  --fix "..."`. It appends to the git-ignored `.papercuts/log.jsonl`; `npm run papercut -- --summary` groups the
+  reports by area for the owner to fix.
 
 ## Working rules
 
