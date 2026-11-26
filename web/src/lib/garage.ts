@@ -47,6 +47,7 @@ export interface GarageHandover {
 export interface GarageState {
   version: 1; incidents: GarageIncident[]; reviews: Record<string, GarageReview>;
   acknowledged: string[]; handovers: GarageHandover[];
+  reminderOwners?: Record<string, string>;
   reviewHistory?: { vehicleId: string; review: GarageReview; archivedAt: string; reason: string }[];
 }
 export const emptyGarage = (): GarageState => ({ version: 1, incidents: [], reviews: {}, acknowledged: [], handovers: [], reviewHistory: [] });

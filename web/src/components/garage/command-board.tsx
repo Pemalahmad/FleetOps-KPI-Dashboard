@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useMemo, useRef, useState } from "react";
 import { BellRinging, CheckCircle, ClipboardText, ShieldCheck, Siren, Wrench } from "@phosphor-icons/react";
-import { commandActions, shiftHandoff, type ActionStatus } from "@/lib/garage-command";
+import { commandActions, complianceReminders, REMINDER_LABELS, shiftHandoff, type ActionStatus, type ComplianceReminder } from "@/lib/garage-command";
 import { downloadText } from "@/lib/exporters";
 import {
   RECOVERY_STAGES,
@@ -12,6 +12,7 @@ import {
   type GarageAlert,
   type GarageHandover,
   type GarageLane,
+  type GarageState,
   type GarageVehicle,
   type RecoveryStage,
 } from "@/lib/garage";
@@ -19,7 +20,53 @@ import {
 const NUM = new Intl.NumberFormat();
 const PAGE_SIZE = 8;
 const STATUS = ["Held", "Needs evidence", "Ready for review"] as const;
-type Filter = "All actions" | ActionStatus | "Overdue damage" | "Damage cases" | RecoveryStage;
+const REMINDER_FILTERS = ["GCC reminders", "Registration reminders", "Inspection reminders", "Overdue reminders"] as const;
+type ReminderFilter = typeof REMINDER_FILTERS[number];
+type Filter = "All actions" | ActionStatus | "Overdue damage" | "Damage cases" | RecoveryStage | ReminderFilter;
+
+function ReminderRow({ reminder, onOpen, onAssign, canAssign }: {
+  reminder: ComplianceReminder;
+  onOpen: (vehicleId: string) => void;
+  onAssign: (id: string, owner: string) => Promise<boolean>;
+  canAssign: boolean;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [owner, setOwner] = useState("");
+  const { vehicle, kind, dueOn, status, next } = reminder;
+  const plate = vehicleLabel(vehicle.row);
+  const urgent = status === "Overdue" || status === "Action needed";
+  return (
+    <li className="command-reminder" aria-label={plate + " " + REMINDER_LABELS[kind]}>
+      <div className="command-reminder-summary">
+        <span className={`command-priority-mark${urgent ? " command-priority-critical" : ""}`} aria-hidden="true" />
+        <div className="command-priority-copy">
+          <b>{plate} · {REMINDER_LABELS[kind]}</b>
+          <small>{vehicle.row.gcc_country} · {status}{dueOn && <> · Due <time dateTime={dueOn}>{dueOn}</time></>}</small>
+          <small>{next}</small>
+          <em>Owner {reminder.owner || "Unassigned"}</em>
+        </div>
+        <div className="command-reminder-controls">
+          <button className="command-open" onClick={() => onOpen(vehicle.row.vehicle_id)}>Open vehicle</button>
+          {!editing && <button className="ops-button" disabled={!canAssign} onClick={() => { setOwner(reminder.owner); setEditing(true); }}>
+            {reminder.owner ? "Change owner" : "Assign owner"}
+          </button>}
+        </div>
+      </div>
+      {editing && <form className="command-reminder-editor" onSubmit={async (e) => {
+        e.preventDefault();
+        if (await onAssign(reminder.id, owner)) setEditing(false);
+      }}>
+        <label className="garage-field">Reminder owner
+          <input className="ops-input" placeholder="Name or team" value={owner} maxLength={120}
+            onChange={(e) => setOwner(e.target.value)} disabled={!canAssign} />
+        </label>
+        <button className="ops-button" disabled={!canAssign || owner.trim() === reminder.owner}>Save owner</button>
+        <button className="ops-button" type="button" onClick={() => setEditing(false)}>Cancel</button>
+        {reminder.owner && <span className="command-reminder-hint">Leave the owner blank to clear the assignment.</span>}
+      </form>}
+    </li>
+  );
+}
 
 export interface CommandSummary {
   overdueDamage: number;
@@ -67,7 +114,8 @@ function CommandMetric({ value, label, tone = "ink", onClick, pressed }: {
 }
 
 export function DailyCommandBoard({
-  vehicles, alerts, handovers, today, now, region, snapshot, demo, onOpenVehicle, onFilter, onOpenAlerts, onPractice,
+  vehicles, alerts, handovers, today, now, region, snapshot, demo, reminderOwners, reminderLeadDays, canAssignReminder,
+  onAssignReminder, onOpenVehicle, onFilter, onOpenAlerts, onPractice,
 }: {
   vehicles: GarageVehicle[];
   alerts: GarageAlert[];
@@ -77,6 +125,10 @@ export function DailyCommandBoard({
   region: string;
   snapshot: string;
   demo: boolean;
+  reminderOwners: GarageState["reminderOwners"];
+  reminderLeadDays: number;
+  canAssignReminder: boolean;
+  onAssignReminder: (id: string, owner: string) => Promise<boolean>;
   onOpenVehicle: (vehicleId: string) => void;
   onFilter: (lane: GarageLane) => void;
   onOpenAlerts: () => void;
@@ -89,6 +141,10 @@ export function DailyCommandBoard({
   const summary = buildCommandSummary(vehicles, alerts, handovers, today);
   const regions = useMemo(() => regionStatuses(vehicles), [vehicles]);
   const actions = useMemo(() => commandActions(vehicles, now), [vehicles, now]);
+  const reminderDate = demo ? snapshot.slice(0, 10) : today;
+  const reminders = useMemo(() => complianceReminders(vehicles, reminderOwners, reminderDate, reminderLeadDays),
+    [vehicles, reminderOwners, reminderDate, reminderLeadDays]);
+  const reminderView = REMINDER_FILTERS.some((name) => filter === name);
   const select = (value: Filter) => { setFilter(value); setPage(0); };
   const jumpToQueue = (value: Filter) => {
     select(value);
@@ -96,7 +152,7 @@ export function DailyCommandBoard({
     queue.current?.scrollIntoView({ block: "nearest" });
   };
   const q = search.trim().toLowerCase();
-  const matches = actions.filter((action) => {
+  const matches = reminderView ? [] : actions.filter((action) => {
     const { row, incident } = action.vehicle;
     if (q && ![row.vehicle_id, row.plate_number, row.home_site_name, action.owner].some((v) => v?.toLowerCase().includes(q))) return false;
     switch (filter) {
@@ -107,7 +163,16 @@ export function DailyCommandBoard({
       default: return incident?.stage === filter;
     }
   });
-  const lastPage = Math.max(0, Math.ceil(matches.length / PAGE_SIZE) - 1);
+  const matchingReminders = reminderView ? reminders.filter((reminder) => {
+    const { row } = reminder.vehicle;
+    if (q && ![row.vehicle_id, row.plate_number, row.home_site_name, row.gcc_country, reminder.owner].some((v) => v?.toLowerCase().includes(q))) return false;
+    if (filter === "Registration reminders") return reminder.kind === "registration";
+    if (filter === "Inspection reminders") return reminder.kind === "inspection";
+    if (filter === "Overdue reminders") return reminder.status === "Overdue";
+    return true;
+  }) : [];
+  const count = reminderView ? matchingReminders.length : matches.length;
+  const lastPage = Math.max(0, Math.ceil(count / PAGE_SIZE) - 1);
   const currentPage = Math.min(page, lastPage);
   const filterLabel = RECOVERY_STAGES.find((stage) => stage.id === filter)?.label ?? filter;
   return (
@@ -119,12 +184,16 @@ export function DailyCommandBoard({
         </div>
         <div className="garage-command-links">
           <Link href="/licence/"><ShieldCheck size={16} /> GCC rules and evidence</Link>
+          <button className="ops-button" onClick={() => jumpToQueue("GCC reminders")} aria-pressed={filter === "GCC reminders"}>
+            <BellRinging size={16} aria-hidden="true" /> GCC reminders <span className="garage-count">{NUM.format(reminders.length)}</span>
+          </button>
           <Link href="/doctrine/#SOP-09"><ClipboardText size={16} /> Damage SOP-09</Link>
           {onPractice && <button className="ops-button" onClick={onPractice}>Practice a damage case</button>}
-          <button className="ops-button" disabled={!actions.length && !summary.handoversToday}
+          <button className="ops-button" disabled={!actions.length && !reminders.length && !summary.handoversToday}
             onClick={() => {
               const at = Date.now();
-              downloadText(`fleetops-shift-${localDate(new Date(at))}.txt`, shiftHandoff(commandActions(vehicles, at), handovers, region, snapshot, at, demo));
+              const currentReminders = complianceReminders(vehicles, reminderOwners, demo ? reminderDate : localDate(new Date(at)), reminderLeadDays);
+              downloadText(`fleetops-shift-${localDate(new Date(at))}.txt`, shiftHandoff(commandActions(vehicles, at), handovers, region, snapshot, at, demo, currentReminders));
             }}>Download shift handoff</button>
         </div>
       </header>
@@ -144,11 +213,16 @@ export function DailyCommandBoard({
           <div className="command-tools">
             <label className="garage-field">Action queue<select className="ops-input" ref={queue} value={filter} onChange={(e) => select(e.target.value as Filter)}>
               {(["All actions", ...STATUS, "Renewal due", "Overdue damage", "Damage cases"] as const).map((name) => <option key={name}>{name}</option>)}
+              <optgroup label="Registration and inspection">{REMINDER_FILTERS.map((name) => <option key={name}>{name}</option>)}</optgroup>
               <optgroup label="Damage stages">{RECOVERY_STAGES.map((stage) => <option key={stage.id} value={stage.id}>{stage.label}</option>)}</optgroup>
             </select></label>
             <label className="garage-field">Find vehicle or owner<input className="ops-input" value={search} onChange={(e) => { setSearch(e.target.value); setPage(0); }} /></label>
           </div>
-          {matches.length ? <ol>{matches.slice(currentPage * PAGE_SIZE, (currentPage + 1) * PAGE_SIZE).map((action) => {
+          {reminderView && <p className="command-scope-note">Reminders appear {reminderLeadDays} days ahead. Assign an owner for each task.</p>}
+          {count === 0 ? <div className="command-clear"><CheckCircle size={21} weight="fill" /><div><b>{reminderView ? "No matching reminders" : "No matching actions"}</b><span>Choose another queue or clear the search.</span></div></div>
+            : reminderView ? <ol aria-label="GCC reminder results">{matchingReminders.slice(currentPage * PAGE_SIZE, (currentPage + 1) * PAGE_SIZE).map((reminder) =>
+              <ReminderRow key={reminder.id} reminder={reminder} canAssign={canAssignReminder} onOpen={onOpenVehicle} onAssign={onAssignReminder} />)}</ol>
+            : <ol>{matches.slice(currentPage * PAGE_SIZE, (currentPage + 1) * PAGE_SIZE).map((action) => {
             const { vehicle, status, next, owner, deadline, overdue } = action;
             return <li key={vehicle.row.vehicle_id}>
               <button onClick={() => onOpenVehicle(vehicle.row.vehicle_id)}>
@@ -158,9 +232,9 @@ export function DailyCommandBoard({
                 <span className="command-open">{vehicle.incident ? "Open damage case" : "Open vehicle"}</span>
               </button>
             </li>;
-          })}</ol> : <div className="command-clear"><CheckCircle size={21} weight="fill" /><div><b>No matching actions</b><span>Choose another queue or clear the search.</span></div></div>}
+          })}</ol>}
           <div className="command-tools command-pages">
-            <span role="status">{NUM.format(matches.length)} results · {filterLabel}</span>
+            <span role="status">{NUM.format(count)} results · {filterLabel}</span>
             <div className="flex gap-2"><button className="ops-button" disabled={currentPage === 0} onClick={() => setPage(currentPage - 1)}>Previous actions</button>
               <button className="ops-button" disabled={currentPage === lastPage} onClick={() => setPage(currentPage + 1)}>Next actions</button></div>
           </div>
