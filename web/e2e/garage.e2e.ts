@@ -256,6 +256,88 @@ test("renewal task stages never waive expired source documents", async ({ page }
   await expect(review.getByRole("button", { name: "Practice handover", exact: true })).toBeDisabled();
   await expect(review.getByRole("heading", { name: "Source requirements" })).toBeVisible();
 });
+test("official classes and inspection evidence govern handover in the other five GCC markets", async ({ page }) => {
+  test.setTimeout(180_000);
+  await page.goto("/import/");
+  await expect(page.getByText(/SQL models and \d+ tests ran/)).toBeVisible({ timeout: 90_000 });
+  const today = await page.evaluate(() => {
+    const now = new Date();
+    return new Date(now.getTime() - now.getTimezoneOffset() * 60_000).toISOString().slice(0, 10);
+  });
+  const day = (offset: number) => new Date(Date.parse(today + "T00:00:00Z") + offset * 864e5).toISOString().slice(0, 10);
+  const markets = [
+    { code: "AE", country: "UAE", registration: "مركبة ثقيلة", issuer: "RTA Dubai", expiry: day(14), emirate: "Dubai" },
+    { code: "SA", country: "Saudi Arabia", registration: "أجرة", issuer: "MVPI", expiry: day(95), licensed: day(-850) },
+    { code: "QA", country: "Qatar", registration: "نقل خاص", issuer: "FAHES", expiry: day(14), owner: "Company", kg: 2999 },
+    { code: "KW", country: "Kuwait", registration: "سيارة خاصة", issuer: "Kuwait General Traffic Department", expiry: day(14), due: day(-1), ref: "DEMO-SAHEL-1" },
+    { code: "OM", country: "Oman", registration: "مركبة ركاب خفيفة تجارية", issuer: "Royal Oman Police", expiry: day(14), advertising: true },
+  ];
+  const vehicles = markets.flatMap((market) => [false, true].map((passed) => ({
+    ...market, passed, id: market.code + (passed ? "-TEST-PASS" : "-TEST-HELD"),
+  })));
+  const book = XLSX.utils.book_new();
+  const sheet = (name: string, data: (string | number | boolean)[][]) =>
+    XLSX.utils.book_append_sheet(book, XLSX.utils.aoa_to_sheet(data), name);
+  sheet("sites", [["site_id", "site_name", "region"], ...markets.map((m) => [m.code, "Synthetic " + m.country, m.code])]);
+  sheet("vehicles", [
+    ["vehicle_id", "plate_number", "make", "model", "powertrain", "home_site_id", "in_service_date", "use_case",
+      "Registration Type", "first_registration_date", "manufacture_date", "registered_as_new", "registration_expiry",
+      "insurance_expiry", "registration_emirate", "registration_owner_type", "registration_weight_kg",
+      "vehicle_advertising", "inspection_due_date", "inspection_schedule_reference"],
+    ...vehicles.map((v) => [v.id, v.id, "Synthetic", "Fleet asset", "ICE", v.code, day(-120),
+      v.code === "SA" ? "Taxi" : "Pool car", v.registration, v.licensed ?? day(-150),
+      day(v.licensed ? -900 : -170), v.code !== "AE", v.expiry, day(150), v.emirate ?? "", v.owner ?? "",
+      v.kg ?? "", v.advertising ?? "", v.due ?? "", v.ref ?? ""]),
+  ]);
+  sheet("work_orders", [
+    ["work_order_id", "vehicle_id", "site_id", "job_type", "opened_at", "closed_at", "total_cost"],
+    ...vehicles.map((v) => ["PM-" + v.id, v.id, v.code, "Preventive maintenance", day(-2) + " 10:00", day(-2) + " 14:00", 70]),
+  ]);
+  sheet("usage", [["vehicle_id", "date", "km"], ...vehicles.flatMap((v) => [[v.id, day(-2), 100], [v.id, day(-1), 100]])]);
+  sheet("recalls", [["campaign_id", "title", "launch_date"], ["SYN-FUTURE", "Synthetic future recall", day(10)]]);
+  sheet("recall_vehicles", [["campaign_id", "vehicle_id"], ["SYN-FUTURE", vehicles[0].id]]);
+  sheet("documents", [
+    ["document_id", "vehicle_ref", "doc_type", "issuer", "issue_date", "expiry_date", "inspection_result"],
+    ...vehicles.filter((v) => v.passed || v.code === "OM").map((v) => ["CERT-" + v.id, v.id, "Inspection", v.issuer, day(-3), day(20), "Pass"]),
+    ["OM-FAIL", "OM-TEST-HELD", "Inspection", "Royal Oman Police", day(-1), "", "Fail"],
+  ]);
+  const buffer = Buffer.from(XLSX.write(book, { type: "buffer", bookType: "xlsx" }));
+  await page.setInputFiles("input[type=file]", { name: "synthetic-gcc-release.xlsx", mimeType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", buffer });
+  await page.getByRole("button", { name: /Add to my fleet and build/ }).click();
+  await expect(page.getByText(/My fleet: \d+ SQL models/)).toBeVisible({ timeout: 90_000 });
+  await page.goto("/");
+  await expect(page.getByText(/My fleet: \d+ SQL models/)).toBeVisible({ timeout: 90_000 });
+
+  for (const v of vehicles) {
+    await page.getByRole("textbox", { name: "Search garage vehicles" }).fill(v.id);
+    await page.getByRole("button", { name: "Open vehicle " + v.id, exact: true }).click();
+    const dialog = page.getByRole("dialog");
+    await expect(dialog.getByText(v.registration, { exact: true })).toBeVisible();
+    await dialog.getByRole("textbox", { name: "Review owner" }).fill("Synthetic GCC release reviewer");
+    for (const name of [/Safety walkaround/, /Repair \/ road test signed off/, /Keys and dispatch handover/])
+      await dialog.getByRole("checkbox", { name }).check();
+    const handover = dialog.getByRole("button", { name: "Record handover", exact: true });
+    const label = v.country + " technical inspection";
+    if (v.passed) {
+      await handover.click();
+      await expect(dialog.getByText("Handover recorded with reviewer and timestamp.")).toBeVisible();
+      const download = page.waitForEvent("download");
+      await dialog.getByRole("button", { name: "Download release record" }).click();
+      const receipt = await readFile((await (await download).path())!, "utf8");
+      expect(receipt).toContain(`${v.country} registration class | pass | ${v.registration}`);
+      expect(receipt).toContain(`${label} | pass | Evidence valid through ${day(20)}.`);
+    } else {
+      await dialog.getByText(/\d+ handover blocker\(s\)/).click();
+      await expect(dialog.locator("#handover-blockers li")).toHaveCount(1);
+      await expect(dialog.locator("#handover-blockers")).toContainText(label);
+      if (v.code === "SA") await expect(dialog.locator("#handover-blockers")).toContainText("Periodic inspection is due.");
+      if (v.code === "OM") await expect(dialog.locator("#handover-blockers")).toContainText("Record a passing reinspection");
+      await expect(handover).toBeDisabled();
+      await expect(dialog.getByRole("button", { name: "Download release record" })).toHaveCount(0);
+    }
+    await dialog.getByRole("button", { name: "Close vehicle details" }).click();
+  }
+});
 test("alerts remain accessible beyond the first fifty and can be filtered", async ({ page }) => {
   await ready(page);
   await page.getByRole("button", { name: /Alerts/ }).click();

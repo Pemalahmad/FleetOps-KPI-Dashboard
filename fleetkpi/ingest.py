@@ -174,6 +174,9 @@ NORMALISE = {
         WHEN regexp_matches(lower({x}), 'body|shelv|rack|tow|partition|fit.?out') THEN 'Body'
         ELSE {x} END""",
     ("service_contacts", "contact_id"): "coalesce({x}, 'SC-' || lpad((row_number() OVER ())::VARCHAR, 5, '0'))",
+    ("documents", "inspection_result"): """CASE
+        WHEN lower({x}) IN ('pass', 'passed', 'ناجح', 'صالح', 'اجتاز') THEN 'Pass'
+        WHEN lower({x}) IN ('fail', 'failed', 'راسب', 'غير صالح', 'لم يجتز') THEN 'Fail' END""",
     ("documents", "doc_type"): """CASE
         WHEN regexp_matches(lower(coalesce({x}, '')), 'regist|mulkiya|istimara|logbook|v5|licen|title') THEN 'Registration'
         WHEN regexp_matches(lower(coalesce({x}, '')), 'insur|policy|cover') THEN 'Insurance'

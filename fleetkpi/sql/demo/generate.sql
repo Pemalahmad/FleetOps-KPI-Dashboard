@@ -90,15 +90,39 @@ SELECT
     round(CASE powertrain WHEN 'BEV' THEN 42000 WHEN 'PHEV' THEN 38000 WHEN 'HEV' THEN 31000 ELSE 27000 END
           * (0.92 + 0.16 * rnd(vehicle_id || 'pc')), -2) AS purchase_cost,
     CASE WHEN is_delivery THEN 'Delivery' ELSE 'Ride-hail' END AS use_case,
-    CASE WHEN region = 'Bahrain' AND n <> 1
-         THEN CASE WHEN n = 4 OR (n > 5 AND is_delivery) THEN 'Private transport' ELSE 'خصوصي' END END AS registration_class,
-    CASE WHEN region = 'Bahrain' THEN
-         CASE WHEN n = 2 THEN DATE '2021-10-01' WHEN n = 3 THEN DATE '2021-09-30' ELSE in_service_date END
-         END AS manufacture_date,
+    -- Synthetic registry facts, including cases with no inspection and vehicles cleared by evidence.
+    CASE region
+        WHEN 'Bahrain' THEN CASE WHEN n = 1 THEN NULL WHEN n = 4 OR (n > 5 AND is_delivery) THEN 'Private transport' ELSE 'خصوصي' END
+        WHEN 'UAE' THEN CASE WHEN n BETWEEN 1 AND 2 THEN 'Heavy vehicle' WHEN is_delivery THEN 'Light commercial vehicle' ELSE 'Private light vehicle' END
+        WHEN 'KSA' THEN CASE WHEN n BETWEEN 1 AND 2 THEN 'Taxi' WHEN is_delivery THEN 'Public transport' ELSE 'Private' END
+        WHEN 'Qatar' THEN CASE WHEN n BETWEEN 2 AND 3 THEN 'Rental car' WHEN is_delivery THEN 'Private transport' ELSE 'Private car' END
+        WHEN 'Kuwait' THEN CASE WHEN n BETWEEN 1 AND 2 THEN 'Taxi' WHEN is_delivery THEN 'Private transport' ELSE 'Private car' END
+        WHEN 'Oman' THEN CASE WHEN is_delivery THEN 'Commercial truck' ELSE 'Private car' END
+    END AS registration_class,
+    CASE WHEN region = 'Bahrain' AND n = 2 THEN DATE '2021-10-01'
+         WHEN region = 'Bahrain' AND n = 3 THEN DATE '2021-09-30'
+         WHEN region = 'Oman' AND n IN (1, 7) THEN DATE '2016-10-01'
+         WHEN region = 'KSA' AND n BETWEEN 1 AND 2 THEN DATE '2024-09-25'
+         WHEN region <> 'Türkiye' THEN in_service_date END AS manufacture_date,
+    CASE WHEN region = 'KSA' AND n BETWEEN 1 AND 2 THEN DATE '2024-10-01'
+         WHEN region IN ('UAE', 'KSA', 'Qatar', 'Kuwait') THEN in_service_date END AS first_registration_date,
+    CASE WHEN region = 'UAE' AND n BETWEEN 1 AND 2 THEN FALSE
+         WHEN region IN ('UAE', 'KSA', 'Qatar', 'Kuwait') THEN TRUE END AS registered_as_new,
+    CASE WHEN region = 'UAE' THEN 'Dubai' END AS registration_jurisdiction,
+    CASE WHEN region = 'Qatar' AND is_delivery THEN 'Company' END AS registration_owner_type,
+    CASE WHEN region = 'Qatar' AND is_delivery THEN 2500 END AS registration_weight_kg,
+    CAST(NULL AS BOOLEAN) AS vehicle_advertising,
+    CASE WHEN region = 'UAE' AND is_delivery THEN CAST(in_service_date + INTERVAL 1 YEAR AS DATE)
+         WHEN region = 'UAE' THEN make_date(year(in_service_date) + 3, 1, 1)
+         WHEN region = 'Kuwait' THEN CAST(in_service_date + to_years(CASE WHEN is_delivery THEN 2 ELSE 3 END) AS DATE)
+    END AS inspection_due_date,
+    CASE WHEN region IN ('UAE', 'Kuwait') THEN 'SYNTHETIC-' || vehicle_id END AS inspection_schedule_reference,
     region = 'Bahrain' AND n = 5 AS inspection_required_by_authority,
     -- Annual registration from the in-service anniversary; ~1.5% lapsed, renewals spread over the year.
     CASE WHEN region = 'Bahrain' AND n BETWEEN 2 AND 4 THEN DATE '2026-10-18'
          WHEN region = 'Bahrain' AND n = 5 THEN DATE '2027-01-31'
+         WHEN (region IN ('UAE', 'Kuwait') AND n BETWEEN 1 AND 2) OR
+              (region = 'Oman' AND n IN (1, 7)) OR (region = 'Qatar' AND n BETWEEN 2 AND 3) THEN DATE '2026-10-18'
          WHEN rnd(vehicle_id || 'regx') < 0.015
          THEN DATE '2026-10-01' - to_days(CAST(1 + floor(rnd(vehicle_id || 'regd') * 40) AS INTEGER))
          ELSE DATE '2026-10-01' + to_days(CAST(1 + floor(rnd(vehicle_id || 'regd') * 364) AS INTEGER)) END::DATE AS registration_expiry,
@@ -164,7 +188,9 @@ CREATE OR REPLACE TABLE documents AS
 WITH reg AS (
     SELECT v.vehicle_id, v.vin, v.plate_number, v.registration_expiry AS expiry,
            -- 4% of cards were renewed and scanned, but the vehicle file was never updated
-           CASE WHEN v.vehicle_id NOT IN ('V0100002', 'V0100003', 'V0100004')
+           CASE WHEN v.vehicle_id NOT IN (
+                    'V0100002', 'V0100003', 'V0100004', 'V0300001', 'V0300002', 'V0400001', 'V0400007',
+                    'V0500002', 'V0500003', 'V0700001', 'V0700002')
                      AND rnd(v.vehicle_id || 'drn') < 0.04 AND v.registration_expiry < DATE '2026-12-01'
                 THEN v.registration_expiry + INTERVAL 1 YEAR ELSE v.registration_expiry END::DATE AS doc_expiry,
            CASE v.region WHEN 'UAE' THEN 'RTA' WHEN 'KSA' THEN 'Muroor' WHEN 'Türkiye' THEN 'Emniyet' ELSE 'Traffic Department' END AS issuer
@@ -175,17 +201,26 @@ SELECT 'REG-' || vehicle_id AS document_id,
        'Registration card' AS doc_type,
        lpad(CAST(floor(rnd(vehicle_id || 'dno') * 999999999) AS BIGINT)::VARCHAR, 9, '0') AS document_number,
        (doc_expiry - INTERVAL 1 YEAR + INTERVAL 1 DAY)::DATE AS issue_date, doc_expiry AS expiry_date, issuer,
-       'mulkiya-' || replace(plate_number, ' ', '') || '.jpg' AS file_name
+       'mulkiya-' || replace(plate_number, ' ', '') || '.jpg' AS file_name,
+       NULL::VARCHAR AS inspection_result
 FROM reg
 UNION ALL
 SELECT 'INS-' || v.vehicle_id, v.plate_number, 'Insurance policy',
        'POL-' || lpad(CAST(floor(rnd(v.vehicle_id || 'pol') * 9999999) AS INTEGER)::VARCHAR, 7, '0'),
        (v.insurance_expiry - INTERVAL 1 YEAR + INTERVAL 1 DAY)::DATE, v.insurance_expiry, v.insurer,
-       'policy-' || v.vehicle_id || '.pdf'
+       'policy-' || v.vehicle_id || '.pdf', NULL
 FROM vehicles v WHERE rnd(v.vehicle_id || 'dins') < 0.8
 UNION ALL
-SELECT 'INSP-V0100004', 'V0100004', 'Inspection', 'BH-DEMO-001',
-       DATE '2026-09-25', DATE '2026-10-24', 'Bahrain Traffic', 'demo-inspection.pdf';
+SELECT 'INSP-' || vehicle_id, vehicle_id, 'Inspection', 'DEMO-' || vehicle_id,
+       DATE '2026-09-25', expiry_date, issuer, 'demo-inspection.pdf', 'Pass'
+FROM (VALUES
+    ('V0100004', DATE '2026-10-24', 'Bahrain Traffic'),
+    ('V0200002', DATE '2027-09-25', 'MVPI'),
+    ('V0300002', DATE '2027-09-25', 'Kuwait General Traffic Department'),
+    ('V0400007', DATE '2026-10-24', 'Royal Oman Police'),
+    ('V0500003', DATE '2026-10-25', 'FAHES'),
+    ('V0700002', DATE '2026-10-24', 'RTA')
+) t(vehicle_id, expiry_date, issuer);
 
 -- ------------------------------------------------------ vehicle-months (helper)
 CREATE OR REPLACE TEMP TABLE d_vm AS

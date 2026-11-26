@@ -25,6 +25,7 @@ export interface SavedDocument {
   id: string;
   vehicle_ref: string;                         // vehicle id, plate or VIN
   doc_type: "Registration" | "Insurance" | "Inspection" | "Permit" | "Other";
+  inspection_result?: "Pass" | "Fail" | null;
   document_number: string | null;
   issue_date: string | null;                   // ISO yyyy-mm-dd
   expiry_date: string | null;
@@ -313,8 +314,9 @@ export function documentsCsv(docs: SavedDocument[]): string | null {
   const ok = docs.filter((d) => d.confirmed);
   if (!ok.length) return null;
   const q = (v: string | null) => (v === null ? "" : /[",\n\r]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v);
-  const head = "document_id,vehicle_ref,doc_type,document_number,issue_date,expiry_date,issuer,file_name";
-  return [head, ...ok.map((d) => [d.id, d.vehicle_ref || d.plate || d.vin || "", d.doc_type, d.document_number, d.issue_date, d.expiry_date, d.issuer, d.file_name].map(q).join(","))].join("\n");
+  const head = "document_id,vehicle_ref,doc_type,document_number,issue_date,expiry_date,issuer,file_name,inspection_result";
+  return [head, ...ok.map((d) => [d.id, d.vehicle_ref || d.plate || d.vin || "", d.doc_type, d.document_number,
+    d.issue_date, d.expiry_date, d.issuer, d.file_name, d.doc_type === "Inspection" ? d.inspection_result ?? null : null].map(q).join(","))].join("\n");
 }
 
 /** Vehicles the owner created from cards that matched nothing in the list. */
