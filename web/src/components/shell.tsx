@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, type ReactNode } from "react";
 import {
-  BookOpenText, Car, ChartPieSlice, CircleNotch, FileArrowUp, Garage, Graph, IdentificationCard, Moon, ShieldCheck, Smiley, Sun,
+  BookOpenText, Car, Certificate, ChartPieSlice, CircleNotch, FileArrowUp, Garage, Graph, IdentificationCard, Moon, ShieldCheck, Smiley, Sun,
   HardDrives, Scales, TreeStructure, WifiSlash, Wrench,
   SteeringWheel, Truck, ClipboardText,
 } from "@phosphor-icons/react";
@@ -21,6 +21,7 @@ const NAV = [
     { href: "/", label: "Daily command", icon: Garage },
     { href: "/ehs/", label: "EHS", icon: ShieldCheck },
     { href: "/team-cases/", label: "Team cases", icon: ClipboardText },
+    { href: "/iso/", label: "ISO certification", icon: Certificate },
     { href: "/overview/", label: "Analytics", icon: ChartPieSlice },
     { href: "/network/", label: "Metric network", icon: Graph },
     { href: "/dispatch/", label: "Dispatch lab", icon: Truck },

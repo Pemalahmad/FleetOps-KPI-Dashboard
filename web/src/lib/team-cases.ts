@@ -31,8 +31,13 @@ export interface TeamCaseEvent {
   owner_email: string | null; manager_email: string | null; follow_up: string | null;
 }
 export interface TeamNotification {
-  id: number; team_id: string; case_id: string; event_type: "assigned" | "overdue"; created_at: string; read_at: string | null;
+  id: number; team_id: string; case_id: string | null; iso_id: string | null; iso_title: string | null; event_type: keyof typeof NOTICE_LABELS;
+  created_at: string; read_at: string | null;
 }
+export const NOTICE_LABELS = {
+  assigned: "Case assigned to you", overdue: "Case overdue", iso_assigned: "ISO record assigned to you",
+  iso_renewal: "Certificate renewal reminder", iso_audit: "Audit date reminder", iso_finding: "Overdue finding escalated",
+} as const;
 export const teamCaseLabels = { ehs: "EHS incident", inspection: "Technical inspection", registration: "Registration renewal" };
 
 export const ehsSource = (item: EhsCase) => "ehs:" + item.id;
