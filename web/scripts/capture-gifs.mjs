@@ -82,6 +82,28 @@ const SCENES = {
     await dialog.getByRole('button', { name: 'Mark awaiting document' }).waitFor();
     await frame(16);
   }),
+  teams: () => record('web-team-cases', '/team-cases/', async (page, frame) => {
+    const email = process.env.FLEETOPS_TEAM_GIF_EMAIL;
+    const password = process.env.FLEETOPS_TEAM_GIF_PASSWORD;
+    const demoTeam = process.env.FLEETOPS_TEAM_GIF_TEAM;
+    await page.getByRole('heading', { name: 'Team cases', exact: true }).waitFor();
+    if (!email || !password || !demoTeam) { await frame(12); return; }
+    await page.getByLabel('Work email').fill(email);
+    await page.getByLabel('Password', { exact: true }).fill(password);
+    await page.getByRole('button', { name: 'Sign in', exact: true }).click();
+    const team = page.getByRole('combobox', { name: 'Team', exact: true });
+    await team.selectOption({ label: demoTeam });
+    const list = page.getByRole('list', { name: 'Shared cases' });
+    const first = list.getByRole('button').first();
+    await first.waitFor();
+    await frame(10);
+    await first.click();
+    await page.getByRole('region', { name: 'Shared case details' }).waitFor();
+    await frame(10);
+    const inbox = page.getByRole('heading', { name: 'Notifications', exact: true });
+    await inbox.scrollIntoViewIfNeeded();
+    await frame(12);
+  }),
   ehs: () => record('web-ehs', '/ehs/', async (page, frame) => {
     const report = page.getByRole('button', { name: 'Report EHS incident' });
     await report.waitFor();

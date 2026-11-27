@@ -12,12 +12,15 @@ import { useTheme } from "./chart";
 import { LiveBadge, LiveDriver } from "./live";
 import { useEngine } from "./engine-provider";
 import { OfflineRegistration } from "./offline";
+import { TeamCaseSync } from "./team-case-sync";
+import { useTeam } from "./team-provider";
 import { UnlockBanner } from "./vault";
 
 const NAV = [
   { group: "Operate", items: [
     { href: "/", label: "Daily command", icon: Garage },
     { href: "/ehs/", label: "EHS", icon: ShieldCheck },
+    { href: "/team-cases/", label: "Team cases", icon: ClipboardText },
     { href: "/overview/", label: "Analytics", icon: ChartPieSlice },
     { href: "/network/", label: "Metric network", icon: Graph },
     { href: "/dispatch/", label: "Dispatch lab", icon: Truck },
@@ -125,6 +128,8 @@ function LegalLinks({ className = "" }: { className?: string }) {
 
 export function Shell({ children }: { children: ReactNode }) {
   const path = usePathname();
+  const team = useTeam();
+  const unread = team.inbox.filter((notice) => !notice.read_at).length;
   return (
     <div className="flex min-h-screen">
       <a href="#main-content" className="skip-link">Skip to content</a>
@@ -163,12 +168,15 @@ export function Shell({ children }: { children: ReactNode }) {
         <div className="sticky top-0 z-10 border-b border-border bg-bg/85 px-4 py-3 backdrop-blur md:px-8">
           <div className="flex items-center justify-between gap-4">
             <Status />
-            <ThemeToggle />
+            <div className="flex items-center gap-2">
+              {team.session && <Link href="/team-cases/#inbox" className="ops-button text-xs" aria-label={`Team notifications, ${unread} unread`}>Team alerts {unread || ""}</Link>}
+              <ThemeToggle />
+            </div>
           </div>
           <MobileNav path={path} />
           <div className="mt-2.5"><Regions /></div>
         </div>
-        <main id="main-content" tabIndex={-1} className="app-frame w-full px-4 py-8 md:px-8"><UnlockBanner /><LiveDriver /><div key={path} className="route-in">{children}</div></main>
+        <main id="main-content" tabIndex={-1} className="app-frame w-full px-4 py-8 md:px-8"><UnlockBanner /><TeamCaseSync /><LiveDriver /><div key={path} className="route-in">{children}</div></main>
         <footer className="w-full px-4 pb-8 md:px-8 lg:hidden"><LegalLinks /></footer>
       </div>
     </div>

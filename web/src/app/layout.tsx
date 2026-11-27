@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import "katex/dist/katex.min.css";
 import "./globals.css";
 import { EngineProvider } from "@/components/engine-provider";
+import { TeamProvider } from "@/components/team-provider";
 import { Shell } from "@/components/shell";
 import { GeistSans } from "geist/font/sans";
 import { GeistMono } from "geist/font/mono";
@@ -41,7 +42,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       </head>
       <body suppressHydrationWarning>
         <EngineProvider>
-          <Shell>{children}</Shell>
+          <TeamProvider><Shell>{children}</Shell></TeamProvider>
         </EngineProvider>
       </body>
     </html>

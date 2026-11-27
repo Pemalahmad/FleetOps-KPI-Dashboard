@@ -53,6 +53,7 @@ export interface GarageState {
   reminderOwners?: Record<string, string>;
   complianceEscalations?: ComplianceEscalation[];
   ehsCases?: EhsCase[];
+  sharedTeamId?: string;
   reviewHistory?: { vehicleId: string; review: GarageReview; archivedAt: string; reason: string }[];
 }
 export const emptyGarage = (): GarageState => ({ version: 1, incidents: [], reviews: {}, acknowledged: [], handovers: [], reviewHistory: [] });

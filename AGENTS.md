@@ -5,17 +5,16 @@ Instructions for coding agents (and humans) working in this repository. Read thi
 
 ## The product in one paragraph
 
-FleetOps is fleet software that runs **entirely on the owner's device**: a static Next.js app (`web/`) with an
+FleetOps is fleet software that runs its fleet warehouse **on the owner's device**: a static Next.js app (`web/`) with an
 in-browser SQL warehouse (DuckDB-WASM), document reading (Tesseract.js, pdf.js) and a visual garage, plus a Python
-package (`fleetkpi/`) that owns the SQL models, demo data and SOPs and exports them to the web app. There is no server,
-no account and no telemetry. That is the security model, so protecting it is every agent's first job.
+package (`fleetkpi/`) that owns the SQL models, demo data and SOPs and exports them to the web app. The optional team register uses one configured Supabase project for authenticated case summaries, membership and notifications. The device-local fleet and team register are distinct security boundaries.
 
 ## Non-negotiable invariants (no back doors)
 
 A change that breaks one of these is rejected, whatever it adds.
 
-1. **No new network destination.** The app talks to its own origin and, only on the owner's click, to NHTSA's VIN
-   decoder. Adding any other host, beacon, analytics, CDN, font or update check needs the maintainer's explicit approval
+1. **Network destinations are explicit.** The app talks to its own origin, to NHTSA's VIN decoder on explicit request,
+   and to the single configured HTTPS Supabase project for signed-in Team cases. Adding any other host, beacon, analytics, CDN, font or update check needs the maintainer's explicit approval
    *and* an update to the CSP in `web/scripts/postbuild.mjs`, `PRIVACY.md` and the e2e same-origin test.
 2. **No hidden control.** No debug query parameters, hidden routes, master licence keys, environment-variable bypasses,
    remote configuration, kill switches or auto-update. Licence keys are verified only with the Ed25519 public key in
@@ -23,9 +22,10 @@ A change that breaks one of these is rejected, whatever it adds.
 3. **No script execution from data.** No `eval`, `new Function`, inline event handlers or `'unsafe-inline'` scripts.
    HTML from text goes only through `web/src/lib/markdown.ts`. Every inline `<script>` is hashed into the CSP by
    postbuild; never render a CSP `<meta>` in `layout.tsx`.
-4. **Owner data stays sealed.** Everything the owner enters is saved through `web/src/lib/workspace.ts`, which seals it
+4. **Local fleet data stays sealed.** The local fleet is saved through `web/src/lib/workspace.ts`, which seals it
    with the vault key when a passphrase is set. Never write owner data to `localStorage`, cookies or a new store;
    never store the passphrase or key; never write plaintext over sealed data. Demo actions live in tab memory only.
+   An explicitly linked fleet shares case metadata with its authenticated team. Keep fleet files and raw document bytes local.
 5. **Safety gates cannot be bought.** Garage XP, missions and badges never waive an expired document, an open repair,
    an unknown evidence gap or a missing reviewer (`web/src/lib/garage.ts`).
 6. **Supply chain stays pinned.** GitHub Actions by commit SHA; least-privilege `permissions` per job; `npm ci

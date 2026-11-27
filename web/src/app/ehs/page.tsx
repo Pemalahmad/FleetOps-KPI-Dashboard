@@ -4,6 +4,9 @@ import Link from "next/link";
 import { useState, type FormEvent } from "react";
 import { useEngine } from "@/components/engine-provider";
 import { useGarageOperations } from "@/components/garage/use-garage";
+import { useTeam } from "@/components/team-provider";
+import { ehsSource, TEAM_STAGES } from "@/lib/team-cases";
+import { TeamCaseLink } from "@/components/team-case-sync";
 import { Card } from "@/components/ui";
 import { localDate } from "@/lib/garage";
 import {
@@ -56,8 +59,10 @@ function CaseReport({ change, saving, done }: { change: Change; saving: boolean;
   </form>;
 }
 
-function CaseDetail({ item, change, saving, close }: { item: EhsCase; change: Change; saving: boolean; close: () => void }) {
-  const next = nextEhsStage(item.stage);
+function CaseDetail({ item, change, saving, close, linked }: { item: EhsCase; change: Change; saving: boolean; close: () => void; linked?: string }) {
+  const team = useTeam();
+  const shared = linked && team.teamId === linked ? team.cases.find((record) => record.source_key === ehsSource(item)) : undefined;
+  const next = shared ? null : nextEhsStage(item.stage);
   const action: Partial<Record<EhsStage, string>> = {
     escalated: "Record escalation", contained: "Record containment", corrective: "Record corrective action", closed: "Verify and close",
   };
@@ -85,8 +90,9 @@ function CaseDetail({ item, change, saving, close }: { item: EhsCase; change: Ch
         <p className="mt-1 break-words text-sm text-muted">{item.country} · {item.site} · {item.category}{item.vehicle && ` · ${item.vehicle}`}</p></div>
       <button className="ops-button" onClick={close}>Back to case register</button>
     </div>
-    <p className="my-3 text-sm">{EHS_PRIORITY[item.priority].label} · {EHS_STAGES[item.stage]} · <time dateTime={item.occurredAt}>{dateTime(item.occurredAt)}</time></p>
+    <p className="my-3 text-sm">{EHS_PRIORITY[item.priority].label} · {shared ? TEAM_STAGES[shared.stage] : EHS_STAGES[item.stage]} · <time dateTime={item.occurredAt}>{dateTime(item.occurredAt)}</time></p>
     {item.priority === "critical" && <p className="mb-3 text-sm font-semibold text-bad">{EHS_PRIORITY.critical.notify}.</p>}
+    <TeamCaseLink source={ehsSource(item)} teamId={linked} />
     {next && <form key={item.history.length} aria-label="Update EHS case" onSubmit={submit} className="grid gap-4 sm:grid-cols-2">
       <label className={LABEL}>Case owner<input name="owner" className={FIELD} defaultValue={item.owner} required maxLength={80} /></label>
       <label className={LABEL}>Accountable manager<input name="manager" className={FIELD} defaultValue={item.manager} required maxLength={80} /></label>
@@ -106,7 +112,7 @@ function CaseDetail({ item, change, saving, close }: { item: EhsCase; change: Ch
       </div>
     </form>}
     <section aria-label="EHS case history" className="mt-6 border-t border-border pt-4">
-      <h3 className="font-semibold">Case history</h3>
+      <h3 className="font-semibold">{shared ? "History on this device" : "Case history"}</h3>
       <ol className="mt-2 divide-y divide-border">
         {[...item.history].reverse().map((event, index) => <li key={index} className="break-words py-3 text-sm">
           <strong>{EHS_STAGES[event.stage]}</strong> · {event.actor} · <time dateTime={event.at}>{dateTime(event.at)}</time>
@@ -135,7 +141,7 @@ export default function EhsPage() {
       <div><h1 className="text-[30px] font-semibold leading-tight tracking-tight md:text-[38px]">Environment, health &amp; safety</h1>
         <p className="mt-2 text-sm text-muted">Fleet, workshop and site incidents across the GCC.</p>
       </div>
-      <a className="ops-button" href="#ehs-procedure">Incident SOP</a>
+      <div className="flex flex-wrap gap-2"><Link href="/team-cases/" className="ops-button">Shared EHS cases</Link><a className="ops-button" href="#ehs-procedure">Incident SOP</a></div>
     </header>
     <Card>
       <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
@@ -145,7 +151,7 @@ export default function EhsPage() {
       </div>
       {error && <p role="alert" className="mb-4 text-sm text-bad">{error}</p>}
       {status !== "ready" ? <p role="status" className="text-sm text-muted">{status === "failed" ? "The incident register is unavailable. Check the fleet workspace." : "Loading incident register…"}</p>
-        : detail ? <CaseDetail key={detail.id} item={detail} change={change} saving={saving} close={() => setSelection("")} />
+        : detail ? <CaseDetail key={detail.id} item={detail} change={change} saving={saving} linked={state.sharedTeamId} close={() => setSelection("")} />
         : report ? <CaseReport change={change} saving={saving} done={(id) => { setReport(false); setSelection(id); }} />
         : <><div className="flex flex-wrap gap-3">
           <label className={LABEL}>Case status<select className={FIELD} value={filter} onChange={(event) => setFilter(event.target.value)}><option value="active">Active</option><option value="closed">Closed</option></select></label>
