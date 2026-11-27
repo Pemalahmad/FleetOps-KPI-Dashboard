@@ -2,7 +2,7 @@
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import type { Session } from "@supabase/supabase-js";
-import { teamClient, type Team, type TeamCase, type TeamMember, type TeamNotification } from "@/lib/team-cases";
+import { NOTICE_LABELS, teamClient, type Team, type TeamCase, type TeamMember, type TeamNotification } from "@/lib/team-cases";
 
 const POLL_MS = 15_000;
 const EMPTY = { teams: [] as Team[], members: [] as TeamMember[], cases: [] as TeamCase[], inbox: [] as TeamNotification[], user: "", scope: "" };
@@ -20,7 +20,7 @@ function useTeamState() {
     const request = ++generation.current;
     const [teams, inbox, cases, members] = await Promise.all([
       teamClient.from("fleet_teams").select("id,name").order("name"),
-      teamClient.from("fleet_case_notifications").select("id,team_id,case_id,event_type,created_at,read_at")
+      teamClient.from("fleet_case_notifications").select("id,team_id,case_id,iso_id,iso_title,event_type,created_at,read_at")
         .eq("recipient_id", user).order("id", { ascending: false }).limit(100),
       teamId ? teamClient.from("fleet_team_cases").select("*").eq("team_id",teamId).order("updated_at",{ ascending: false }).limit(500) : null,
       teamId ? teamClient.from("fleet_team_members").select("team_id,user_id,email,role").eq("team_id",teamId).order("email") : null,
@@ -61,7 +61,7 @@ function useTeamState() {
     for (const item of inbox) {
       if (item.read_at || desktopSeen.current.has(item.id)) continue;
       desktopSeen.current.add(item.id);
-      const body = item.event_type === "assigned" ? "A FleetOps case was assigned to you." : "A FleetOps case needs overdue follow-up.";
+      const body = NOTICE_LABELS[item.event_type];
       try { new Notification("FleetOps team cases", { body, tag: "fleetops-case-" + item.id }); } catch { /* Inbox remains available on devices without desktop notifications. */ }
     }
   }, [inbox]);

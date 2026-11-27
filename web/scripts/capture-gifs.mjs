@@ -82,6 +82,34 @@ const SCENES = {
     await dialog.getByRole('button', { name: 'Mark awaiting document' }).waitFor();
     await frame(16);
   }),
+  iso: () => record('web-iso-certification', '/team-cases/', async (page, frame) => {
+    const email = process.env.FLEETOPS_TEAM_GIF_EMAIL;
+    const password = process.env.FLEETOPS_TEAM_GIF_PASSWORD;
+    const team = process.env.FLEETOPS_TEAM_GIF_TEAM;
+    const nav = page.getByRole('navigation', { name: 'Main navigation' });
+    if (email && password && team) {
+      await page.getByLabel('Work email').fill(email);
+      await page.getByLabel('Password', { exact: true }).fill(password);
+      await page.getByRole('button', { name: 'Sign in', exact: true }).click();
+      await page.getByRole('combobox', { name: 'Team', exact: true }).selectOption({ label: team });
+    }
+    await nav.getByRole('link', { name: 'ISO certification', exact: true }).click();
+    await page.getByRole('heading', { name: 'ISO certification', exact: true }).waitFor();
+    if (email && password && team) {
+      await page.getByRole('list', { name: 'Certificates', exact: true }).waitFor();
+      await frame(10);
+      await page.getByRole('button', { name: 'Audits', exact: true }).click();
+      await page.getByRole('list', { name: 'Audits', exact: true }).waitFor();
+      await frame(10);
+      await page.getByRole('button', { name: 'Findings', exact: true }).click();
+      const findings = page.getByRole('list', { name: 'Findings', exact: true });
+      await findings.getByRole('button').first().click();
+      await page.getByRole('list', { name: 'ISO record history' }).waitFor();
+      await frame(14);
+    } else {
+      await frame(12);
+    }
+  }),
   teams: () => record('web-team-cases', '/team-cases/', async (page, frame) => {
     const email = process.env.FLEETOPS_TEAM_GIF_EMAIL;
     const password = process.env.FLEETOPS_TEAM_GIF_PASSWORD;

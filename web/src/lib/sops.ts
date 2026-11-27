@@ -32,6 +32,7 @@ export const SOP_PAGES: Record<string, { href: string; label: string }> = {
   "SOP-07": { href: "/licence/", label: "Review renewals" },
   "SOP-08": { href: "/customer/", label: "Review customer evidence" },
   "SOP-09": { href: "/", label: "Open Garage" },
+  "SOP-10": { href: "/iso/", label: "Open ISO certification" },
 };
 
 export interface SopSignal { state: "active" | "routine" | "unknown"; reason: string }
@@ -47,6 +48,7 @@ export function sopSignal(id: string, log: PipelineLog | null, counts: SopCounts
       ? { state: "active", reason: String(log.issues.length) + " data-quality findings; review the pipeline before acting." }
       : { state: "routine", reason: "Pipeline passed. Reconcile source totals at each refresh." };
   }
+  if (id === "SOP-10") return { state: "routine", reason: "Check certificate status, audit dates and overdue findings in ISO certification." };
   if (!log?.ok || !counts) return { state: "unknown", reason: "Waiting for verified pipeline evidence." };
   if (id === "SOP-02") return { state: "routine", reason: "Weekly review; assign owners and dates to unresolved signals." };
   const n = counts[id];

@@ -4,6 +4,11 @@ What changed in each version of FleetOps KPI. Dates are release dates; the newes
 
 ## Unreleased
 
+### ISO certification and full fleet SOP
+
+- SOP-10 joins Doctrine & SOPs with the full fleet procedure, a 12-step operating checklist, escalation decisions and certification lifecycle.
+- Signed-in teams can track certificate verification and expiry, initial and surveillance audit dates, audit findings, evidence and independent closure. The team inbox receives renewal and audit reminders and escalations for overdue findings.
+
 ### Shared EHS and compliance cases
 
 - Signed-in teams share an EHS and overdue compliance register with individual assignments, shared follow-up, an audit trail and a notification inbox.

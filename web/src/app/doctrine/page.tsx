@@ -72,7 +72,8 @@ export default function DoctrinePage() {
       <h1>Procedures</h1>
       <p>{evidence && total ? <><strong>{active} of {total} need attention.</strong> </> : "Checking the evidence. "}
         {engine.dataset === "demo" ? "Demo fleet" : engine.workspace?.name ?? "My fleet"}, {(engine.region ?? "All regions").toLowerCase() === "all regions" ? "all regions" : engine.region}{snapshot ? <>, data to <time dateTime={snapshot}>{snapshot}</time></> : null}. <Link href="/network/">See the metrics behind them</Link></p>
-      <Link className="ops-button mt-3 inline-flex" href="/ehs/#ehs-procedure">EHS incident response SOP</Link>
+      <div className="mt-3 flex flex-wrap gap-2"><Link className="ops-button" href="/ehs/#ehs-procedure">EHS incident response SOP</Link>
+        <Link className="ops-button" href="/doctrine/#SOP-10" onClick={() => { setSelected("SOP-10"); showOnNarrow(); }}>Full fleet SOP</Link></div>
     </header>
     {counts.error && <p role="alert" className="mb-4 text-sm text-bad">Trigger evidence could not be loaded. Check Pipeline &amp; your data. {counts.error}</p>}
     {error ? <Card><p role="alert">{error}</p><button onClick={() => setRetry((n) => n + 1)} className="ops-button mt-3">Retry loading procedures</button></Card> :

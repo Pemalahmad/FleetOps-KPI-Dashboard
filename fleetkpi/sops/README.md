@@ -13,6 +13,7 @@ Doctrine law 5: *every flag has an owner within 48 hours.* Each SOP names its ow
 | [SOP-07](SOP-07-registration-insurance.md) | Registration, insurance & fines | Expired or expiring documents; fines per 100 vehicles |
 | [SOP-08](SOP-08-customer-recovery.md) | Customer recovery & goodwill | 1-2 star ratings; goodwill above target |
 | [SOP-09](SOP-09-vehicle-damage-escalation.md) | Vehicle damage escalation | Every damage report, open collision case or overdue recorded notification |
+| [SOP-10](SOP-10-fleet-iso-certification.md) | Fleet operations and ISO certification | New scope, scheduled audit, renewal or overdue finding |
 
 
 ## Browser execution workspace

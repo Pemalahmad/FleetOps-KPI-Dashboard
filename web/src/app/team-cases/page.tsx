@@ -10,7 +10,7 @@ import { EHS_CATEGORIES, EHS_COUNTRIES, EHS_PRIORITY, reportEhsCase, type EhsRep
 import { emptyGarage } from "@/lib/garage";
 import {
   changeTeamCase, nextTeamStage, publishTeamCase, shareableEhs, teamCaseLabels, teamClient,
-  TEAM_COUNTRIES, TEAM_STAGES, type TeamCase, type TeamCaseEvent, type TeamStage,
+  NOTICE_LABELS, TEAM_COUNTRIES, TEAM_STAGES, type TeamCase, type TeamCaseEvent, type TeamStage,
 } from "@/lib/team-cases";
 
 const field = "ops-input min-h-11 w-full";
@@ -223,12 +223,15 @@ function TeamInbox({ open, run }: { open: (id: string) => void; run: Run }) {
     {feedback && <p role="status" className="text-sm text-muted">{feedback}</p>}
     {team.inbox.length ? <ul className="divide-y divide-border" aria-label="Team notifications">{team.inbox.map((entry) => <li key={entry.id}
       className="flex flex-wrap items-center justify-between gap-2 py-3 text-sm">
-      <p>{entry.read_at ? "" : "Unread · "}{entry.event_type === "assigned" ? "Case assigned to you" : "Case overdue"} · {team.teams.find((t) => t.id === entry.team_id)?.name} · {readTime(entry.created_at)}</p>
-      <button className="ops-button" onClick={() => {
+      <p>{entry.read_at ? "" : "Unread · "}{NOTICE_LABELS[entry.event_type]}{entry.iso_title && ` · ${entry.iso_title}`} · {team.teams.find((t) => t.id === entry.team_id)?.name} · {readTime(entry.created_at)}</p>
+      {entry.iso_id ? <Link className="ops-button" href={`/iso/#${entry.iso_id}`} onClick={() => {
         team.selectTeam(entry.team_id);
-        open(entry.case_id);
         if (!entry.read_at) void run(() => team.markRead(entry.id));
-      }}>Open case</button>
+      }}>Open ISO record</Link> : <button className="ops-button" onClick={() => {
+        team.selectTeam(entry.team_id);
+        if (entry.case_id) open(entry.case_id);
+        if (!entry.read_at) void run(() => team.markRead(entry.id));
+      }}>Open case</button>}
     </li>)}</ul> : <p className="py-2 text-sm text-muted">No team notifications yet.</p>}
   </Card>;
 }

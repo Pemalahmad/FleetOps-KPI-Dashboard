@@ -47,6 +47,7 @@ The first pilot is designed for a Dubai rental depot with 20–100 vehicles, usi
 | **Which dispatch rule should we run?** | The Dispatch lab runs the same simulated day through shortest-distance, highest-margin, least-deadhead and earliest-deadline dispatch for vans, buses or trucks, and compares on-time delivery, empty-mile ratio, driver utilisation, turnaround and margin with 95% confidence intervals ([model](docs/DISPATCH_LAB.md)). |
 | **Is each vehicle legal in its GCC country?** | Every active vehicle is checked against the published registration, insurance, inspection and operating-card rules of the UAE, Saudi Arabia, Qatar, Kuwait, Bahrain or Oman, with the reason, the authority and a dated source. A check of your records, never a certification ([rules](docs/GCC_COMPLIANCE.md)). |
 | **Who owns an overdue GCC inspection or renewal?** | Daily Command records the case owner, manager and follow-up. A confirmed upload that passes the applicable check closes the case and preserves the evidence. |
+| **How do we manage ISO certification?** | The shared tracker records certificate scope, verification, audit dates and findings. Renewal reminders and overdue escalations go to the team inbox. [Full fleet SOP](fleetkpi/sops/SOP-10-fleet-iso-certification.md) |
 | **Can managers share a case and see their notifications on another device?** | Team cases gives invited managers a shared EHS and compliance register, assignments, a case history and overdue notifications. [Team cases setup](docs/TEAM_CASES.md) |
 | **How are safety and environmental incidents handled?** | The EHS workspace provides standards, an incident SOP, severity-based escalation, an assigned case owner and independent closure review. |
 | **What happens when a vehicle is damaged?** | A damage case holds the vehicle off the road and walks it through severity, safety, evidence, notifications and deadlines, estimate, authorization, repair and quality check, with overdue alerts and an audit trail, before handover is allowed (SOP-09). |
@@ -65,6 +66,10 @@ The first pilot is designed for a Dubai rental depot with 20–100 vehicles, usi
 **GCC compliance escalations.** Track overdue inspections and renewals through owner assignment, manager follow-up and verified document upload.
 
 ![An overdue compliance case with a named owner, accountable manager, deadline and case history](docs/web-compliance-escalations.gif)
+
+**ISO certification.** Review certificate status and due dates, schedule audits, and track findings until an independent reviewer verifies closure.
+
+![A synthetic fleet's certificates, audit dates and findings in the ISO register](docs/web-iso-certification.gif)
 
 **Team cases.** The shared register gives signed-in managers a case owner, follow-up, history and a personal inbox.
 

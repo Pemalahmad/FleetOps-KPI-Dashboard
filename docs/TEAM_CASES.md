@@ -21,3 +21,9 @@ Test the browser flow with two separate signed-in browser contexts and a synthet
 The browser session stays in memory. Reopen Team cases and sign in again after closing or reloading a tab. Unlinking or clearing the local fleet stops sharing from that device. Ask the team's service administrator about hosted case retention or deletion.
 
 To refresh the README recording, use a synthetic team with test cases and assignment notices. Set `FLEETOPS_TEAM_GIF_EMAIL`, `FLEETOPS_TEAM_GIF_PASSWORD` and `FLEETOPS_TEAM_GIF_TEAM` in the recording process, then run `npm --prefix web run gifs teams` against a configured build.
+
+## ISO certification
+
+Use **ISO certification** after signing in to a team. Add the certificate and its scope, then schedule linked audits and assign any findings. An authorized reviewer records issuer verification and an independent manager or administrator verifies finding closure. The inbox receives renewal reminders on entry to the 90-, 60- and 30-day windows, audit reminders within 30 days, and overdue finding escalations. Deadlines are evaluated in Dubai time by the hosted five-minute job. Evidence is recorded as a reference. The [master procedure](../fleetkpi/sops/SOP-10-fleet-iso-certification.md) links the operational checks and certification lifecycle.
+
+Record the ISO README scene with a synthetic team that has one certificate, audit and finding. Set the same recording credentials and run `npm --prefix web run gifs iso`.
