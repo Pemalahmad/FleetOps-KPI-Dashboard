@@ -144,7 +144,7 @@ export function GaragePage() {
         onAssignReminder={(id, owner) => operations.change((state) => setComplianceReminderOwner(state, id, owner))}
         onOpenVehicle={openVehicle} onFilter={filterQueue} onOpenAlerts={() => setNotifications(true)}
         onPractice={practice ? () => setIncidentFor(practice.row.vehicle_id) : undefined} />
-      {selectedCase && <EscalationDialog key={selectedCase.id} item={selectedCase} owners={operations.state.reminderOwners}
+      {selectedCase && <EscalationDialog key={selectedCase.id} item={selectedCase} linked={operations.state.sharedTeamId} owners={operations.state.reminderOwners}
         onClose={() => setSelectedCaseId(null)} change={change} saving={saving} error={error} />}
 
       <LivePanel focus="garage" />

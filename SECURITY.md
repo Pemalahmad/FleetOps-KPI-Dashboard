@@ -8,10 +8,7 @@ Please do not open a public issue. Reports are acknowledged within a few days.
 
 ## Design
 
-FleetOps has **no server and no accounts**. The app is static files; the SQL engine (DuckDB-WASM), the document
-reader (Tesseract.js, pdf.js) and all data stay in the user's browser. That removes whole classes of risk (credential
-theft, server-side injection, breaches of a central store) and leaves the browser, the device and the build pipeline
-as the things to defend.
+FleetOps serves a static frontend. Its SQL engine (DuckDB-WASM), reader (Tesseract.js, pdf.js), fleet inputs and files run in the browser. A configured deployment offers an optional Supabase-backed team register for authenticated case metadata. Each signed-in team has its own case and membership access boundary. The browser keeps authentication tokens in memory.
 
 ## Threats and controls
 
@@ -22,7 +19,8 @@ Every control marked *CI* is checked on every commit by the end-to-end security 
 |---|---|---|
 | Script injection (XSS) from imported files or scanned text | React escapes all rendered values; procedure Markdown escapes raw HTML and restricts link schemes; KaTeX runs in its untrusted mode; chart labels and tooltips draw text on canvas. **Strict Content Security Policy:** no `'unsafe-inline'` for scripts; each page allows only its own bootstrap scripts, pinned by SHA-256 at build time | *CI*: a hostile workbook (`<script>`, `<img onerror>`, `<svg onload>` in headers and cells) renders as text; a script injected into the page is refused |
 | SQL injection through column names or values | Identifiers double-quote-escaped, literals single-quote-escaped, constants passed as literals | *CI*: id `X-001'); DROP TABLE vehicles; --` is stored literally and the table survives |
-| Data exfiltration by injected code | CSP `connect-src` allows this site and NHTSA's VIN decoder only. The database engine runs in a **blob worker**, which inherits the page's policy (a URL-loaded worker would get none on GitHub Pages) | *CI*: every request from every page, worker included, goes to the app's own origin |
+| Data exfiltration by injected code | CSP `connect-src` allows this site, the optional NHTSA VIN decoder, and exactly one Supabase project when Team cases is configured. The database engine runs in a **blob worker**, which inherits the page's policy (a URL-loaded worker would get none on GitHub Pages) | *CI*: every request from every page, worker included, goes to the app's own origin |
+| Cross-team access and lost concurrent edits | The database restricts shared rows to verified active members, inbox rows to the account receiving them, and mutations to authenticated case roles. Updates check the saved revision. | `supabase/tests/shared_cases.sql` |
 | Code loaded from third parties at runtime | Everything is self-hosted, including DuckDB's parquet and json extensions, which are downloaded at build time, **checked against pinned SHA-256 hashes**, and served from this site | *CI*: same-origin check above; the build fails on a hash mismatch |
 | Clickjacking (another site framing the app) | Pages cannot send `frame-ancestors`, so a hashed bootstrap script hides any page framed by another origin and tries to break out | *CI*: a page on another origin framing the app sees it hidden; the app's own pages are unaffected |
 | Malformed or hostile input reaching parsers | **Property-based fuzzing** (fast-check) of Markdown rendering, CSV export to the engine, header detection, VIN and OCR text parsing, spreadsheet-formula escaping and encryption round-trips | `web/src/lib/fuzz.test.ts`, every CI run |
@@ -45,7 +43,7 @@ Every control marked *CI* is checked on every commit by the end-to-end security 
   code or send data under this policy.
 - `'wasm-unsafe-eval'` lets the browser compile the WebAssembly engines (DuckDB, Tesseract); it does not allow
   JavaScript `eval`.
-- The CSP is defence in depth, not a guarantee: same-origin requests and the optional VIN endpoint remain allowed.
+- The CSP is defence in depth, not a guarantee: same-origin requests and each explicitly configured service remain allowed.
 - GitHub Pages cannot send custom headers, so the policy is delivered by `<meta>`; `frame-ancestors` (clickjacking)
   therefore cannot be enforced there. Deployments that need clickjacking protection must send `frame-ancestors` as an
   HTTP response header from a host that supports it.
@@ -63,8 +61,7 @@ by design. "Delete my fleet data" removes everything, including SOP notes; expor
 
 ## No back doors
 
-The app has no server, account, remote configuration, update channel, telemetry, debug switch or master licence key,
-so there is nothing outside the device that can unlock, read, change or delete an owner's data. These are written down
+The hosted team service can access the case records an authenticated team shares. The local passphrase and fleet files stay on the device, and the shared case workflow cannot unlock the vault or change vehicle release checks. These are written down
 as invariants for every contributor and agent in [AGENTS.md](AGENTS.md) and checked by the e2e suite and code review.
 Licence keys are client-side checks: they decide which features a packaged build shows, never access to data.
 

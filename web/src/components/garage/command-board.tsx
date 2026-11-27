@@ -202,6 +202,7 @@ export function DailyCommandBoard({
           <button className="ops-button" onClick={() => jumpToQueue("Overdue escalations")} aria-pressed={filter === "Overdue escalations"}>
             <Siren size={16} aria-hidden="true" /> Overdue escalations <span className="garage-count">{NUM.format(openEscalations)}</span>
           </button>
+          <Link href="/team-cases/"><ClipboardText size={16} /> Shared cases</Link>
           <Link href="/doctrine/#SOP-09"><ClipboardText size={16} /> Damage SOP-09</Link>
           {onPractice && <button className="ops-button" onClick={onPractice}>Practice a damage case</button>}
           <button className="ops-button" disabled={!actions.length && !reminders.length && !openEscalations && !summary.handoversToday}

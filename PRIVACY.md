@@ -1,17 +1,13 @@
 # Privacy Policy
 
-**Effective 26 November 2026.** Applies to the FleetOps web app at pemalahmad.github.io/FleetOps-KPI-Dashboard, the
+**Effective 27 November 2026.** Applies to the FleetOps web app at pemalahmad.github.io/FleetOps-KPI-Dashboard, the
 downloadable offline package and this repository.
 
-**In short: FleetOps does not collect your data. There is no FleetOps server to send it to.** Everything you import is
-processed and stored on your own device, under your control.
+**Fleet files are processed and stored on your device.** Teams that use the optional shared case workspace also use a configured Supabase project for sign-in, case records and the notification inbox.
 
 ## Who is responsible
 
-FleetOps is published by Mohammad Alahmad ("we"). Because the app runs entirely in your browser or on your computer,
-we never receive, see or store the fleet data you put into it. For that data **you are the controller**: you decide
-what is imported, who uses the device and when it is deleted. We are the controller only of the messages you choose to
-send us (for example a bug report or a support question).
+FleetOps is published by Mohammad Alahmad ("we"). You decide what fleet data you import, how the local workspace is used and which records to share with your team. The organization's team administrator controls membership and the configured hosted workspace. Contact them for access or retention questions. We receive the support messages you choose to send us.
 
 ## What happens to what you import
 
@@ -21,6 +17,7 @@ send us (for example a bug report or a support question).
 | Garage incidents, damage facts, evidence references, notification decisions, deadlines and their sources, estimates, approvals, repair/quality records, review notes, audit history and handovers with the applicable country evidence | Saved with the device-local workspace, under the same optional passphrase encryption; demo actions stay in tab memory. FleetOps records notifications but sends none | Until fleet data is deleted; demo progress resets on reload |
 | Assigned owners for inspection and registration reminders | Saved with the device-local workspace with the same optional passphrase protection. These names appear in Daily Command and may be included in your shift handoff export. Demo assignments stay in tab memory | Until cleared or fleet data is deleted. Demo assignments reset on reload |
 | Compliance escalation and EHS cases, including owners, managers, notes, decisions, due dates, timestamps and evidence references | Saved with the device-local workspace under the same optional passphrase protection. Open compliance assignments can appear in the shift handoff. Staff contact managers and external authorities through their own channels. | Until fleet data is deleted. Demo cases reset on reload. |
+| Shared cases and account details when Team cases is enabled | The configured Supabase project stores verified work emails, team membership, case summaries, vehicle and evidence references, assignments, notes, dates, reporting decisions, case history and notification read status. Team member access and per-user notification access are enforced by the database. | Hosted records follow the team's retention policy. Clearing browser storage affects the local copy. |
 | Shift handoff or release record you download | The browser saves a plain-text file on your device. It may include vehicle identifiers, names, timestamps and evidence references. It is outside workspace passphrase protection | Until you delete the downloaded file |
 | Service orders: bookings, stage history and assignments, check-in and check-out condition (odometer, fuel or charge, body, interior, warning lights, tyre tread, pressure and condition), work lines (issue, diagnosis, work done, pay type, claim or campaign numbers), parts, technician hours, comments by technicians, advisors and owners, and invoices | Saved with the device-local workspace, under the same optional passphrase encryption; never sent anywhere; demo orders stay in tab memory | Until fleet data is deleted; demo orders reset on reload |
 | Activity log of your own changes (imports, garage records, procedures, settings) | Saved with the device-local workspace, under the same optional passphrase encryption; never sent anywhere; the demo keeps none | Until fleet data is deleted; the newest 400 entries are kept |
@@ -36,9 +33,8 @@ send us (for example a bug report or a support question).
 
 ## What FleetOps does not do
 
-- No accounts, sign-up or email collection.
 - No cookies, analytics, advertising, tracking pixels, fingerprinting or third-party scripts.
-- No sale or sharing of personal data, and no profiling or automated decisions about people.
+- No sale of personal data, profiling or automated decisions about people. The team service processes the work emails and case data described above.
 - No fonts, libraries, engines or engine extensions loaded from other sites: everything is served from the same place
   as the app, and the browser is told to refuse anything else (Content Security Policy, checked on every build).
 - The page sends no referrer to other sites (`no-referrer`).
@@ -50,8 +46,7 @@ send us (for example a bug report or a support question).
 The web app is served by GitHub Pages. Like any web host, GitHub may record technical request data (such as IP address
 and time) when your browser downloads the app's files; see the
 [GitHub Privacy Statement](https://docs.github.com/site-policy/privacy-policies/github-general-privacy-statement).
-That request data never includes your fleet data, which never leaves your device. The offline package avoids hosting
-altogether.
+GitHub Pages serves the static app. Team case traffic goes directly to the configured Supabase project, in the region selected by the team administrator. The offline package uses local storage within the browser.
 
 ## On a shared computer
 
@@ -74,7 +69,7 @@ required for accounting records.
 
 ## Your rights
 
-Because your fleet data stays on your device, you exercise most rights directly: view it in the app, export it
+For device-local fleet data, you exercise most rights directly: view it in the app, export it
 (Excel, calendar), correct it by re-importing, and erase it with "Delete my fleet data". For information we do hold
 (messages you sent us, licence records) you may ask for access, correction, deletion, restriction or a copy, and you
 may object to its use, under the laws that apply to you, including the EU/UK GDPR, the UAE Personal Data Protection Law

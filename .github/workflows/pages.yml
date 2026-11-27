@@ -39,6 +39,8 @@ jobs:
         working-directory: web
         env:
           NEXT_PUBLIC_BASE_PATH: /${{ github.event.repository.name }}
+          NEXT_PUBLIC_FLEETOPS_TEAM_URL: ${{ vars.FLEETOPS_TEAM_URL }}
+          NEXT_PUBLIC_FLEETOPS_TEAM_KEY: ${{ vars.FLEETOPS_TEAM_KEY }}
         run: npm ci --ignore-scripts && npm run lint && npm run typecheck && npm test && npm run build && touch out/.nojekyll
       - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
         with:

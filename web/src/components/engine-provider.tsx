@@ -172,6 +172,7 @@ export function EngineProvider({ children }: { children: ReactNode }) {
       : after.reminderOwners !== before.reminderOwners ? "Compliance reminder assignment updated"
       : after.complianceEscalations !== before.complianceEscalations ? "Compliance escalation history updated"
       : after.ehsCases !== before.ehsCases ? "EHS incident history updated"
+      : after.sharedTeamId !== before.sharedTeamId ? "Team case sharing settings updated"
       : "Garage review updated";
     const next = withActivity({ ...current, garage: after }, "garage", detail);
     await saveWorkspace(next);

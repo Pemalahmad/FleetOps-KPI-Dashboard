@@ -7,10 +7,12 @@ import { createHash } from "node:crypto";
 import { readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
+import { teamConfiguration } from "../src/lib/team-origin.mjs";
 import { engineManifestUrl } from "../src/lib/engine-manifest-url.mjs";
 
 const out = join(fileURLToPath(new URL("..", import.meta.url)), "out");
 const base = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
+const team = teamConfiguration(process.env.NEXT_PUBLIC_FLEETOPS_TEAM_URL, process.env.NEXT_PUBLIC_FLEETOPS_TEAM_KEY);
 
 function walk(dir) {
   return readdirSync(dir).flatMap((n) => {
@@ -37,15 +39,14 @@ const version = hash.digest("hex").slice(0, 12);
 
 // Content Security Policy, written into every page as the first element of <head>. Scripts: this site plus the SHA-256
 // of each inline bootstrap script on that page, so any script injected later is refused. Workers, WASM, fonts and
-// data come from this site only; the one outside connection allowed is NHTSA's VIN decoder, used only when the owner
-// clicks "Decode". Even injected code could not send fleet data anywhere else.
+// Data requests can use the configured team project after sign-in or the VIN decoder after an explicit click.
 const policy = (hashes) => [
   "default-src 'self'",
   `script-src 'self' ${hashes.join(" ")} 'wasm-unsafe-eval'`,
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: blob:",
   "font-src 'self' data:",
-  "connect-src 'self' blob: data: https://vpic.nhtsa.dot.gov",
+  `connect-src 'self' blob: data: https://vpic.nhtsa.dot.gov${team ? ` ${team}` : ""}`,
   "worker-src 'self' blob:",
   "object-src 'none'",
   "base-uri 'self'",

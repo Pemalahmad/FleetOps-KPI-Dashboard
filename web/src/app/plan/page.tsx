@@ -24,7 +24,7 @@ export default function PlanPage() {
   return (
     <>
       <PageHeader art="plan" eyebrow="Your plan" title="Plan, licence and offline use">
-        FleetOps runs entirely on your device. Use it in the browser, install it as an app, or download it and run it with no internet.
+        Fleet analysis and document reading run on your device. Use FleetOps in the browser, install it as an app, or download the local edition.
       </PageHeader>
 
       <div className="grid gap-4 lg:grid-cols-2">
@@ -102,7 +102,7 @@ export default function PlanPage() {
           <ShieldCheck size={26} className="shrink-0 text-good" />
           <ul className="list-disc space-y-1 pl-4">
             <li>Your sheets, documents and their scans are processed and stored only in this browser (IndexedDB). There is no FleetOps server.</li>
-            <li>No accounts, no cookies, no analytics, no trackers. Fonts and engines are served from this site, not third parties.</li>
+            <li>Team cases uses accounts when configured. Fleet analysis, fonts and engines are served by the dashboard. FleetOps uses no analytics or trackers.</li>
             <li>The only outside call is optional: decoding VINs with NHTSA vPIC sends the VINs, nothing else, and only when you click.</li>
             <li>&ldquo;Delete my fleet data&rdquo; on the Import page removes everything from this browser.</li>
           </ul>

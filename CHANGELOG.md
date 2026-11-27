@@ -4,6 +4,11 @@ What changed in each version of FleetOps KPI. Dates are release dates; the newes
 
 ## Unreleased
 
+### Shared EHS and compliance cases
+
+- Signed-in teams share an EHS and overdue compliance register with individual assignments, shared follow-up, an audit trail and a notification inbox.
+- A hosted deadline check creates overdue notices even when the dashboard is closed. Linked fleets share verified renewal references after Daily Command checks the local document.
+
 ### Compliance escalations and EHS
 
 - Daily Command opens separate cases for overdue GCC inspections and registration renewals. Track owners, managers, follow-up dates and case history. A case closes after a confirmed upload meets the applicable check, with the document reference recorded in the history.
